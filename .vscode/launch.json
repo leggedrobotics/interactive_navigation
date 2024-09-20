@@ -13,7 +13,6 @@
             "port": 3000,
             "host": "localhost"
         },
-
         // For standalone script execution
         {
             "name": "Python: Current File",
@@ -27,21 +26,48 @@
             "name": "Python: Train Environment",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Isaac-Velocity-Flat-Anymal-D-v0", "--num_envs", "4096", "--headless"],
+            "args": [
+                "--task",
+                "Template-Isaac-Velocity-Rough-Anymal-D-v0",
+                "--num_envs",
+                "16",
+                "--headless"
+            ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
             "console": "integratedTerminal",
             "envFile": "${workspaceFolder}/.vscode/.python.env",
         },
+        // custom env debuggers
+        {
+            "name": "Python: Train Hide and Seek",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--task",
+                "Isaac-Games-HideAndSeek-Simple-D-v0",
+                "--num_envs",
+                "16",
+                // "--headless"
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        // --------------------------------
         {
             "name": "Python: Play Environment",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Isaac-Velocity-Flat-Anymal-D-Play-v0", "--num_envs", "32"],
+            "args": [
+                "--task",
+                "Template-Isaac-Velocity-Flat-Anymal-D-Play-v0",
+                "--num_envs",
+                "32"
+            ],
             "program": "${workspaceFolder}/scripts/rsl_rl/play.py",
             "console": "integratedTerminal",
             "envFile": "${workspaceFolder}/.vscode/.python.env",
         },
-
         // For script execution inside a Docker
         {
             "name": "Docker: Current File",
@@ -58,7 +84,13 @@
             "name": "Docker: Train Environment",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Isaac-Velocity-Flat-Anymal-D-v0", "--num_envs", "4096", "--headless"],
+            "args": [
+                "--task",
+                "Template-Isaac-Velocity-Flat-Anymal-D-v0",
+                "--num_envs",
+                "4096",
+                "--headless"
+            ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
             "console": "integratedTerminal",
             "envFile": "${workspaceFolder}/.vscode/.python.env",
@@ -70,7 +102,12 @@
             "name": "Docker: Play Environment",
             "type": "debugpy",
             "request": "launch",
-            "args" : ["--task", "Template-Isaac-Velocity-Flat-Anymal-D-Play-v0", "--num_envs", "32"],
+            "args": [
+                "--task",
+                "Template-Isaac-Velocity-Flat-Anymal-D-Play-v0",
+                "--num_envs",
+                "32"
+            ],
             "program": "${workspaceFolder}/scripts/rsl_rl/play.py",
             "console": "integratedTerminal",
             "envFile": "${workspaceFolder}/.vscode/.python.env",
