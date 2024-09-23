@@ -86,7 +86,7 @@ class SimpleAction(ActionTerm):
 
         # - grab:
         # when grab is activated (< 0), the closest object within a radius becomes movable for this agent
-        self.is_grabbing = actions[:, 3] > -1000000
+        self.is_grabbing = actions[:, 3] > 0
         # TODO facing direction
 
     def apply_actions(self):
