@@ -14,8 +14,9 @@ GAME_ARENA_CFG = TerrainGeneratorCfg(
     size=(16.0, 16.0),
     border_width=0.0,
     border_height=0.0,
-    num_rows=4,
-    num_cols=4,
+    curriculum=True,
+    num_rows=1,
+    num_cols=1,
     horizontal_scale=0.1,
     vertical_scale=0.1,
     slope_threshold=None,
@@ -28,7 +29,7 @@ GAME_ARENA_CFG = TerrainGeneratorCfg(
         # ),
         "wall": CellBorderCfg(
             border_width=0,
-            height=1.0,
+            height=2.0,
         ),
     },
 )

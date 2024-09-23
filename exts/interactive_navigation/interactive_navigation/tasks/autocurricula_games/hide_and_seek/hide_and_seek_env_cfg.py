@@ -31,7 +31,7 @@ from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: sk
 # Task-specific configurations
 ##
 
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets import ROBOT_CFG
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets import ROBOT_CFG, CUBOID_CFG, WALL_CFG
 
 ##
 # Scene definition
@@ -59,10 +59,26 @@ class MySceneCfg(InteractiveSceneCfg):
             mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
             project_uvw=True,
         ),
-        debug_vis=False,
+        debug_vis=True,
     )
     # robots
     robot: RigidObjectCfg = ROBOT_CFG
+
+    # assets:
+    asset_1: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Asset_1", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
+    asset_2: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Asset_2", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
+    asset_3: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Asset_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
+
+    # walls:
+    wall_1: RigidObjectCfg = WALL_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Wall_1", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
 
     # sensors
     lidar = RayCasterCfg(
@@ -139,9 +155,72 @@ class ObservationsCfg:
     policy: PolicyCfg = PolicyCfg()
 
 
+XY_RANGE = (-7.0, 7.0)
+Z_ROBOT = 0.3
+Z_BOX = 0.25
+Z_WALL = 0.5
+ZERO_VELOCITY = {
+    "x": (-0.0, 0.0),
+    "y": (-0.0, 0.0),
+    "z": (-0.0, 0.0),
+    "roll": (-0.0, 0.0),
+    "pitch": (-0.0, 0.0),
+    "yaw": (-0.0, 0.0),
+}
+
+
 @configclass
 class EventCfg:
     """Configuration for events."""
+
+    reset_robot = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": XY_RANGE, "y": XY_RANGE, "z": (Z_ROBOT, Z_ROBOT), "yaw": (-3.14, 3.14)},
+            "velocity_range": ZERO_VELOCITY,
+        },
+    )
+
+    reset_asset_1 = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": XY_RANGE, "y": XY_RANGE, "z": (Z_BOX, Z_BOX), "yaw": (-3.14, 3.14)},
+            "velocity_range": ZERO_VELOCITY,
+            "asset_cfg": SceneEntityCfg("asset_1"),
+        },
+    )
+
+    reset_asset_2 = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": XY_RANGE, "y": XY_RANGE, "z": (Z_BOX, Z_BOX), "yaw": (-3.14, 3.14)},
+            "velocity_range": ZERO_VELOCITY,
+            "asset_cfg": SceneEntityCfg("asset_2"),
+        },
+    )
+
+    reset_asset_3 = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": XY_RANGE, "y": XY_RANGE, "z": (Z_BOX, Z_BOX), "yaw": (-3.14, 3.14)},
+            "velocity_range": ZERO_VELOCITY,
+            "asset_cfg": SceneEntityCfg("asset_3"),
+        },
+    )
+
+    reset_wall_1 = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": XY_RANGE, "y": XY_RANGE, "z": (Z_WALL, Z_WALL), "yaw": (-3.14, 3.14)},
+            "velocity_range": ZERO_VELOCITY,
+            "asset_cfg": SceneEntityCfg("wall_1"),
+        },
+    )
 
 
 @configclass
@@ -198,12 +277,17 @@ class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 4
-        self.episode_length_s = 20.0
+        self.episode_length_s = 5.0
         # simulation settings
-        self.sim.dt = 0.005
+        self.sim.dt = 0.005  # 200 Hz
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material
+
+        # GPU settings
+        self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
+        self.sim.physx.gpu_collision_stack_size = 2**27
+
         # update sensor update periods
         # we tick all the sensors based on the smallest update period (physics update period)
         if self.scene.lidar is not None:

@@ -25,16 +25,27 @@ def cell_border(difficulty: float, cfg: hf_terrains_cfg.CellBorderCfg) -> np.nda
     width_pixels = int(cfg.size[0] / cfg.horizontal_scale)
     length_pixels = int(cfg.size[1] / cfg.horizontal_scale)
 
-    hf_raw = np.zeros((width_pixels, length_pixels))
+    hf_raw = np.zeros((width_pixels, length_pixels)).astype(bool)
 
     height = cfg.height / cfg.vertical_scale
 
     B = 1
     # -- border 1 pixels
-    hf_raw[:B, :] = height
-    hf_raw[-B:, :] = height
-    hf_raw[:, :B] = height
-    hf_raw[:, -B:] = height
+    hf_raw[:B, :] = True
+    hf_raw[-B:, :] = True
+    hf_raw[:, :B] = True
+    hf_raw[:, -B:] = True
+
+    # cut corners
+    B = int(cfg.corner_witdh / cfg.horizontal_scale)
+    # Top-left corner
+    hf_raw[-B:, :B] |= np.tri(B, B, 0, dtype=bool)
+    # Bottom-left corner
+    hf_raw[:B, :B] |= np.tri(B, B, 0, dtype=bool)[::-1, :]
+    # Top-right corner
+    hf_raw[-B:, -B:] |= np.tri(B, B, 0, dtype=bool)[:, ::-1]
+    # Bottom-right corner
+    hf_raw[:B, -B:] |= np.tri(B, B, 0, dtype=bool)[::-1, ::-1]
 
     # round off the heights to the nearest vertical step
-    return np.rint(hf_raw).astype(np.int16)
+    return np.rint(hf_raw).astype(np.int16) * height

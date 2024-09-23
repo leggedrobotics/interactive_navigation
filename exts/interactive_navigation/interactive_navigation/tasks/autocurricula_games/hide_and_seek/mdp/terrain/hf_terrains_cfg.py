@@ -20,3 +20,5 @@ class CellBorderCfg(HfTerrainBaseCfg):
     function = hf_terrains.cell_border
 
     height: float = 2.0
+
+    corner_witdh: float = 2.0
