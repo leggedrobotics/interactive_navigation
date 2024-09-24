@@ -21,4 +21,4 @@ class CellBorderCfg(HfTerrainBaseCfg):
 
     height: float = 2.0
 
-    corner_witdh: float = 2.0
+    corner_witdh: float = 0.0

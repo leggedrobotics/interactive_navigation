@@ -37,15 +37,16 @@ def cell_border(difficulty: float, cfg: hf_terrains_cfg.CellBorderCfg) -> np.nda
     hf_raw[:, -B:] = True
 
     # cut corners
-    B = int(cfg.corner_witdh / cfg.horizontal_scale)
-    # Top-left corner
-    hf_raw[-B:, :B] |= np.tri(B, B, 0, dtype=bool)
-    # Bottom-left corner
-    hf_raw[:B, :B] |= np.tri(B, B, 0, dtype=bool)[::-1, :]
-    # Top-right corner
-    hf_raw[-B:, -B:] |= np.tri(B, B, 0, dtype=bool)[:, ::-1]
-    # Bottom-right corner
-    hf_raw[:B, -B:] |= np.tri(B, B, 0, dtype=bool)[::-1, ::-1]
+    if cfg.corner_witdh > 0:
+        B = int(cfg.corner_witdh / cfg.horizontal_scale)
+        # Top-left corner
+        hf_raw[-B:, :B] |= np.tri(B, B, 0, dtype=bool)
+        # Bottom-left corner
+        hf_raw[:B, :B] |= np.tri(B, B, 0, dtype=bool)[::-1, :]
+        # Top-right corner
+        hf_raw[-B:, -B:] |= np.tri(B, B, 0, dtype=bool)[:, ::-1]
+        # Bottom-right corner
+        hf_raw[:B, -B:] |= np.tri(B, B, 0, dtype=bool)[::-1, ::-1]
 
     # round off the heights to the nearest vertical step
     return np.rint(hf_raw).astype(np.int16) * height
