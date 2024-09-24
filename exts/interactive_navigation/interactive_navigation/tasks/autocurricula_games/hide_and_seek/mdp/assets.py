@@ -5,9 +5,9 @@ from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg, RigidObject, Ri
 ROBOT_CFG = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/Robot",
     spawn=sim_utils.CuboidCfg(
-        size=(0.8, 1.2, 0.6),
+        size=(1.2, 0.8, 0.6),
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            max_depenetration_velocity=1.0, disable_gravity=False, max_linear_velocity=3.0, max_angular_velocity=1.5
+            max_depenetration_velocity=1.0, disable_gravity=False, max_linear_velocity=3.0, max_angular_velocity=90.0
         ),
         mass_props=sim_utils.MassPropertiesCfg(mass=1.0),
         physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=0.1, dynamic_friction=0.1),
