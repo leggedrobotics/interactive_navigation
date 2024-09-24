@@ -277,7 +277,7 @@ class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 4
-        self.episode_length_s = 5.0
+        self.episode_length_s = 300.0
         # simulation settings
         self.sim.dt = 0.005  # 200 Hz
         self.sim.render_interval = self.decimation
