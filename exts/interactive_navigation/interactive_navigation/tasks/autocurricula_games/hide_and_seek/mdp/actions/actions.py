@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import torch
+import math
 from typing import TYPE_CHECKING
 
 from omni.isaac.lab.envs import ManagerBasedRLEnv
@@ -15,7 +16,14 @@ if TYPE_CHECKING:
 
 
 class SimpleAction(ActionTerm):
-    """Simple action for the spherical agent to move around and grab obstacles."""
+    """Simple action for the spherical agent to move around and grab obstacles.
+
+    - movement x, y, yaw: continuous action to move the agent in the x, y direction and yaw
+
+    - grab: binary action to grab the closest object within a radius and within the field of view
+
+    - climb up: binary action to make the agent climb up by jumping.
+                This action is only available every N steps to prevent the agent from jumping continuously."""
 
     cfg: SimpleActionCfg
     _env: ManagerBasedRLEnv
@@ -26,22 +34,40 @@ class SimpleAction(ActionTerm):
         self.robot_name = "robot"
         self.env = env
 
+        # movement config
         self.max_force = cfg.max_force  # Newtons
         self.max_torque = cfg.max_toque  # Newton-meters
+        self.max_lin_vel = cfg.max_lin_vel  # m/s
 
+        # grab config
         self.min_distance = cfg.min_distance  # meters
         self.half_fov_rad = cfg.fov_deg * torch.pi / 360.0  # radians
 
+        # jump config
+        self.jump_cooldown_steps = int(math.ceil(cfg.jump_cooldown_secs / self.env.step_dt))
+        jump_height = 0.75  # meters
+        angle_deg = 80.0  # angle from the horizontal plane to jump vector
+        g = 9.81
+        jump_vel_up = math.sqrt(2 * g * jump_height)
+        jump_vel_forward = jump_vel_up / math.tan(angle_deg * math.pi / 180.0)
+        self.jump_vel = torch.tensor([jump_vel_forward, 0.0, jump_vel_up]).to(self.env.device)
+
         self._processed_actions = torch.zeros(3)
 
+        # asset names
+        self.asset_names = [asset for asset in list(env.scene.rigid_objects.keys()) if "asset" in asset]
+
         # command buffers
-        self.force_command = torch.zeros(env.num_envs, 3)
-        self.torque_command = torch.zeros(env.num_envs, 3)
+        self.force_command = torch.zeros(env.num_envs, 3).to(env.device)
+        self.torque_command = torch.zeros(env.num_envs, 3).to(env.device)
 
         # object pos buffers
         self.grabbed_asset_pos_body_frame = torch.zeros(env.num_envs, 3).to(env.device)
         self.grabbed_asset_quat_body_frame = torch.zeros(env.num_envs, 4).to(env.device)
         self.grabbed_asset_id = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device) - 1
+
+        # jump cooldown
+        self.jump_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
 
         # teleop:
         self.use_teleop = cfg.use_teleop
@@ -57,7 +83,7 @@ class SimpleAction(ActionTerm):
     @property
     def action_dim(self) -> int:
         """Dimension of the action term."""
-        return 3 + 1  # x, y, yaw (continuous), grab (binary)
+        return 3 + 1 + 1  # x, y, yaw (continuous), grab (binary), climb up (binary)
 
     @property
     def raw_actions(self) -> torch.Tensor:
@@ -85,29 +111,60 @@ class SimpleAction(ActionTerm):
 
         # - movement x, y, yaw:
         # movement is implemented as a force in the x, y direction and a torque in the yaw direction
-        xy_force_body = actions[:, :2] * self.max_force
-        yaw_torque = actions[:, 2] * self.max_torque
+        if self.use_teleop:
+            delta_pose, gripper_command = self.teleop_interface.advance()
+            self.force_command[:, :2] = torch.tensor(delta_pose[:2]).to(self.env.device)
+            self.torque_command[:, 2] = (
+                torch.tensor(delta_pose[2]).to(self.env.device) / self.max_force * self.max_torque
+            )
+        else:
+            xy_force_body = actions[:, :2] * self.max_force
+            yaw_torque = actions[:, 2] * self.max_torque
 
-        xy_force_body = torch.clamp(xy_force_body, -self.max_force, self.max_force)
+            xy_force_body = torch.clamp(xy_force_body, -self.max_force, self.max_force)
+            yaw_torque = torch.clamp(yaw_torque, -self.max_torque, self.max_torque)
+            yaw_torque *= 0
 
-        # force forward:
-        xy_force_body[:, 0] *= 0
-        xy_force_body[:, 1] *= 0
-        xy_force_body[:, 0] = self.max_force
-
-        yaw_torque = torch.clamp(yaw_torque, -self.max_torque, self.max_torque)
-
-        yaw_torque *= 0
-
-        self.force_command = torch.cat([xy_force_body, torch.zeros(self.env.num_envs, 1).to(self.device)], dim=1)
-        self.torque_command = torch.cat(
-            [torch.zeros(self.env.num_envs, 2).to(self.device), yaw_torque.unsqueeze(1)], dim=1
-        )
+            self.force_command = torch.cat([xy_force_body, torch.zeros(self.env.num_envs, 1).to(self.device)], dim=1)
+            self.torque_command = torch.cat(
+                [torch.zeros(self.env.num_envs, 2).to(self.device), yaw_torque.unsqueeze(1)], dim=1
+            )
 
         # - grab:
         # when grab is activated (< 0), the closest object within a radius becomes movable for this agent
-        self.is_grabbing = actions[:, 3] > 0
-        # TODO facing direction
+        if self.use_teleop:
+            self.is_grabbing = gripper_command
+        else:
+            self.is_grabbing = actions[:, 3] > 0
+
+        # - climb up:
+        if self.use_teleop:
+            want_to_jump = (torch.tensor(delta_pose[3]).to(self.env.device) / self.max_force * self.max_torque) != 0
+            jump_now = want_to_jump & (self.jump_cooldown_buffer.eq(0))
+        else:
+            jump_now = (actions[:, 4] > 0) & (self.jump_cooldown_buffer.eq(0))
+
+        if jump_now.any():
+            self.jump_cooldown_buffer[jump_now] = self.jump_cooldown_steps
+
+            all_robot_velocities = self.env.scene.rigid_objects[self.robot_name].data.root_lin_vel_w
+
+            jump_robots_quat = self.env.scene.rigid_objects[self.robot_name].data.root_quat_w[jump_now]
+
+            jump_vel_vec_world = math_utils.quat_apply_yaw(
+                jump_robots_quat, self.jump_vel.unsqueeze(0).expand(int(jump_now.sum()), -1)
+            )
+
+            all_robot_velocities[jump_now] = jump_vel_vec_world
+            zero_ang_vel = torch.zeros_like(all_robot_velocities)
+
+            velocity = torch.cat([all_robot_velocities, zero_ang_vel], dim=1)
+
+            self._asset.write_root_velocity_to_sim(velocity)
+
+            self.jump_cooldown_buffer[~jump_now] = torch.clamp(self.jump_cooldown_buffer[~jump_now] - 1, min=0)
+        else:
+            self.jump_cooldown_buffer = torch.clamp(self.jump_cooldown_buffer - 1, min=0)
 
     def apply_actions(self):
         """Applies the actions to the asset managed by the term.
@@ -116,18 +173,34 @@ class SimpleAction(ActionTerm):
             This is called at every simulation step by the manager.
         """
 
-        # teleop:
-        if self.use_teleop:
-            delta_pose, gripper_command = self.teleop_interface.advance()
-            self.force_command[:, :2] = torch.tensor(delta_pose[:2]).to(self.env.device)
-            self.torque_command[:, 2] = (
-                torch.tensor(delta_pose[2]).to(self.env.device) / self.max_force * self.max_torque
-            )
-            self.is_grabbing = gripper_command
+        # - teleop:
 
         # - moving action
+
         # get forces
-        # TODO put in process_actions
+
+        # check if the robot is moving too fast
+        robot_lin_vel_w = self.env.scene.rigid_objects[self.robot_name].data.root_lin_vel_w
+        above_max_lin_vel = torch.linalg.vector_norm(robot_lin_vel_w[:, :2], dim=1) > self.max_lin_vel
+
+        # if the robot is moving too fast, we set the force in the direction of the velocity to 0
+        # by subtracting the projection of the force on the velocity from the force
+        if above_max_lin_vel.any():
+            # TODO define as torch jit function for performance
+            robot_lin_vel_w = robot_lin_vel_w[above_max_lin_vel]
+            robot_quat = self.env.scene.rigid_objects[self.robot_name].data.root_quat_w[above_max_lin_vel]
+            robot_lin_vel_b = math_utils.quat_apply_yaw(math_utils.quat_inv(robot_quat), robot_lin_vel_w)
+
+            xy_force = self.force_command[above_max_lin_vel, :2]
+            # projection = (a.b / |b|^2) * b
+            dot_products = torch.sum(xy_force * robot_lin_vel_b[:, :2], dim=1)
+            norms_squared = torch.sum(robot_lin_vel_b[:, :2] ** 2, dim=1)
+            eps = 1e-8  # small constant for numerical stability
+            norms_squared = torch.clamp(norms_squared, min=eps)
+            projection = (dot_products / norms_squared).unsqueeze(-1) * robot_lin_vel_b[:, :2]
+
+            xy_force -= projection
+            self.force_command[above_max_lin_vel, :2] = xy_force
 
         self._asset.set_external_force_and_torque(
             forces=self.force_command.unsqueeze(1), torques=self.torque_command.unsqueeze(1)
@@ -141,15 +214,11 @@ class SimpleAction(ActionTerm):
         # get positions
         robot_pos = self.env.scene.rigid_objects["robot"].data.root_pos_w
 
-        # TODO: fix this, does not work properly
-
-        asset_ids = ["asset_1", "asset_2", "asset_3"]
-
         grabbed_any = torch.zeros(self.env.num_envs, dtype=torch.bool).to(self.env.device)
         grabbed_new_ids = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device) - 1
         closest_asset_dist = torch.ones(self.env.num_envs).to(self.env.device) * self.min_distance * 2
 
-        for id_num, asset_id in enumerate(asset_ids):
+        for id_num, asset_id in enumerate(self.asset_names):
             asset_pos = self.env.scene.rigid_objects[asset_id].data.root_pos_w
 
             # get distances

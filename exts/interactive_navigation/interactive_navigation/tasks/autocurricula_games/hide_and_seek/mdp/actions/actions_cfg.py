@@ -18,11 +18,17 @@ class SimpleActionCfg(ActionTermCfg):
     fov_deg: float = 135.0
     """Horizontal field of view in degrees."""
 
-    max_force: float = 2.0
+    max_force: float = 5.0
     """Maximum force to apply to the robot."""
 
-    max_toque: float = 1.0
+    max_lin_vel: float = 2.5
+    """Maximum linear velocity of the robot in m/s."""
+
+    max_toque: float = 2.0
     """Maximum torque to apply to the robot."""
+
+    jump_cooldown_secs: float = 1.0
+    """Cooldown time in seconds for the jump action."""
 
     use_teleop: bool = True
     """Whether to use teleop interface for controlling the robot."""
