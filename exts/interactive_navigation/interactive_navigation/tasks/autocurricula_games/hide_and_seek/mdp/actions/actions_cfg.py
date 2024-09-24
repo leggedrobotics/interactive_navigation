@@ -13,7 +13,7 @@ class SimpleActionCfg(ActionTermCfg):
     class_type: type[ActionTerm] = SimpleAction
 
     min_distance: float = 2.0
-    """Minimum distance to the object to grab it."""
+    """Minimum distance to the object to grab it (center to center)."""
 
     fov_deg: float = 135.0
     """Horizontal field of view in degrees."""

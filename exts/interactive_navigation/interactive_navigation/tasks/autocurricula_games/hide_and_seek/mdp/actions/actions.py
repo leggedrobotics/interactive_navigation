@@ -42,6 +42,7 @@ class SimpleAction(ActionTerm):
         # grab config
         self.min_distance = cfg.min_distance  # meters
         self.half_fov_rad = cfg.fov_deg * torch.pi / 360.0  # radians
+        self.min_valid_z_diff_to_grab = 0.2
 
         # jump config
         self.jump_cooldown_steps = int(math.ceil(cfg.jump_cooldown_secs / self.env.step_dt))
@@ -138,6 +139,7 @@ class SimpleAction(ActionTerm):
             self.is_grabbing = actions[:, 3] > 0
 
         # - climb up:
+        # when climb up is activated (< 0), the agent jumps up by setting its velocity up and forward for one step
         if self.use_teleop:
             want_to_jump = (torch.tensor(delta_pose[3]).to(self.env.device) / self.max_force * self.max_torque) != 0
             jump_now = want_to_jump & (self.jump_cooldown_buffer.eq(0))
@@ -145,23 +147,18 @@ class SimpleAction(ActionTerm):
             jump_now = (actions[:, 4] > 0) & (self.jump_cooldown_buffer.eq(0))
 
         if jump_now.any():
-            self.jump_cooldown_buffer[jump_now] = self.jump_cooldown_steps
-
+            # set velocities
             all_robot_velocities = self.env.scene.rigid_objects[self.robot_name].data.root_lin_vel_w
-
             jump_robots_quat = self.env.scene.rigid_objects[self.robot_name].data.root_quat_w[jump_now]
-
             jump_vel_vec_world = math_utils.quat_apply_yaw(
                 jump_robots_quat, self.jump_vel.unsqueeze(0).expand(int(jump_now.sum()), -1)
             )
-
             all_robot_velocities[jump_now] = jump_vel_vec_world
             zero_ang_vel = torch.zeros_like(all_robot_velocities)
-
             velocity = torch.cat([all_robot_velocities, zero_ang_vel], dim=1)
-
             self._asset.write_root_velocity_to_sim(velocity)
-
+            # set cooldown
+            self.jump_cooldown_buffer[jump_now] = self.jump_cooldown_steps
             self.jump_cooldown_buffer[~jump_now] = torch.clamp(self.jump_cooldown_buffer[~jump_now] - 1, min=0)
         else:
             self.jump_cooldown_buffer = torch.clamp(self.jump_cooldown_buffer - 1, min=0)
@@ -172,8 +169,6 @@ class SimpleAction(ActionTerm):
         Note:
             This is called at every simulation step by the manager.
         """
-
-        # - teleop:
 
         # - moving action
 
@@ -207,6 +202,8 @@ class SimpleAction(ActionTerm):
         )
 
         # - grab actions:
+        # TODO grab distance should be to the surface of the asset, not its center
+        # we only grab small objects, so we can assume the center is close to the surface
 
         # robot quaternion
         robot_quat = math_utils.yaw_quat(self.env.scene.rigid_objects["robot"].data.root_quat_w)
@@ -214,6 +211,11 @@ class SimpleAction(ActionTerm):
         # get positions
         robot_pos = self.env.scene.rigid_objects["robot"].data.root_pos_w
 
+        # (force the agent to not roll or pitch)
+        robot_pose_no_roll_pitch = torch.cat([robot_pos, robot_quat], dim=1)
+        self.env.scene.rigid_objects["robot"].write_root_pose_to_sim(robot_pose_no_roll_pitch)
+
+        # check if the agent is grabbing an object
         grabbed_any = torch.zeros(self.env.num_envs, dtype=torch.bool).to(self.env.device)
         grabbed_new_ids = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device) - 1
         closest_asset_dist = torch.ones(self.env.num_envs).to(self.env.device) * self.min_distance * 2
@@ -228,7 +230,8 @@ class SimpleAction(ActionTerm):
             # check if the agent is grabbing and the asset is within the grabbing distance
             grab_asset = (dist < self.min_distance) & self.is_grabbing
 
-            # for assets in to be grabbed, check if the assets are within the field of view
+            # for assets in to be grabbed, check if the assets are within the field of view, not to far in z direction,
+            # and the robot not just jumped
             if grab_asset.any():
                 asset_to_grab_pos_body_frame = math_utils.quat_apply_yaw(
                     math_utils.quat_inv(robot_quat[grab_asset]), dist_vec[grab_asset]
@@ -238,15 +241,23 @@ class SimpleAction(ActionTerm):
                     torch.abs(torch.atan2(asset_to_grab_pos_body_frame[:, 1], asset_to_grab_pos_body_frame[:, 0]))
                     < self.half_fov_rad
                 )
+
+                # check if asset is not below the robot, since this could be exploited by the agent
+                valid_z_diff = torch.abs(dist_vec[grab_asset][:, 2]) < self.min_valid_z_diff_to_grab
+
+                # check if the agent is not just jumped
+                not_jumped = self.jump_cooldown_buffer.eq(0)
+
                 new_grab_asset = torch.zeros_like(grab_asset, dtype=torch.bool)
-                new_grab_asset[grab_asset] = in_fov
+                new_grab_asset[grab_asset] = in_fov & valid_z_diff & not_jumped
                 grab_asset = new_grab_asset
 
             # the boxes are kinematic bodies, meaning they cannot be pushed.
             # we move them by setting their position directly
 
-            # if the agent was grabbing previously and its still grabing, we update the position of the grabbed asset.
-            still_grabbing = (self.grabbed_asset_id == id_num) & grab_asset
+            # if the agent was grabbing previously and its still grabbing, we update the position of the grabbed asset.
+            # we increase the grabbing distance to avoid accidently letting go of the asset
+            still_grabbing = (self.grabbed_asset_id == id_num) & (dist < self.min_distance * 1.5) & self.is_grabbing
             if still_grabbing.any():
                 asset_pos_body_frame = self.grabbed_asset_pos_body_frame[still_grabbing]
                 asset_quat_body_frame = self.grabbed_asset_quat_body_frame[still_grabbing]
@@ -280,7 +291,7 @@ class SimpleAction(ActionTerm):
                 )
                 grabbed_new_ids[now_grabbing] = id_num
 
-            grabbed_any = grabbed_any | grab_asset
+            grabbed_any = grabbed_any | grab_asset | still_grabbing
 
         self.grabbed_asset_id[grabbed_new_ids >= 0] = grabbed_new_ids[grabbed_new_ids >= 0]
         self.grabbed_asset_id[~grabbed_any] = -1
