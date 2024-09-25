@@ -1,1 +1,1 @@
-from .terrain import GAME_ARENA_CFG
+from .terrain import GAME_ARENA_BASE_CFG, GAME_ARENA_RANDOM_FLOORS_CFG
