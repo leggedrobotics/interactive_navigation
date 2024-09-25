@@ -9,7 +9,8 @@ from omni.isaac.lab.managers.action_manager import ActionTerm
 from omni.isaac.lab.utils.assets import check_file_path, read_file
 from omni.isaac.lab.utils import configclass, math as math_utils
 from omni.isaac.lab.devices import Se3Gamepad, Se3Keyboard, Se3SpaceMouse
-
+from omni.isaac.lab.markers import VisualizationMarkers
+from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG
 
 if TYPE_CHECKING:
     from .actions_cfg import SimpleActionCfg
@@ -198,7 +199,6 @@ class SimpleAction(ActionTerm):
             eps = 1e-8  # small constant for numerical stability
             norms_squared = torch.clamp(norms_squared, min=eps)
             projection = (dot_products / norms_squared).unsqueeze(-1) * robot_lin_vel_b[:, :2]
-
             xy_force -= projection
             self.force_command[above_max_lin_vel, :2] = xy_force
 
@@ -324,3 +324,44 @@ class SimpleAction(ActionTerm):
 
         self.grabbed_asset_id[grabbed_new_ids >= 0] = grabbed_new_ids[grabbed_new_ids >= 0]
         self.grabbed_asset_id[~grabbed_any] = -1
+
+    def _set_debug_vis_impl(self, debug_vis: bool):
+        # create markers if necessary for the first tome
+        if debug_vis:
+            if not hasattr(self, "force_visualizer"):
+                marker_cfg = BLUE_ARROW_X_MARKER_CFG.copy()
+                marker_cfg.markers["arrow"].scale = (0.1, 0.1, 0.1)
+                marker_cfg.prim_path = "/Visuals/Command/action_force"
+
+                self.force_visualizer = VisualizationMarkers(marker_cfg)
+            # set their visibility to true
+            self.force_visualizer.set_visibility(True)
+
+    def _debug_vis_callback(self, event):
+        # update the markers
+        # -- goal pose
+
+        # - get robot pos
+        robot_pos = self.env.scene.rigid_objects["robot"].data.root_pos_w
+        robot_quat = math_utils.yaw_quat(self.env.scene.rigid_objects["robot"].data.root_quat_w)
+        # increase z to visualize the force
+        robot_pos[:, 2] += 1.0
+
+        # - get action force
+        force = self.force_command
+        force_3d = torch.cat([force, torch.zeros_like(force)], dim=1)
+        force_w = math_utils.quat_apply(robot_quat, force_3d)
+        force_x = force_w[:, 0]
+        force_y = force_w[:, 1]
+
+        yaw_angle = torch.atan2(force_y, force_x)
+
+        force_dir_quat = math_utils.quat_from_euler_xyz(
+            torch.zeros_like(yaw_angle), torch.zeros_like(yaw_angle), yaw_angle
+        )
+
+        scales = torch.linalg.norm(force, dim=1, keepdim=True)
+        default_scale = torch.ones_like(scales) * 4
+        scales_3d = torch.cat([scales * 2, default_scale, default_scale], dim=1)
+
+        self.force_visualizer.visualize(translations=robot_pos, orientations=force_dir_quat, scales=scales_3d)
