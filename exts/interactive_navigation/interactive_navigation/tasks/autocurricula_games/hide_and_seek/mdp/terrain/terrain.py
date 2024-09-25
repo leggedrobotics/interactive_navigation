@@ -39,12 +39,13 @@ GAME_ARENA_RANDOM_FLOORS_CFG = TerrainGeneratorCfg(
     border_width=0.0,
     border_height=0.0,
     curriculum=True,
-    num_rows=1,
-    num_cols=1,
+    num_rows=5,  # difficulty levels
+    num_cols=1,  # number of terrains per difficulty level
     horizontal_scale=0.1,
     vertical_scale=0.1,
     slope_threshold=0.75,
     use_cache=False,
+    difficulty_range=(0.5, 5.4),  # number of steps
     sub_terrains={
         # "rails": terrain_gen.MeshRailsTerrainCfg(
         #     proportion=0.2,
@@ -55,7 +56,6 @@ GAME_ARENA_RANDOM_FLOORS_CFG = TerrainGeneratorCfg(
             border_width=0,
             wall_height=2.0,
             step_height=1,
-            N_steps=3,
             min_width=0.5,
             flat_patch_sampling={
                 "init_pos": FlatPatchSamplingCfg(num_patches=25, patch_radius=0.4, max_height_diff=5.0),

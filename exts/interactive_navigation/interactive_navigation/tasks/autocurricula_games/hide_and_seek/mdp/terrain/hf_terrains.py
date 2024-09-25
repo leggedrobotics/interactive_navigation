@@ -78,7 +78,7 @@ def random_pyramid(difficulty: float, cfg: hf_terrains_cfg.RandomPyramid) -> np.
 
     # we generate a random pyramid by creating square levels of increasing width
     # with random xy offsets
-    N_levels = cfg.N_steps
+    N_levels = int(round(difficulty))
     avg_level_width = width_pixels / (2 * N_levels + 1)
     step_height = int(cfg.step_height / cfg.vertical_scale)
 
@@ -95,14 +95,19 @@ def random_pyramid(difficulty: float, cfg: hf_terrains_cfg.RandomPyramid) -> np.
     big_width = width_pixels
     for level_i in reversed(range(N_levels)):
         level_width = int((level_i * 2 + 1) * avg_level_width)
-        # start_x = big_start_x + int((big_width - level_width) / 2)
-        start_x = big_start_x + np.random.randint(
-            min_step_width_pixels, big_width - level_width - min_step_width_pixels
-        )
-        # start_y = big_start_y + int((big_width - level_width) / 2)
-        start_y = big_start_y + np.random.randint(
-            min_step_width_pixels, big_width - level_width - min_step_width_pixels
-        )
+
+        if cfg.force_to_corner:
+            start_x = big_start_x + int(np.random.random() > 0.5) * (big_width - level_width)
+            start_y = big_start_y + int(np.random.random() > 0.5) * (big_width - level_width)
+
+        else:
+            start_x = big_start_x + np.random.randint(
+                min_step_width_pixels, big_width - level_width - min_step_width_pixels
+            )
+            start_y = big_start_y + np.random.randint(
+                min_step_width_pixels, big_width - level_width - min_step_width_pixels
+            )
+
         hf_raw[start_x : start_x + level_width, start_y : start_y + level_width] += step_height
         big_start_x = start_x
         big_start_y = start_y

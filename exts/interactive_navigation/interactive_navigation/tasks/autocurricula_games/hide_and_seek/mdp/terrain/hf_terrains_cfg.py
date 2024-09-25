@@ -34,10 +34,11 @@ class RandomPyramid(HfTerrainBaseCfg):
 
     step_height: float = 0.5
 
-    N_steps: int = 3
-    """number of steps"""
-
     min_width: float = 0.5
     """minimal step with"""
+
+    force_to_corner: bool = True
+    """if true, all upper levels will be forced to the corner of the lower level.
+    This will omit the min_width parameter"""
 
     origin_z: float = 0.0
