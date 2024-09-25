@@ -7,10 +7,10 @@ ROBOT_CFG = RigidObjectCfg(
     spawn=sim_utils.CuboidCfg(
         size=(1.2, 0.8, 0.6),
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            max_depenetration_velocity=1.0, disable_gravity=False, max_linear_velocity=3.0, max_angular_velocity=90.0
+            max_depenetration_velocity=1.0, disable_gravity=False, max_linear_velocity=10.0, max_angular_velocity=90.0
         ),
         mass_props=sim_utils.MassPropertiesCfg(mass=1.0),
-        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=0.1, dynamic_friction=0.1),
+        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=0.1, dynamic_friction=0.3),
         collision_props=sim_utils.CollisionPropertiesCfg(),
         visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.2, 0.9, 0.2)),
     ),
@@ -18,20 +18,22 @@ ROBOT_CFG = RigidObjectCfg(
     collision_group=0,
 )
 
+
 # - movable objects:
 
 # - cuboid:
 CUBOID_CFG = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/Cuboid",
     spawn=sim_utils.CuboidCfg(
-        size=(0.5, 0.5, 0.5),
+        size=(1.25, 0.5, 0.75),
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            max_depenetration_velocity=1.0, disable_gravity=False, max_angular_velocity=3.14, kinematic_enabled=True
+            max_depenetration_velocity=1.0, disable_gravity=False, max_angular_velocity=3.14, kinematic_enabled=False
         ),
         mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
-        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=0.5, dynamic_friction=0.5),
+        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=0.1, dynamic_friction=0.3),
         collision_props=sim_utils.CollisionPropertiesCfg(),
         visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.2, 0.2)),
+        activate_contact_sensors=True,
     ),
     init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
     collision_group=0,
@@ -41,7 +43,7 @@ CUBOID_CFG = RigidObjectCfg(
 WALL_CFG = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/Wall",
     spawn=sim_utils.CuboidCfg(
-        size=(0.5, 3.5, 1.0),
+        size=(0.5, 8.0, 2.0),
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             max_depenetration_velocity=1.0, disable_gravity=False, kinematic_enabled=True
         ),

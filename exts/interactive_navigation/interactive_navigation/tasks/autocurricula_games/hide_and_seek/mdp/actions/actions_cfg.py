@@ -12,7 +12,7 @@ from .actions import SimpleAction
 class SimpleActionCfg(ActionTermCfg):
     class_type: type[ActionTerm] = SimpleAction
 
-    min_distance: float = 2.0
+    min_distance: float = 1.5
     """Minimum distance to the object to grab it (center to center)."""
 
     fov_deg: float = 135.0
@@ -24,7 +24,7 @@ class SimpleActionCfg(ActionTermCfg):
     max_lin_vel: float = 2.5
     """Maximum linear velocity of the robot in m/s."""
 
-    max_toque: float = 2.0
+    max_toque: float = 5.0
     """Maximum torque to apply to the robot."""
 
     jump_cooldown_secs: float = 1.0
