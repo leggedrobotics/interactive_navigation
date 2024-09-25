@@ -31,7 +31,12 @@ from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: sk
 # Task-specific configurations
 ##
 
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets import ROBOT_CFG, CUBOID_CFG, WALL_CFG
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets import (
+    ROBOT_CFG,
+    CUBOID_CFG,
+    WALL_CFG,
+    SEGMENT_RAY_CASTER_MARKER_CFG,
+)
 
 ##
 # Scene definition
@@ -46,7 +51,7 @@ class MySceneCfg(InteractiveSceneCfg):
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
         terrain_type="generator",
-        terrain_generator=mdp.terrain.GAME_ARENA_CFG,
+        terrain_generator=mdp.terrain.GAME_ARENA_RANDOM_FLOORS_CFG,
         max_init_terrain_level=5,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -62,7 +67,7 @@ class MySceneCfg(InteractiveSceneCfg):
         debug_vis=True,
     )
     # robots
-    robot: RigidObjectCfg = ROBOT_CFG
+    robot: RigidObjectCfg = ROBOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # assets:
     asset_1: RigidObjectCfg = CUBOID_CFG.replace(
@@ -74,10 +79,19 @@ class MySceneCfg(InteractiveSceneCfg):
     asset_3: RigidObjectCfg = CUBOID_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Asset_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
     )
+    asset_4: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Asset_4", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
 
     # walls:
     wall_1: RigidObjectCfg = WALL_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Wall_1", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
+    wall_2: RigidObjectCfg = WALL_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Wall_2", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
+    wall_3: RigidObjectCfg = WALL_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Wall_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
     )
 
     # sensors
@@ -96,9 +110,39 @@ class MySceneCfg(InteractiveSceneCfg):
         debug_vis=True,
         history_length=0,
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
-        mesh_prim_paths=["/World/ground"],
+        mesh_prim_paths=[
+            "/World/ground",
+            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Asset_.*", is_global=False),
+            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
+        ],
         track_mesh_transforms=True,
+        visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
     )
+    # lidar_top = RayCasterCfg(
+    #     prim_path="{ENV_REGEX_NS}/Robot",
+    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.5)),
+    #     attach_yaw_only=True,
+    #     pattern_cfg=patterns.LidarPatternCfg(
+    #         channels=1,
+    #         vertical_fov_range=(-0.0, 0.0),
+    #         horizontal_fov_range=(-90, 90),
+    #         horizontal_res=10,
+    #     ),
+    #     max_distance=100.0,
+    #     drift_range=(-0.0, 0.0),
+    #     debug_vis=True,
+    #     history_length=0,
+    #     # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
+    #     mesh_prim_paths=[
+    #         "/World/ground",
+    #         RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Asset_.*", is_global=False),
+    #         RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
+    #     ],
+    #     track_mesh_transforms=True,
+    #     visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
+    # )
+
+    boxes_contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Asset_.*", history_length=1, track_air_time=False)
 
     # lights
     light = AssetBaseCfg(
@@ -174,51 +218,100 @@ class EventCfg:
     """Configuration for events."""
 
     reset_robot = EventTerm(
-        func=mdp.reset_root_state_uniform,
+        func=mdp.reset_root_state_uniform_on_terrain_aware,
         mode="reset",
         params={
-            "pose_range": {"x": XY_RANGE, "y": XY_RANGE, "z": (Z_ROBOT, Z_ROBOT), "yaw": (-3.14, 3.14)},
-            "velocity_range": ZERO_VELOCITY,
+            "pose_range": {"yaw": (-3.14, 3.14)},
+            "lowest_level": True,
+            "offset": [0.0, 0.0, Z_ROBOT],
         },
     )
 
     reset_asset_1 = EventTerm(
-        func=mdp.reset_root_state_uniform,
+        func=mdp.reset_root_state_uniform_on_terrain_aware,
         mode="reset",
         params={
-            "pose_range": {"x": XY_RANGE, "y": XY_RANGE, "z": (Z_BOX, Z_BOX), "yaw": (-3.14, 3.14)},
-            "velocity_range": ZERO_VELOCITY,
+            "pose_range": {
+                "yaw": (-3.14, 3.14),
+            },
+            "lowest_level": True,
+            "offset": [0.0, 0.0, Z_BOX],
             "asset_cfg": SceneEntityCfg("asset_1"),
         },
     )
 
     reset_asset_2 = EventTerm(
-        func=mdp.reset_root_state_uniform,
+        func=mdp.reset_root_state_uniform_on_terrain_aware,
         mode="reset",
         params={
-            "pose_range": {"x": XY_RANGE, "y": XY_RANGE, "z": (Z_BOX, Z_BOX), "yaw": (-3.14, 3.14)},
-            "velocity_range": ZERO_VELOCITY,
+            "pose_range": {
+                "yaw": (-3.14, 3.14),
+            },
+            "lowest_level": True,
+            "offset": [0.0, 0.0, Z_BOX],
             "asset_cfg": SceneEntityCfg("asset_2"),
         },
     )
 
     reset_asset_3 = EventTerm(
-        func=mdp.reset_root_state_uniform,
+        func=mdp.reset_root_state_uniform_on_terrain_aware,
         mode="reset",
         params={
-            "pose_range": {"x": XY_RANGE, "y": XY_RANGE, "z": (Z_BOX, Z_BOX), "yaw": (-3.14, 3.14)},
-            "velocity_range": ZERO_VELOCITY,
+            "pose_range": {
+                "yaw": (-3.14, 3.14),
+            },
+            "lowest_level": True,
+            "offset": [0.0, 0.0, Z_BOX],
             "asset_cfg": SceneEntityCfg("asset_3"),
         },
     )
 
-    reset_wall_1 = EventTerm(
-        func=mdp.reset_root_state_uniform,
+    reset_asset_4 = EventTerm(
+        func=mdp.reset_root_state_uniform_on_terrain_aware,
         mode="reset",
         params={
-            "pose_range": {"x": XY_RANGE, "y": XY_RANGE, "z": (Z_WALL, Z_WALL), "yaw": (-3.14, 3.14)},
-            "velocity_range": ZERO_VELOCITY,
+            "pose_range": {
+                "yaw": (-3.14, 3.14),
+            },
+            "lowest_level": True,
+            "offset": [0.0, 0.0, Z_BOX],
+            "asset_cfg": SceneEntityCfg("asset_4"),
+        },
+    )
+
+    # walls
+    reset_wall_1 = EventTerm(
+        func=mdp.reset_root_state_uniform_on_terrain_aware,
+        mode="reset",
+        params={
+            "pose_range": {
+                "yaw": (-3.14, 3.14),
+            },
+            "offset": [0.0, 0.0, Z_WALL],
             "asset_cfg": SceneEntityCfg("wall_1"),
+        },
+    )
+
+    reset_wall_2 = EventTerm(
+        func=mdp.reset_root_state_uniform_on_terrain_aware,
+        mode="reset",
+        params={
+            "pose_range": {
+                "yaw": (-3.14, 3.14),
+            },
+            "offset": [0.0, 0.0, Z_WALL],
+            "asset_cfg": SceneEntityCfg("wall_2"),
+        },
+    )
+    reset_wall_3 = EventTerm(
+        func=mdp.reset_root_state_uniform_on_terrain_aware,
+        mode="reset",
+        params={
+            "pose_range": {
+                "yaw": (-3.14, 3.14),
+            },
+            "offset": [0.0, 0.0, Z_WALL],
+            "asset_cfg": SceneEntityCfg("wall_3"),
         },
     )
 
@@ -249,7 +342,7 @@ class TerminationsCfg:
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
-    # terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
+    terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
 
 
 ##
@@ -276,10 +369,11 @@ class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
     def __post_init__(self):
         """Post initialization."""
         # general settings
-        self.decimation = 4
-        self.episode_length_s = 300.0
+        self.decimation = 10  # 10 Hz
+        self.episode_length_s = 3000.0
         # simulation settings
-        self.sim.dt = 0.005  # 200 Hz
+        # self.sim.dt = 0.005  # 200 Hz
+        self.sim.dt = 0.005  # 100 Hz
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material
