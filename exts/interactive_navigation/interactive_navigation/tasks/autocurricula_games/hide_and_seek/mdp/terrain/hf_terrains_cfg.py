@@ -22,3 +22,22 @@ class CellBorderCfg(HfTerrainBaseCfg):
     height: float = 2.0
 
     corner_witdh: float = 0.0
+
+
+@configclass
+class RandomPyramid(HfTerrainBaseCfg):
+    """Configuration for cell border wall."""
+
+    function = hf_terrains.random_pyramid
+
+    wall_height: float = 2.0
+
+    step_height: float = 0.5
+
+    N_steps: int = 3
+    """number of steps"""
+
+    min_width: float = 0.5
+    """minimal step with"""
+
+    origin_z: float = 0.0
