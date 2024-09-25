@@ -61,15 +61,11 @@ WALL_CFG = RigidObjectCfg(
 # markers:
 from omni.isaac.lab.markers.visualization_markers import VisualizationMarkersCfg
 
-MY_RAY_CASTER_MARKER_CFG = VisualizationMarkersCfg(
+SEGMENT_RAY_CASTER_MARKER_CFG = VisualizationMarkersCfg(
     markers={
-        "ground_hits": sim_utils.SphereCfg(
-            radius=0.02,
+        "hit": sim_utils.SphereCfg(
+            radius=0.2,
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0)),
-        ),
-        "obstacle_hits": sim_utils.SphereCfg(
-            radius=0.02,
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0)),
         ),
     },
 )
