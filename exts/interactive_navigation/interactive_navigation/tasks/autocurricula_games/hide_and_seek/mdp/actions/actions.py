@@ -43,6 +43,10 @@ class SimpleAction(ActionTerm):
         self.min_distance = cfg.min_distance  # meters
         self.half_fov_rad = cfg.fov_deg * torch.pi / 360.0  # radians
         self.min_valid_z_diff_to_grab = 0.2
+        self.grab_height = 0.05  # meters. if grabbed, the object is lifted by this height
+        self.horizontal_force_threshold = 1.0  # Newtons. if the force is higher, the object is let go
+        self.contact_cool_down = int(math.ceil(0.2 / self.env.step_dt))
+        self.contact_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
 
         # jump config
         self.jump_cooldown_steps = int(math.ceil(cfg.jump_cooldown_secs / self.env.step_dt))
@@ -137,6 +141,7 @@ class SimpleAction(ActionTerm):
             self.is_grabbing = gripper_command
         else:
             self.is_grabbing = actions[:, 3] > 0
+        self.contact_cooldown_buffer = torch.clamp(self.contact_cooldown_buffer - 1, min=0)
 
         # - climb up:
         # when climb up is activated (< 0), the agent jumps up by setting its velocity up and forward for one step
@@ -206,14 +211,18 @@ class SimpleAction(ActionTerm):
         # we only grab small objects, so we can assume the center is close to the surface
 
         # robot quaternion
-        robot_quat = math_utils.yaw_quat(self.env.scene.rigid_objects["robot"].data.root_quat_w)
+        robot_quat_raw = self.env.scene.rigid_objects["robot"].data.root_quat_w
+        robot_quat = math_utils.yaw_quat(robot_quat_raw)
 
         # get positions
         robot_pos = self.env.scene.rigid_objects["robot"].data.root_pos_w
 
-        # (force the agent to not roll or pitch)
-        robot_pose_no_roll_pitch = torch.cat([robot_pos, robot_quat], dim=1)
-        self.env.scene.rigid_objects["robot"].write_root_pose_to_sim(robot_pose_no_roll_pitch)
+        # (force the agent to not roll or pitch too much or at all)
+        # tilt_error = math_utils.quat_error_magnitude(robot_quat, robot_quat_raw)
+        # tilted_too_much = tilt_error > 0.75  # radians
+        # robot_set_quat = torch.where(tilted_too_much, robot_quat, robot_quat_raw)
+        robot_pose_toset = torch.cat([robot_pos, robot_quat], dim=1)
+        self.env.scene.rigid_objects["robot"].write_root_pose_to_sim(robot_pose_toset)
 
         # check if the agent is grabbing an object
         grabbed_any = torch.zeros(self.env.num_envs, dtype=torch.bool).to(self.env.device)
@@ -227,38 +236,58 @@ class SimpleAction(ActionTerm):
             dist_vec = asset_pos - robot_pos
             dist = torch.linalg.vector_norm(dist_vec, dim=1)
 
-            # check if the agent is grabbing and the asset is within the grabbing distance
-            grab_asset = (dist < self.min_distance) & self.is_grabbing
+            # the boxes are kinematic bodies, meaning they cannot be pushed.
+            # we move them by setting their position directly
 
+            # if the agent was grabbing previously and its still grabbing, we update the position of the grabbed asset.
+            # we increase the grabbing distance to avoid accidentally letting go of the asset
+            potential_still_grabbing = (
+                (dist < self.min_distance * 1.5) & self.is_grabbing & self.contact_cooldown_buffer.eq(0)
+            )
+
+            if potential_still_grabbing.any():
+                # if still grabbing, we need to check if the agent is pushing the asset into a wall
+                contact_sensor = self.env.scene.sensors["boxes_contact_forces"]
+                contact_forces = contact_sensor.data.net_forces_w[potential_still_grabbing, id_num]
+                horizontal_force = torch.linalg.vector_norm(contact_forces[:, :2], dim=1)
+                too_much_force = horizontal_force > self.horizontal_force_threshold
+                potential_grabbing_valid = torch.zeros_like(potential_still_grabbing, dtype=torch.bool)
+                potential_grabbing_valid[potential_still_grabbing] = ~too_much_force
+
+                # set cooldown for the asset if the force is too high
+                start_force_cooldown = torch.zeros_like(self.contact_cooldown_buffer, dtype=torch.bool)
+                start_force_cooldown[potential_still_grabbing] = too_much_force
+                self.contact_cooldown_buffer[start_force_cooldown] = self.contact_cool_down + 1
+                potential_still_grabbing = potential_grabbing_valid
+
+            # check if the agent is grabbing and the asset is within the grabbing distance
+            potential_asset_grab = (dist < self.min_distance) & self.is_grabbing
             # for assets in to be grabbed, check if the assets are within the field of view, not to far in z direction,
             # and the robot not just jumped
-            if grab_asset.any():
+            if potential_asset_grab.any():
                 asset_to_grab_pos_body_frame = math_utils.quat_apply_yaw(
-                    math_utils.quat_inv(robot_quat[grab_asset]), dist_vec[grab_asset]
+                    math_utils.quat_inv(robot_quat[potential_asset_grab]), dist_vec[potential_asset_grab]
                 )
                 # x is forward, y is left
                 in_fov = (
                     torch.abs(torch.atan2(asset_to_grab_pos_body_frame[:, 1], asset_to_grab_pos_body_frame[:, 0]))
                     < self.half_fov_rad
                 )
-
                 # check if asset is not below the robot, since this could be exploited by the agent
-                valid_z_diff = torch.abs(dist_vec[grab_asset][:, 2]) < self.min_valid_z_diff_to_grab
-
+                valid_z_diff = torch.abs(dist_vec[potential_asset_grab][:, 2]) < self.min_valid_z_diff_to_grab
                 # check if the agent is not just jumped
                 not_jumped = self.jump_cooldown_buffer.eq(0)
+                # check if the asset did not just collide:
+                not_collided = self.contact_cooldown_buffer.eq(0)
+                valid_grab = not_jumped & not_collided
+                valid_grab[potential_asset_grab] &= in_fov & valid_z_diff
+                potential_asset_grab = valid_grab
 
-                new_grab_asset = torch.zeros_like(grab_asset, dtype=torch.bool)
-                new_grab_asset[grab_asset] = in_fov & valid_z_diff & not_jumped
-                grab_asset = new_grab_asset
-
-            # the boxes are kinematic bodies, meaning they cannot be pushed.
-            # we move them by setting their position directly
-
-            # if the agent was grabbing previously and its still grabbing, we update the position of the grabbed asset.
-            # we increase the grabbing distance to avoid accidently letting go of the asset
-            still_grabbing = (self.grabbed_asset_id == id_num) & (dist < self.min_distance * 1.5) & self.is_grabbing
+            # if the agent is still grabbing, we update the position of the grabbed asset
+            still_grabbing = (self.grabbed_asset_id == id_num) & potential_still_grabbing
             if still_grabbing.any():
+
+                # set the position of the grabbed asset in the body frame of the robot
                 asset_pos_body_frame = self.grabbed_asset_pos_body_frame[still_grabbing]
                 asset_quat_body_frame = self.grabbed_asset_quat_body_frame[still_grabbing]
                 asset_pos_world_frame = (
@@ -270,13 +299,13 @@ class SimpleAction(ActionTerm):
                 asset_quat[still_grabbing] = asset_quat_world_frame
                 asset_pos[still_grabbing] = asset_pos_world_frame
                 asset_pose_world_frame = torch.cat([asset_pos, asset_quat], dim=1)
+
                 self.env.scene.rigid_objects[asset_id].write_root_pose_to_sim(asset_pose_world_frame)
 
-            # if we start grabbing now, we store the relative position of the asset to the robot and set grabbed_asset to True
+            # if we start grabbing for the first time, we store the relative position of the asset to the robot and set grabbed_asset to True
             # if multiple assets are within the grabbing distance, we only grab the closest one
-
             closest_asset = dist < closest_asset_dist
-            now_grabbing = grab_asset & ~still_grabbing & self.grabbed_asset_id.eq(-1) & closest_asset
+            now_grabbing = potential_asset_grab & ~still_grabbing & self.grabbed_asset_id.eq(-1) & closest_asset
             if now_grabbing.any():
 
                 closest_asset_dist[now_grabbing] = dist[now_grabbing]
@@ -284,14 +313,14 @@ class SimpleAction(ActionTerm):
                 # set the position of the grabbed asset in the body frame of the robot
                 self.grabbed_asset_pos_body_frame[now_grabbing] = math_utils.quat_apply(
                     math_utils.quat_inv(robot_quat[now_grabbing]), dist_vec[now_grabbing]
-                )
+                ) + torch.tensor([0.0, 0.0, self.grab_height]).to(self.env.device)
                 self.grabbed_asset_quat_body_frame[now_grabbing] = math_utils.quat_mul(
                     math_utils.quat_inv(robot_quat[now_grabbing]),
                     self.env.scene.rigid_objects[asset_id].data.root_quat_w[now_grabbing],
                 )
                 grabbed_new_ids[now_grabbing] = id_num
 
-            grabbed_any = grabbed_any | grab_asset | still_grabbing
+            grabbed_any = grabbed_any | potential_asset_grab | still_grabbing
 
         self.grabbed_asset_id[grabbed_new_ids >= 0] = grabbed_new_ids[grabbed_new_ids >= 0]
         self.grabbed_asset_id[~grabbed_any] = -1
