@@ -87,8 +87,19 @@ def reset_root_state_uniform_on_terrain_aware(
     offset: list = [0.0, 0.0, 0.0],
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     lowest_level: bool = False,
+    reset_used_ids: bool = False,
 ):
-    """Reset the asset root state to a random position at the lowest level of the scene."""
+    """Reset the asset root state to a random position at the lowest level of the scene.
+    This might be called multiple times to reset the root state of multiple assets.
+    If assets must not be placed on the same position, the reset_used_ids flag must be set to False
+    for all but the first function call per reset."""
+
+    # reset the used ids if required
+    if reset_used_ids:
+        env.scene.terrain.terrain_used_flat_patches = {
+            "lowest_pos": torch.zeros((len(env_ids), 1), dtype=torch.int64).to(env.device) - 1,
+            "init_pos": torch.zeros((len(env_ids), 1), dtype=torch.int64).to(env.device) - 1,
+        }
 
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject | Articulation = env.scene[asset_cfg.name]
@@ -111,20 +122,35 @@ def reset_root_state_uniform_on_terrain_aware(
 
 
 def _sample_terrain_pos(
-    env: ManagerBasedEnv, asset: RigidObject | Articulation, env_ids: torch.Tensor, flat_patch_type: str = "init_pos"
+    env: ManagerBasedEnv,
+    asset: RigidObject | Articulation,
+    env_ids: torch.Tensor,
+    flat_patch_type: str = "init_pos",
 ) -> torch.Tensor:
     """sample position that is on the terrain."""
 
-    terrain = env.scene.terrain
+    terrain: TerrainImporter = env.scene.terrain
     valid_positions: torch.Tensor = terrain.flat_patches.get(flat_patch_type)
     if valid_positions is None:
         raise ValueError(
-            "The event term 'reset_root_state_from_terrain' requires valid flat patches under 'init_pos'."
+            "The event term 'reset_root_state_uniform_on_terrain_aware' requires valid flat patches under 'init_pos'."
             f" Found: {list(terrain.flat_patches.keys())}"
         )
 
     # sample random valid poses
-    ids = torch.randint(0, valid_positions.shape[2], size=(len(env_ids),), device=env.device)
+    used_ids = terrain.terrain_used_flat_patches[flat_patch_type]
+    ids = torch.zeros((len(env_ids),), dtype=torch.int64, device=env.device) - 1
+    all_valid_per_env = torch.zeros((len(env_ids),), dtype=torch.bool, device=env.device)
+    while not all_valid_per_env.all():
+        ids[~all_valid_per_env] = torch.randint(
+            0, valid_positions.shape[2], size=(int((~all_valid_per_env).sum()),), device=env.device
+        )
+        all_valid_per_env = torch.all(used_ids != ids.unsqueeze(1), dim=1)
+
+    # add the used ids
+    terrain.terrain_used_flat_patches[flat_patch_type] = torch.cat([used_ids, ids.unsqueeze(1)], dim=1)
+
+    # get the positions
     positions = valid_positions[terrain.terrain_levels[env_ids], terrain.terrain_types[env_ids], ids]
     positions += asset.data.default_root_state[env_ids, :3]
     return positions
