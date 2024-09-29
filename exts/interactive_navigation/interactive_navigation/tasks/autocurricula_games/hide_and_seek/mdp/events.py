@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 from typing import TYPE_CHECKING, Literal
+import functools
 
 import carb
 import omni.physics.tensors.impl.api as physx
@@ -80,6 +81,27 @@ def reset_root_state_uniform_collision_free(
     asset.write_root_velocity_to_sim(velocities, env_ids=env_ids)
 
 
+def reset_multiple_instances_decorator(reset_func):
+    @functools.wraps(reset_func)
+    def wrapper(*args, **kwargs):
+        asset_configs = kwargs.get("asset_configs", None)
+        asset_config = kwargs.get("asset_cfg", None)
+        if asset_configs is None and asset_config is None:
+            asset_config = SceneEntityCfg("robot")
+        if asset_configs is not None and asset_config is not None:
+            raise ValueError(
+                "The decorator 'reset_multiple_instances_decorator' requires either 'asset_cfg' or 'asset_configs' to be provided, not both."
+            )
+        if asset_configs is None and asset_config is not None:
+            asset_configs = [asset_config]
+        for asset_cfg in asset_configs:
+            kwargs["asset_cfg"] = asset_cfg
+            reset_func(*args, **kwargs)
+
+    return wrapper
+
+
+@reset_multiple_instances_decorator
 def reset_root_state_uniform_on_terrain_aware(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor,
@@ -88,6 +110,7 @@ def reset_root_state_uniform_on_terrain_aware(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     lowest_level: bool = False,
     reset_used_ids: bool = False,
+    asset_configs: list[SceneEntityCfg] | None = None,
 ):
     """Reset the asset root state to a random position at the lowest level of the scene.
     This might be called multiple times to reset the root state of multiple assets.
