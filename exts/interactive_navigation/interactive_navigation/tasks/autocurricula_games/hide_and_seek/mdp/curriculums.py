@@ -37,7 +37,7 @@ def terrain_levels_vel(
     asset: Articulation = env.scene[asset_cfg.name]
     terrain: TerrainImporter = env.scene.terrain
 
-    move_down = torch.ones(len(env_ids), device=env.device, dtype=torch.bool)
+    move_down = torch.zeros(len(env_ids), device=env.device, dtype=torch.bool)
     move_up = torch.zeros(len(env_ids), device=env.device, dtype=torch.bool)
 
     # update terrain levels

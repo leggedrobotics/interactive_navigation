@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import MISSING
+from typing import Literal
 
 import interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp as mdp
 
@@ -76,23 +77,35 @@ class MySceneCfg(InteractiveSceneCfg):
     asset_2: RigidObjectCfg = CUBOID_CFG.replace(
         prim_path="{ENV_REGEX_NS}/Asset_2", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
     )
-    asset_3: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Asset_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    asset_4: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Asset_4", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
+    # asset_3: RigidObjectCfg = CUBOID_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Asset_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    # )
+    # asset_4: RigidObjectCfg = CUBOID_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Asset_4", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    # )
+    # asset_5: RigidObjectCfg = CUBOID_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Asset_5", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    # )
+    # asset_6: RigidObjectCfg = CUBOID_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Asset_6", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    # )
+    # asset_7: RigidObjectCfg = CUBOID_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Asset_7", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    # )
+    # asset_8: RigidObjectCfg = CUBOID_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Asset_8", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    # )
 
-    # walls:
-    wall_1: RigidObjectCfg = WALL_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Wall_1", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    wall_2: RigidObjectCfg = WALL_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Wall_2", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    wall_3: RigidObjectCfg = WALL_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Wall_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
+    # # walls:
+    # wall_1: RigidObjectCfg = WALL_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Wall_1", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    # )
+    # wall_2: RigidObjectCfg = WALL_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Wall_2", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    # )
+    # wall_3: RigidObjectCfg = WALL_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Wall_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    # )
 
     # sensors
     lidar = RayCasterCfg(
@@ -107,40 +120,41 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
-        debug_vis=True,
+        debug_vis=False,
         history_length=0,
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
         mesh_prim_paths=[
             "/World/ground",
             RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Asset_.*", is_global=False),
-            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
+            # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
         ],
         track_mesh_transforms=True,
         visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
     )
-    # lidar_top = RayCasterCfg(
-    #     prim_path="{ENV_REGEX_NS}/Robot",
-    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.5)),
-    #     attach_yaw_only=True,
-    #     pattern_cfg=patterns.LidarPatternCfg(
-    #         channels=1,
-    #         vertical_fov_range=(-0.0, 0.0),
-    #         horizontal_fov_range=(-90, 90),
-    #         horizontal_res=10,
-    #     ),
-    #     max_distance=100.0,
-    #     drift_range=(-0.0, 0.0),
-    #     debug_vis=True,
-    #     history_length=0,
-    #     # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
-    #     mesh_prim_paths=[
-    #         "/World/ground",
-    #         RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Asset_.*", is_global=False),
-    #         RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
-    #     ],
-    #     track_mesh_transforms=True,
-    #     visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
-    # )
+
+    lidar_top = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 1)),
+        attach_yaw_only=True,
+        pattern_cfg=patterns.LidarPatternCfg(
+            channels=1,
+            vertical_fov_range=(-0.0, 0.0),
+            horizontal_fov_range=(-90, 90),
+            horizontal_res=10,
+        ),
+        max_distance=100.0,
+        drift_range=(-0.0, 0.0),
+        debug_vis=False,
+        history_length=0,
+        # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
+        mesh_prim_paths=[
+            "/World/ground",
+            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Asset_.*", is_global=False),
+            # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
+        ],
+        track_mesh_transforms=True,
+        visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCasterTop"),
+    )
 
     boxes_contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Asset_.*", history_length=1, track_air_time=False)
 
@@ -164,6 +178,14 @@ class MySceneCfg(InteractiveSceneCfg):
 class CommandsCfg:
     """Command specifications for the MDP."""
 
+    # base_velocity = mdp.UniformPose2dCommandCfg(
+    #     asset_name="robot",
+    #     resampling_time_range=(10.0, 10.0),
+    #     simple_heading=True,
+    #     debug_vis=True,
+    #     ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-20, 20), pos_y=(-0.5, 0.5), heading=(-0.0, 0.0)),
+    # )
+
 
 @configclass
 class ActionsCfg:
@@ -172,6 +194,7 @@ class ActionsCfg:
     # joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
     base_agent = mdp.SimpleActionCfg(
         asset_name="robot",
+        debug_vis=True,
     )
 
 
@@ -183,13 +206,53 @@ class ObservationsCfg:
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
 
-        # observation terms (order preserved)
-        height_scan = ObsTerm(
-            func=mdp.lidar_obs_dist,
-            params={"sensor_cfg": SceneEntityCfg("lidar")},
-            noise=Unoise(n_min=-0.1, n_max=0.1),
-            clip=(0.0, 100.0),
+        # self
+        my_position = ObsTerm(
+            func=mdp.pose_2d_w,
+            params={"entity_cfg": SceneEntityCfg("robot")},
         )
+
+        # lidar_scan = ObsTerm(
+        #     func=mdp.lidar_obs_dist,
+        #     params={"sensor_cfg": SceneEntityCfg("lidar")},
+        #     noise=Unoise(n_min=-0.1, n_max=0.1),
+        #     clip=(0.0, 100.0),
+        # )
+
+        # lidar_scan_top = ObsTerm(
+        #     func=mdp.lidar_obs_dist,
+        #     params={"sensor_cfg": SceneEntityCfg("lidar_top")},
+        #     noise=Unoise(n_min=-0.1, n_max=0.1),
+        #     clip=(0.0, 100.0),
+        # )
+
+        # boxes:
+        box_1_position = ObsTerm(
+            func=mdp.pose_2d_w,
+            params={"entity_cfg": SceneEntityCfg("asset_1")},
+        )
+        # box_1_velocity = ObsTerm(
+        #     func=mdp.velocity_2d_w,
+        #     params={"entity_cfg": SceneEntityCfg("asset_1")},
+        # )
+
+        box_2_position = ObsTerm(
+            func=mdp.pose_2d_w,
+            params={"entity_cfg": SceneEntityCfg("asset_2")},
+        )
+        # box_2_velocity = ObsTerm(
+        #     func=mdp.velocity_2d_w,
+        #     params={"entity_cfg": SceneEntityCfg("asset_2")},
+        # )
+
+        # box_3_position = ObsTerm(
+        #     func=mdp.pose_2d_w,
+        #     params={"entity_cfg": SceneEntityCfg("asset_3")},
+        # )
+        # box_3_velocity = ObsTerm(
+        #     func=mdp.velocity_2d_w,
+        #     params={"entity_cfg": SceneEntityCfg("asset_3")},
+        # )
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -199,18 +262,9 @@ class ObservationsCfg:
     policy: PolicyCfg = PolicyCfg()
 
 
-XY_RANGE = (-7.0, 7.0)
-Z_ROBOT = 0.3
-Z_BOX = 0.25
-Z_WALL = 0.5
-ZERO_VELOCITY = {
-    "x": (-0.0, 0.0),
-    "y": (-0.0, 0.0),
-    "z": (-0.0, 0.0),
-    "roll": (-0.0, 0.0),
-    "pitch": (-0.0, 0.0),
-    "yaw": (-0.0, 0.0),
-}
+Z_ROBOT = 0.3 + 1.1
+Z_BOX = 0.25 + 1.1
+Z_WALL = 0.5 + 1.1
 
 
 @configclass
@@ -224,6 +278,7 @@ class EventCfg:
             "pose_range": {"yaw": (-3.14, 3.14)},
             "lowest_level": True,
             "offset": [0.0, 0.0, Z_ROBOT],
+            "reset_used_ids": True,
         },
     )
 
@@ -236,93 +291,31 @@ class EventCfg:
             },
             "lowest_level": True,
             "offset": [0.0, 0.0, Z_BOX],
-            "asset_cfg": SceneEntityCfg("asset_1"),
+            # "asset_cfg": SceneEntityCfg("asset_1"),
+            "asset_configs": [
+                SceneEntityCfg("asset_1"),
+                SceneEntityCfg("asset_2"),
+                # SceneEntityCfg("asset_3"),
+                # SceneEntityCfg("asset_4"),
+                # SceneEntityCfg("asset_5"),
+                # SceneEntityCfg("asset_6"),
+                # SceneEntityCfg("asset_7"),
+                # SceneEntityCfg("asset_8"),
+            ],
         },
     )
 
-    reset_asset_2 = EventTerm(
-        func=mdp.reset_root_state_uniform_on_terrain_aware,
-        mode="reset",
-        params={
-            "pose_range": {
-                "yaw": (-3.14, 3.14),
-            },
-            "lowest_level": True,
-            "offset": [0.0, 0.0, Z_BOX],
-            "asset_cfg": SceneEntityCfg("asset_2"),
-        },
-    )
 
-    reset_asset_3 = EventTerm(
-        func=mdp.reset_root_state_uniform_on_terrain_aware,
-        mode="reset",
-        params={
-            "pose_range": {
-                "yaw": (-3.14, 3.14),
-            },
-            "lowest_level": True,
-            "offset": [0.0, 0.0, Z_BOX],
-            "asset_cfg": SceneEntityCfg("asset_3"),
-        },
-    )
-
-    reset_asset_4 = EventTerm(
-        func=mdp.reset_root_state_uniform_on_terrain_aware,
-        mode="reset",
-        params={
-            "pose_range": {
-                "yaw": (-3.14, 3.14),
-            },
-            "lowest_level": True,
-            "offset": [0.0, 0.0, Z_BOX],
-            "asset_cfg": SceneEntityCfg("asset_4"),
-        },
-    )
-
-    # walls
-    reset_wall_1 = EventTerm(
-        func=mdp.reset_root_state_uniform_on_terrain_aware,
-        mode="reset",
-        params={
-            "pose_range": {
-                "yaw": (-3.14, 3.14),
-            },
-            "offset": [0.0, 0.0, Z_WALL],
-            "asset_cfg": SceneEntityCfg("wall_1"),
-        },
-    )
-
-    reset_wall_2 = EventTerm(
-        func=mdp.reset_root_state_uniform_on_terrain_aware,
-        mode="reset",
-        params={
-            "pose_range": {
-                "yaw": (-3.14, 3.14),
-            },
-            "offset": [0.0, 0.0, Z_WALL],
-            "asset_cfg": SceneEntityCfg("wall_2"),
-        },
-    )
-    reset_wall_3 = EventTerm(
-        func=mdp.reset_root_state_uniform_on_terrain_aware,
-        mode="reset",
-        params={
-            "pose_range": {
-                "yaw": (-3.14, 3.14),
-            },
-            "offset": [0.0, 0.0, Z_WALL],
-            "asset_cfg": SceneEntityCfg("wall_3"),
-        },
-    )
+BOX_REWARD = mdp.BoxMovingReward()
 
 
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    dummy_reward = RewTerm(
-        func=mdp.dummy_reward,
-        weight=0.125,
+    obstacle_to_middle = RewTerm(
+        func=BOX_REWARD.obstacle_to_middle,
+        weight=1,
         params={"sensor_cfg": SceneEntityCfg("lidar"), "threshold": 1.0},
     )
 
@@ -342,7 +335,28 @@ class TerminationsCfg:
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
-    terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
+    # terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
+
+
+@configclass
+class ViewerCfg:
+    """Configuration of the scene viewport camera."""
+
+    # eye: tuple[float, float, float] = (-60.0, 0.5, 70.0)
+    eye: tuple[float, float, float] = (0.0, 0.0, 60.0)
+    """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
+    # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
+    lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    cam_prim_path: str = "/OmniverseKit_Persp"
+    resolution: tuple[int, int] = (1280, 720)
+    origin_type: Literal["world", "env", "asset_root"] = "env"
+    """
+    * ``"world"``: The origin of the world.
+    * ``"env"``: The origin of the environment defined by :attr:`env_index`.
+    * ``"asset_root"``: The center of the asset defined by :attr:`asset_name` in environment :attr:`env_index`.
+    """
+    env_index: int = 0
+    asset_name: str | None = None  # "robot"
 
 
 ##
@@ -356,6 +370,8 @@ class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
 
     # Scene settings
     scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=10.0)
+    viewer: ViewerCfg = ViewerCfg()
+
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
@@ -370,7 +386,7 @@ class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 10  # 10 Hz
-        self.episode_length_s = 3000.0
+        self.episode_length_s = 60.0
         # simulation settings
         # self.sim.dt = 0.005  # 200 Hz
         self.sim.dt = 0.005  # 100 Hz
@@ -380,7 +396,7 @@ class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
 
         # GPU settings
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
-        self.sim.physx.gpu_collision_stack_size = 2**27
+        self.sim.physx.gpu_collision_stack_size = 2**30
 
         # update sensor update periods
         # we tick all the sensors based on the smallest update period (physics update period)
