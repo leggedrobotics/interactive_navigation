@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from omni.isaac.lab.envs import ManagerBasedRLEnv
 from omni.isaac.lab.managers.action_manager import ActionTerm
 from omni.isaac.lab.utils.assets import check_file_path, read_file
-from omni.isaac.lab.utils import configclass, math as math_utils
+from omni.isaac.lab.utils import math as math_utils
 from omni.isaac.lab.devices import Se3Gamepad, Se3Keyboard, Se3SpaceMouse
 from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG
@@ -342,15 +342,15 @@ class SimpleAction(ActionTerm):
         # -- goal pose
 
         # - get robot pos
-        robot_pos = self.env.scene.rigid_objects["robot"].data.root_pos_w
+        robot_pos = self.env.scene.rigid_objects["robot"].data.root_pos_w.clone()
         robot_quat = math_utils.yaw_quat(self.env.scene.rigid_objects["robot"].data.root_quat_w)
         # increase z to visualize the force
         robot_pos[:, 2] += 1.0
 
         # - get action force
         force = self.force_command
-        force_3d = torch.cat([force, torch.zeros_like(force)], dim=1)
-        force_w = math_utils.quat_apply(robot_quat, force_3d)
+        # force_3d = torch.cat(self.force_command, dim=1)
+        force_w = math_utils.quat_apply(robot_quat, self.force_command)
         force_x = force_w[:, 0]
         force_y = force_w[:, 1]
 

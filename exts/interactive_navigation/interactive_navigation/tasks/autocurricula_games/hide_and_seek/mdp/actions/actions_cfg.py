@@ -30,5 +30,5 @@ class SimpleActionCfg(ActionTermCfg):
     jump_cooldown_secs: float = 1.0
     """Cooldown time in seconds for the jump action."""
 
-    use_teleop: bool = True
+    use_teleop: bool = False
     """Whether to use teleop interface for controlling the robot."""
