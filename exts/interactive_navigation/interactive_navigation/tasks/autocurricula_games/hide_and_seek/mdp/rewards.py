@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 def dummy_reward(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, threshold: float) -> torch.Tensor:
     """Placeholder reward function that returns a dummy reward."""
-    asset_ids = ["asset_1", "asset_2", "asset_3"]
+    asset_ids = [asset for asset in list(env.scene.rigid_objects.keys()) if "asset" in asset]
 
     asset_poses = []
     for asset_id in asset_ids:
@@ -34,3 +34,39 @@ def dummy_reward(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, threshold: 
     # TODO calculate a reward from this
 
     return torch.zeros(env.num_envs).to(env.device)
+
+
+class BoxMovingReward:
+
+    def __init__(self):
+        self.prev_dist = None
+
+    def obstacle_to_middle(self, env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, threshold: float) -> torch.Tensor:
+        """Placeholder reward function that returns a dummy reward."""
+        terrain_origins = env.scene.terrain.env_origins
+
+        asset_ids = [asset for asset in list(env.scene.rigid_objects.keys()) if "asset" in asset]
+        asset_poses = []
+        for asset_id in asset_ids:
+            asset_poses.append(env.scene.rigid_objects[asset_id].data.root_pos_w)
+        positions = torch.stack(asset_poses)
+
+        vec_to_center = terrain_origins.unsqueeze(0) - positions
+        distances_to_center = torch.linalg.vector_norm(vec_to_center, dim=-1)
+
+        if self.prev_dist is None:
+            self.prev_dist = distances_to_center
+            return torch.zeros(env.num_envs).to(env.device)
+
+        at_goal = distances_to_center < threshold
+        how_much_closer_than_before = self.prev_dist - distances_to_center
+        moved_to_far = how_much_closer_than_before > 0.5
+
+        reward = how_much_closer_than_before
+        reward = torch.where(at_goal, torch.ones_like(reward), reward)
+        reward = torch.where(moved_to_far, torch.zeros_like(reward), reward)
+
+        # reward = -sum_distances / (len(asset_ids) * max(env.scene.terrain.cfg.terrain_generator.size))
+
+        self.prev_dist = distances_to_center
+        return torch.sum(reward, dim=0)
