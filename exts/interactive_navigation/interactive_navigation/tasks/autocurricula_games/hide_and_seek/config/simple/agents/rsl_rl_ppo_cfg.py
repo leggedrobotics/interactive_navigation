@@ -1,3 +1,6 @@
+# train command:
+# python scripts/rsl_rl/train.py --task Isaac-Games-HideAndSeek-Simple-D-v0 --num_envs 128 --headless --video --video_length 200 --video_interval 5000 --logger wandb --experiment_name move_boxes_to_center --log_project_name move_boxes_to_center
+
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
     RslRlOnPolicyRunnerCfg,
@@ -8,10 +11,10 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 
 @configclass
 class HideSeekPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 24
-    max_iterations = 1500
-    save_interval = 50
-    experiment_name = "anymal_d_rough"
+    num_steps_per_env = 50
+    max_iterations = 100_000
+    save_interval = 1000
+    experiment_name = "hide_and_seek_ppo"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
@@ -25,7 +28,7 @@ class HideSeekPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         clip_param=0.2,
         entropy_coef=0.005,
         num_learning_epochs=5,
-        num_mini_batches=4,
+        num_mini_batches=2,  # mini batch size = num_envs * num_steps_per_env // num_mini_batches
         learning_rate=1.0e-3,
         schedule="adaptive",
         gamma=0.99,
