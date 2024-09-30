@@ -25,12 +25,12 @@ ROBOT_CFG = RigidObjectCfg(
 CUBOID_CFG = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/Cuboid",
     spawn=sim_utils.CuboidCfg(
-        size=(1.25, 0.5, 0.75),
+        size=(0.6, 0.5, 0.5),
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             max_depenetration_velocity=1.0, disable_gravity=False, max_angular_velocity=3.14, kinematic_enabled=False
         ),
-        mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
-        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=0.1, dynamic_friction=0.3),
+        mass_props=sim_utils.MassPropertiesCfg(mass=100.0),
+        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=0.5, dynamic_friction=0.5),
         collision_props=sim_utils.CollisionPropertiesCfg(),
         visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.2, 0.2)),
         activate_contact_sensors=True,
