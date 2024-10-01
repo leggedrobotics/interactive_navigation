@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import MISSING
 
-from omni.isaac.lab.managers.action_manager import ActionTerm, ActionTermCfg
+from omni.isaac.lab.managers import ActionTerm, ActionTermCfg, MultiAgentActionTermCfg
 from omni.isaac.lab.utils import configclass
 
 from .actions import SimpleAction

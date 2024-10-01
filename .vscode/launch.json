@@ -46,12 +46,35 @@
                 "--task",
                 "Isaac-Games-HideAndSeek-Simple-D-v0",
                 "--num_envs",
-                "16",
-                // "--headless"
+                "128", // 8192
+                // "--experiment_name",
+                // "move_boxes_to_center",
+                // "--headless",
+                // "--video",
+                // "--video_length",
+                // "100",
+                // "--video_interval",
+                // "100",
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/train_MA.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        // Multi agent
+        {
+            "name": "Python: MULTI AGENT",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--task",
+                "Isaac-Games-HideAndSeek-MA-D-v0",
+                "--num_envs",
+                "128", // 8192
             ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
             "console": "integratedTerminal",
             "envFile": "${workspaceFolder}/.vscode/.python.env",
+            "justMyCode": false,
         },
         // --------------------------------
         {

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from .actions_cfg import SimpleActionCfg
 
 
-class SimpleAction(ActionTerm):
+class SimpleAction(ActionTerm):  # TODO to multi agent action term
     """Simple action for the spherical agent to move around and grab obstacles.
 
     - movement x, y, yaw: continuous action to move the agent in the x, y direction and yaw
