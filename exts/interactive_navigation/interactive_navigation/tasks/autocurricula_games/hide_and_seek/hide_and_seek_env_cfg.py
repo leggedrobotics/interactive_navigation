@@ -22,6 +22,7 @@ from omni.isaac.lab.terrains import TerrainImporterCfg
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
+
 ##
 # Pre-defined configs
 ##
@@ -52,7 +53,7 @@ class MySceneCfg(InteractiveSceneCfg):
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
         terrain_type="generator",
-        terrain_generator=mdp.terrain.GAME_ARENA_RANDOM_FLOORS_CFG,
+        terrain_generator=mdp.terrain.MESH_PYRAMID_TERRAIN_CFG,
         max_init_terrain_level=5,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -71,30 +72,30 @@ class MySceneCfg(InteractiveSceneCfg):
     robot: RigidObjectCfg = ROBOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # assets:
-    asset_1: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Asset_1", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    box_1: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_1", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
     )
-    asset_2: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Asset_2", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    box_2: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_2", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
     )
-    # asset_3: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Asset_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # asset_4: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Asset_4", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # asset_5: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Asset_5", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # asset_6: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Asset_6", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # asset_7: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Asset_7", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # asset_8: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Asset_8", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
+    box_3: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
+    box_4: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_4", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
+    box_5: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_5", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
+    box_6: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_6", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
+    box_7: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_7", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
+    box_8: RigidObjectCfg = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_8", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
+    )
 
     # # walls:
     # wall_1: RigidObjectCfg = WALL_CFG.replace(
@@ -125,7 +126,7 @@ class MySceneCfg(InteractiveSceneCfg):
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
         mesh_prim_paths=[
             "/World/ground",
-            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Asset_.*", is_global=False),
+            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
             # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
         ],
         track_mesh_transforms=True,
@@ -149,23 +150,23 @@ class MySceneCfg(InteractiveSceneCfg):
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
         mesh_prim_paths=[
             "/World/ground",
-            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Asset_.*", is_global=False),
+            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
             # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
         ],
         track_mesh_transforms=True,
         visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCasterTop"),
     )
 
-    boxes_contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Asset_.*", history_length=1, track_air_time=False)
+    boxes_contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Box_.*", history_length=1, track_air_time=False)
 
     # lights
     light = AssetBaseCfg(
         prim_path="/World/light",
-        spawn=sim_utils.DistantLightCfg(color=(0.75, 0.75, 0.75), intensity=3000.0),
+        spawn=sim_utils.DistantLightCfg(color=(0.75, 0.75, 0.75), intensity=2000.0),
     )
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
-        spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=1000.0),
+        spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=2000.0),
     )
 
 
@@ -229,29 +230,29 @@ class ObservationsCfg:
         # boxes:
         box_1_position = ObsTerm(
             func=mdp.pose_2d_w,
-            params={"entity_cfg": SceneEntityCfg("asset_1")},
+            params={"entity_cfg": SceneEntityCfg("box_1")},
         )
         # box_1_velocity = ObsTerm(
         #     func=mdp.velocity_2d_w,
-        #     params={"entity_cfg": SceneEntityCfg("asset_1")},
+        #     params={"entity_cfg": SceneEntityCfg("box_1")},
         # )
 
         box_2_position = ObsTerm(
             func=mdp.pose_2d_w,
-            params={"entity_cfg": SceneEntityCfg("asset_2")},
+            params={"entity_cfg": SceneEntityCfg("box_2")},
         )
         # box_2_velocity = ObsTerm(
         #     func=mdp.velocity_2d_w,
-        #     params={"entity_cfg": SceneEntityCfg("asset_2")},
+        #     params={"entity_cfg": SceneEntityCfg("box_2")},
         # )
 
         # box_3_position = ObsTerm(
         #     func=mdp.pose_2d_w,
-        #     params={"entity_cfg": SceneEntityCfg("asset_3")},
+        #     params={"entity_cfg": SceneEntityCfg("box_3")},
         # )
         # box_3_velocity = ObsTerm(
         #     func=mdp.velocity_2d_w,
-        #     params={"entity_cfg": SceneEntityCfg("asset_3")},
+        #     params={"entity_cfg": SceneEntityCfg("box_3")},
         # )
 
         def __post_init__(self):
@@ -262,9 +263,9 @@ class ObservationsCfg:
     policy: PolicyCfg = PolicyCfg()
 
 
-Z_ROBOT = 0.3 + 1.1
-Z_BOX = 0.25 + 1.1
-Z_WALL = 0.5 + 1.1
+Z_ROBOT = 0.3 + 0.05
+Z_BOX = 0.25 + 0.05
+Z_WALL = 0.5 + 0.05
 
 
 @configclass
@@ -278,11 +279,11 @@ class EventCfg:
             "pose_range": {"yaw": (-3.14, 3.14)},
             "lowest_level": True,
             "offset": [0.0, 0.0, Z_ROBOT],
-            "reset_used_ids": True,
+            "reset_used_patches_ids": True,
         },
     )
 
-    reset_asset_1 = EventTerm(
+    reset_box_1 = EventTerm(
         func=mdp.reset_root_state_uniform_on_terrain_aware,
         mode="reset",
         params={
@@ -291,32 +292,35 @@ class EventCfg:
             },
             "lowest_level": True,
             "offset": [0.0, 0.0, Z_BOX],
-            # "asset_cfg": SceneEntityCfg("asset_1"),
+            # "asset_cfg": SceneEntityCfg("box_1"),
             "asset_configs": [
-                SceneEntityCfg("asset_1"),
-                SceneEntityCfg("asset_2"),
-                # SceneEntityCfg("asset_3"),
-                # SceneEntityCfg("asset_4"),
-                # SceneEntityCfg("asset_5"),
-                # SceneEntityCfg("asset_6"),
-                # SceneEntityCfg("asset_7"),
-                # SceneEntityCfg("asset_8"),
+                SceneEntityCfg("box_1"),
+                SceneEntityCfg("box_2"),
+                SceneEntityCfg("box_3"),
+                SceneEntityCfg("box_4"),
+                SceneEntityCfg("box_5"),
+                SceneEntityCfg("box_6"),
+                SceneEntityCfg("box_7"),
+                SceneEntityCfg("box_8"),
             ],
         },
     )
-
-
-BOX_REWARD = mdp.BoxMovingReward()
 
 
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    obstacle_to_middle = RewTerm(
-        func=BOX_REWARD.obstacle_to_middle,
+    close_to_box = RewTerm(
+        func=mdp.CloseToBoxReward().close_to_box_reward,
         weight=1,
-        params={"sensor_cfg": SceneEntityCfg("lidar"), "threshold": 1.0},
+        params={"threshold": 1.0},
+    )
+
+    jump = RewTerm(
+        func=mdp.JumpReward().successful_jump_reward,
+        weight=1000,
+        params={},
     )
 
 
@@ -334,6 +338,8 @@ class TerminationsCfg:
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
+
+    num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
     # terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
 
@@ -367,6 +373,9 @@ class ViewerCfg:
 @configclass
 class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
+
+    # Data container
+    data_container: mdp.DataContainer = mdp.DataContainer()
 
     # Scene settings
     scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=10.0)
