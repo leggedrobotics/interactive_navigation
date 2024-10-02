@@ -42,7 +42,7 @@ GAME_ARENA_BASE_CFG = TerrainGeneratorCfg(
 )
 GAME_ARENA_RANDOM_FLOORS_CFG = TerrainGeneratorCfg(
     size=(16.0, 16.0),
-    border_width=0.0,
+    border_width=20.0,
     border_height=0.0,
     curriculum=False,
     num_rows=16,  # difficulty levels
@@ -74,7 +74,8 @@ GAME_ARENA_RANDOM_FLOORS_CFG = TerrainGeneratorCfg(
 
 MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
     size=(20.0, 20.0),
-    border_width=0.0,
+    border_width=1.0,
+    border_height=4.0,
     num_rows=8,
     num_cols=8,
     horizontal_scale=0.5,
@@ -97,7 +98,7 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
                     max_height_diff=5.0,
                 ),
                 "lowest_pos": FlatPatchSamplingCfg(
-                    num_patches=128, patch_radius=0.3, max_height_diff=0.5, z_range=(0.0, 0.5)
+                    num_patches=128, patch_radius=0.5, max_height_diff=0.5, z_range=(0.0, 0.5)
                 ),
                 "not_lowest_pos": FlatPatchSamplingCfg(
                     num_patches=128,
