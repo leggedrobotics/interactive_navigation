@@ -44,3 +44,22 @@ def terrain_levels_vel(
     terrain.update_env_origins(env_ids, move_up, move_down)
     # return the mean terrain level
     return torch.mean(terrain.terrain_levels.float())
+
+
+def num_boxes_curriculum(
+    env: ManagerBasedRLEnv, env_ids: Sequence[int], asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+    """Curriculum based on the number of boxes in the scene.
+
+    This term is used to increase the number of boxes in the scene when the robot walks far enough and decrease the
+    number of boxes when the robot walks less than half of the distance required by the commanded velocity.
+
+    Returns:
+        The mean number of boxes for the given environment ids.
+    """
+    # extract the used quantities (to enable type-hinting)
+
+    # return the mean terrain level
+
+    num_range = env.cfg.data_container.num_obstacles_range
+    return (num_range[0] + num_range[1]) / 2
