@@ -618,14 +618,14 @@ class JumpAction(ActionTerm):
 
         # - movement x, y, yaw:
         # movement is implemented as a force in the x, y direction and a torque in the yaw direction
-        delta_pose, gripper_command = self.teleop_interface.advance()
 
         # when climb up is activated (< 0), the agent jumps up by setting its velocity up and forward for one step
         if self.use_teleop:
+            delta_pose, gripper_command = self.teleop_interface.advance()
             want_to_jump = torch.tensor(delta_pose[3]).to(self.env.device) != 0
             jump_now = want_to_jump & (self.jump_cooldown_buffer.eq(0))
         else:
-            jump_now = (actions > 0) & (self.jump_cooldown_buffer.eq(0))
+            jump_now = (actions.squeeze() > 0) & (self.jump_cooldown_buffer.eq(0))
 
         if jump_now.any():
             # set velocities
