@@ -54,7 +54,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/ground",
         terrain_type="generator",
         terrain_generator=mdp.terrain.MESH_PYRAMID_TERRAIN_CFG,
-        max_init_terrain_level=5,
+        max_init_terrain_level=1000,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -223,47 +223,28 @@ class ObservationsCfg:
             params={"entity_cfg": SceneEntityCfg("robot")},
         )
 
-        # lidar_scan = ObsTerm(
-        #     func=mdp.lidar_obs_dist,
-        #     params={"sensor_cfg": SceneEntityCfg("lidar")},
-        #     noise=Unoise(n_min=-0.1, n_max=0.1),
-        #     clip=(0.0, 100.0),
-        # )
+        lidar_scan = ObsTerm(
+            func=mdp.lidar_obs_dist,
+            params={"sensor_cfg": SceneEntityCfg("lidar")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(0.0, 100.0),
+        )
 
-        # lidar_scan_top = ObsTerm(
-        #     func=mdp.lidar_obs_dist,
-        #     params={"sensor_cfg": SceneEntityCfg("lidar_top")},
-        #     noise=Unoise(n_min=-0.1, n_max=0.1),
-        #     clip=(0.0, 100.0),
-        # )
+        lidar_scan_top = ObsTerm(
+            func=mdp.lidar_obs_dist,
+            params={"sensor_cfg": SceneEntityCfg("lidar_top")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(0.0, 100.0),
+        )
 
         # boxes:
-        box_1_position = ObsTerm(
-            func=mdp.pose_2d_w,
-            params={"entity_cfg": SceneEntityCfg("box_1")},
+        boxes_poses = ObsTerm(
+            func=mdp.box_pose,
+            params={
+                "entity_str": "box",
+                "pov_entity": SceneEntityCfg("robot"),
+            },
         )
-        # box_1_velocity = ObsTerm(
-        #     func=mdp.velocity_2d_w,
-        #     params={"entity_cfg": SceneEntityCfg("box_1")},
-        # )
-
-        box_2_position = ObsTerm(
-            func=mdp.pose_2d_w,
-            params={"entity_cfg": SceneEntityCfg("box_2")},
-        )
-        # box_2_velocity = ObsTerm(
-        #     func=mdp.velocity_2d_w,
-        #     params={"entity_cfg": SceneEntityCfg("box_2")},
-        # )
-
-        # box_3_position = ObsTerm(
-        #     func=mdp.pose_2d_w,
-        #     params={"entity_cfg": SceneEntityCfg("box_3")},
-        # )
-        # box_3_velocity = ObsTerm(
-        #     func=mdp.velocity_2d_w,
-        #     params={"entity_cfg": SceneEntityCfg("box_3")},
-        # )
 
         def __post_init__(self):
             self.enable_corruption = True
