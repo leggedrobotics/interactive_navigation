@@ -321,6 +321,7 @@ class EventCfg:
 class RewardsCfg:
     """Reward terms for the MDP."""
 
+    # rewards
     close_to_box = RewTerm(
         func=mdp.CloseToBoxReward().close_to_box_reward,
         weight=1,
@@ -331,6 +332,13 @@ class RewardsCfg:
         func=mdp.JumpReward().successful_jump_reward,
         weight=1000,
         params={},
+    )
+
+    # penalty
+    outside = RewTerm(
+        func=mdp.outside_env,
+        weight=-1,
+        params={"threshold": 10.0 * 2**0.5},
     )
 
 
@@ -405,7 +413,7 @@ class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 10  # 10 Hz
-        self.episode_length_s = 60.0
+        self.episode_length_s = 120.0
         # simulation settings
         # self.sim.dt = 0.005  # 200 Hz
         self.sim.dt = 0.005  # 100 Hz

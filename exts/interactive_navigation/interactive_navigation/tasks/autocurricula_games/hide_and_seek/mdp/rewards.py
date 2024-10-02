@@ -131,7 +131,7 @@ class JumpReward:
                 torch.zeros((self.num_history_steps, env.num_envs)).to(env.device)
                 + env.scene["robot"].cfg.spawn.size[2] / 2
             )
-            self.max_height_reached = torch.zeros(env.num_envs).to(env.device) - 100
+            self.max_height_reached = torch.zeros(env.num_envs).to(env.device) + self.prev_height_buffer[0]
 
         if env.common_step_counter % self.step_delta == 0:
             robot = env.scene["robot"]
@@ -160,3 +160,15 @@ class JumpReward:
 
         reward = successfully_jumped.float()
         return reward
+
+
+def outside_env(env: ManagerBasedRLEnv, threshold: float) -> torch.Tensor:
+    """Returns one if the robot is outside the environment, zero otherwise."""
+    terrain_origins = env.scene.terrain.env_origins
+    robot_pos = env.scene["robot"].data.root_pos_w
+
+    diff = torch.linalg.vector_norm(terrain_origins - robot_pos, dim=-1)
+
+    is_outside = diff > threshold
+
+    return is_outside.float()
