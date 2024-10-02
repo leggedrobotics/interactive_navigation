@@ -9,4 +9,4 @@ class DataContainer:
 
     def __init__(self) -> None:
         self.num_obstacles: torch.Tensor = torch.tensor([0.0])
-        self.num_obstacles_range: tuple[int, int] = (1, 10)
+        self.num_obstacles_range: tuple[int, int] = (1, 5)
