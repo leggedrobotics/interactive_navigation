@@ -13,7 +13,7 @@ from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG
 
 if TYPE_CHECKING:
-    from .actions_cfg import SimpleActionCfg
+    from .actions_cfg import SimpleActionCfg, WrenchAction2DCfg, JumpActionCfg
 
 
 class SimpleAction(ActionTerm):
@@ -89,7 +89,7 @@ class SimpleAction(ActionTerm):
     @property
     def action_dim(self) -> int:
         """Dimension of the action term."""
-        return 3 + 1 + 1  # x, y, yaw (continuous), grab (binary), climb up (binary)
+        return 3 + 0 + 1  # x, y, yaw (continuous), grab (binary), climb up (binary)
 
     @property
     def raw_actions(self) -> torch.Tensor:
@@ -365,3 +365,286 @@ class SimpleAction(ActionTerm):
         scales_3d = torch.cat([scales * 2, default_scale, default_scale], dim=1)
 
         self.force_visualizer.visualize(translations=robot_pos, orientations=force_dir_quat, scales=scales_3d)
+
+
+class WrenchAction2D(ActionTerm):
+    """Simple action for the spherical agent to move around and grab obstacles.
+
+    - movement x, y, yaw: continuous action to move the agent in the x, y direction and yaw
+
+    - grab: binary action to grab the closest object within a radius and within the field of view
+
+    - climb up: binary action to make the agent climb up by jumping.
+                This action is only available every N steps to prevent the agent from jumping continuously."""
+
+    cfg: WrenchAction2DCfg
+    _env: ManagerBasedRLEnv
+
+    def __init__(self, cfg: WrenchAction2DCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+
+        self.robot_name = "robot"
+        self.env = env
+
+        # movement config
+        self.max_force = cfg.max_force  # Newtons
+        self.max_torque = cfg.max_torque  # Newton-meters
+        self.max_lin_vel = cfg.max_lin_vel  # m/s
+
+        # command buffers
+        self.force_command = torch.zeros(env.num_envs, 3).to(env.device)
+        self.torque_command = torch.zeros(env.num_envs, 3).to(env.device)
+
+        # jump cooldown
+        self.jump_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
+
+        # teleop:
+        self.use_teleop = cfg.use_teleop
+        if self.use_teleop:
+            self.teleop_interface = Se3Keyboard(pos_sensitivity=self.max_force, rot_sensitivity=self.max_torque)
+            self.teleop_interface.add_callback("L", env.reset)
+            print(self.teleop_interface)
+
+    """
+    Properties.
+    """
+
+    @property
+    def action_dim(self) -> int:
+        """Dimension of the action term."""
+        return 3  # force x, y, torque z
+
+    @property
+    def raw_actions(self) -> torch.Tensor:
+        """The input/raw actions sent to the term."""
+        return torch.empty()
+
+    @property
+    def processed_actions(self) -> torch.Tensor:
+        """The actions computed by the term after applying any processing."""
+        raise NotImplementedError
+
+    """
+    Operations.
+    """
+
+    def process_actions(self, actions: torch.Tensor):
+        """Processes the actions sent to the environment.
+
+        Note:
+            This function is called once per environment step by the manager.
+
+        Args:
+            actions: The actions to process.
+        """
+
+        # - movement x, y, yaw:
+        # movement is implemented as a force in the x, y direction and a torque in the yaw direction
+        if self.use_teleop:
+            delta_pose, gripper_command = self.teleop_interface.advance()
+            self.force_command[:, :2] = torch.tensor(delta_pose[:2]).to(self.env.device)
+            self.torque_command[:, 2] = (
+                torch.tensor(delta_pose[2]).to(self.env.device) / self.max_force * self.max_torque
+            )
+        else:
+            xy_force_body = actions[:, :2] * self.max_force
+            yaw_torque = actions[:, 2] * self.max_torque
+
+            xy_force_body = torch.clamp(xy_force_body, -self.max_force, self.max_force)
+            yaw_torque = torch.clamp(yaw_torque, -self.max_torque, self.max_torque)
+            yaw_torque *= 0
+
+            self.force_command = torch.cat([xy_force_body, torch.zeros(self.env.num_envs, 1).to(self.device)], dim=1)
+            self.torque_command = torch.cat(
+                [torch.zeros(self.env.num_envs, 2).to(self.device), yaw_torque.unsqueeze(1)], dim=1
+            )
+
+    def apply_actions(self):
+        """Applies the actions to the asset managed by the term.
+
+        Note:
+            This is called at every simulation step by the manager.
+        """
+
+        # - moving action
+
+        # get forces
+
+        # check if the robot is moving too fast
+        robot_lin_vel_w = self.env.scene.rigid_objects[self.robot_name].data.root_lin_vel_w
+        above_max_lin_vel = torch.linalg.vector_norm(robot_lin_vel_w[:, :2], dim=1) > self.max_lin_vel
+
+        # if the robot is moving too fast, we set the force in the direction of the velocity to 0
+        # by subtracting the projection of the force on the velocity from the force
+        if above_max_lin_vel.any():
+            # TODO define as torch jit function for performance
+            robot_lin_vel_w = robot_lin_vel_w[above_max_lin_vel]
+            robot_quat = self.env.scene.rigid_objects[self.robot_name].data.root_quat_w[above_max_lin_vel]
+            robot_lin_vel_b = math_utils.quat_apply_yaw(math_utils.quat_inv(robot_quat), robot_lin_vel_w)
+
+            xy_force = self.force_command[above_max_lin_vel, :2]
+            # projection = (a.b / |b|^2) * b
+            dot_products = torch.sum(xy_force * robot_lin_vel_b[:, :2], dim=1)
+            norms_squared = torch.sum(robot_lin_vel_b[:, :2] ** 2, dim=1)
+            eps = 1e-8  # small constant for numerical stability
+            norms_squared = torch.clamp(norms_squared, min=eps)
+            projection = (dot_products / norms_squared).unsqueeze(-1) * robot_lin_vel_b[:, :2]
+            xy_force -= projection
+            self.force_command[above_max_lin_vel, :2] = xy_force
+
+        self._asset.set_external_force_and_torque(
+            forces=self.force_command.unsqueeze(1), torques=self.torque_command.unsqueeze(1)
+        )
+
+    def _set_debug_vis_impl(self, debug_vis: bool):
+        # create markers if necessary for the first tome
+        if debug_vis:
+            if not hasattr(self, "force_visualizer"):
+                marker_cfg = BLUE_ARROW_X_MARKER_CFG.copy()
+                marker_cfg.markers["arrow"].scale = (0.1, 0.1, 0.1)
+                marker_cfg.prim_path = "/Visuals/Command/action_force"
+
+                self.force_visualizer = VisualizationMarkers(marker_cfg)
+            # set their visibility to true
+            self.force_visualizer.set_visibility(True)
+
+    def _debug_vis_callback(self, event):
+        # update the markers
+        # -- goal pose
+
+        # - get robot pos
+        robot_pos = self.env.scene.rigid_objects["robot"].data.root_pos_w.clone()
+        robot_quat = math_utils.yaw_quat(self.env.scene.rigid_objects["robot"].data.root_quat_w)
+        # increase z to visualize the force
+        robot_pos[:, 2] += 1.0
+
+        # - get action force
+        force = self.force_command
+        # force_3d = torch.cat(self.force_command, dim=1)
+        force_w = math_utils.quat_apply(robot_quat, self.force_command)
+        force_x = force_w[:, 0]
+        force_y = force_w[:, 1]
+
+        yaw_angle = torch.atan2(force_y, force_x)
+
+        force_dir_quat = math_utils.quat_from_euler_xyz(
+            torch.zeros_like(yaw_angle), torch.zeros_like(yaw_angle), yaw_angle
+        )
+
+        scales = torch.linalg.norm(force, dim=1, keepdim=True)
+        default_scale = torch.ones_like(scales) * 4
+        scales_3d = torch.cat([scales * 2, default_scale, default_scale], dim=1)
+
+        self.force_visualizer.visualize(translations=robot_pos, orientations=force_dir_quat, scales=scales_3d)
+
+
+class JumpAction(ActionTerm):
+    """Jump action. Binary action. if enabled, the agent jumpy by setting its velocity up and forward for one step.
+    A cooldown is applied to prevent the agent from jumping continuously."""
+
+    cfg: JumpActionCfg
+    _env: ManagerBasedRLEnv
+
+    def __init__(self, cfg: JumpActionCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+
+        self.robot_name = "robot"
+        self.env = env
+
+        # jump config
+        self.jump_cooldown_steps = int(math.ceil(cfg.jump_cooldown_secs / self.env.step_dt))
+        jump_height = 0.75  # meters
+        angle_deg = 80.0  # angle from the horizontal plane to jump vector
+        g = 9.81
+        jump_vel_up = math.sqrt(2 * g * jump_height)
+        jump_vel_forward = jump_vel_up / math.tan(angle_deg * math.pi / 180.0)
+        self.jump_vel = torch.tensor([jump_vel_forward, 0.0, jump_vel_up]).to(self.env.device)
+
+        self._processed_actions = torch.zeros(3)
+
+        # jump cooldown
+        self.jump_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
+
+        # teleop:
+        self.use_teleop = cfg.use_teleop
+        if self.use_teleop:
+            self.teleop_interface = Se3Keyboard()
+            self.teleop_interface.add_callback("L", env.reset)
+            print(self.teleop_interface)
+
+    """
+    Properties.
+    """
+
+    @property
+    def action_dim(self) -> int:
+        """Dimension of the action term."""
+        return 1  # jump (binary)
+
+    @property
+    def raw_actions(self) -> torch.Tensor:
+        """The input/raw actions sent to the term."""
+        return torch.empty()
+
+    @property
+    def processed_actions(self) -> torch.Tensor:
+        """The actions computed by the term after applying any processing."""
+        raise NotImplementedError
+
+    """
+    Operations.
+    """
+
+    def process_actions(self, actions: torch.Tensor):
+        """Processes the actions sent to the environment.
+
+        Note:
+            This function is called once per environment step by the manager.
+
+        Args:
+            actions: The actions to process.
+        """
+
+        # - movement x, y, yaw:
+        # movement is implemented as a force in the x, y direction and a torque in the yaw direction
+        delta_pose, gripper_command = self.teleop_interface.advance()
+
+        # when climb up is activated (< 0), the agent jumps up by setting its velocity up and forward for one step
+        if self.use_teleop:
+            want_to_jump = torch.tensor(delta_pose[3]).to(self.env.device) != 0
+            jump_now = want_to_jump & (self.jump_cooldown_buffer.eq(0))
+        else:
+            jump_now = (actions > 0) & (self.jump_cooldown_buffer.eq(0))
+
+        if jump_now.any():
+            # set velocities
+            all_robot_velocities = self.env.scene.rigid_objects[self.robot_name].data.root_lin_vel_w
+            jump_robots_quat = self.env.scene.rigid_objects[self.robot_name].data.root_quat_w[jump_now]
+            jump_vel_vec_world = math_utils.quat_apply_yaw(
+                jump_robots_quat, self.jump_vel.unsqueeze(0).expand(int(jump_now.sum()), -1)
+            )
+            all_robot_velocities[jump_now] = jump_vel_vec_world
+            zero_ang_vel = torch.zeros_like(all_robot_velocities)
+            velocity = torch.cat([all_robot_velocities, zero_ang_vel], dim=1)
+            self._asset.write_root_velocity_to_sim(velocity)
+            # set cooldown
+            self.jump_cooldown_buffer[jump_now] = self.jump_cooldown_steps
+            self.jump_cooldown_buffer[~jump_now] = torch.clamp(self.jump_cooldown_buffer[~jump_now] - 1, min=0)
+        else:
+            self.jump_cooldown_buffer = torch.clamp(self.jump_cooldown_buffer - 1, min=0)
+
+    def apply_actions(self):
+        """Applies the actions to the asset managed by the term.
+
+        Note:
+            This is called at every simulation step by the manager.
+        """
+        pass
+
+    def _set_debug_vis_impl(self, debug_vis: bool):
+        # create markers if necessary for the first tome
+        pass
+
+    def _debug_vis_callback(self, event):
+        # update the markers
+        pass
