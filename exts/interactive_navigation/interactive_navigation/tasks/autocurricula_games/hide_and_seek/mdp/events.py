@@ -81,7 +81,9 @@ def reset_root_state_uniform_collision_free(
     asset.write_root_velocity_to_sim(velocities, env_ids=env_ids)
 
 
-def reset_multiple_instances_decorator(reset_func):
+def reset_multiple_instances_decorator(reset_func: callable) -> callable:
+    """Decorator to reset multiple instances of an asset at once."""
+
     @functools.wraps(reset_func)
     def wrapper(*args, **kwargs):
         asset_configs = kwargs.get("asset_configs", None)
@@ -94,8 +96,9 @@ def reset_multiple_instances_decorator(reset_func):
             )
         if asset_configs is None and asset_config is not None:
             asset_configs = [asset_config]
-        for asset_cfg in asset_configs:
+        for i, asset_cfg in enumerate(asset_configs):
             kwargs["asset_cfg"] = asset_cfg
+            kwargs["reset_id"] = i
             reset_func(*args, **kwargs)
 
     return wrapper
@@ -109,27 +112,43 @@ def reset_root_state_uniform_on_terrain_aware(
     offset: list = [0.0, 0.0, 0.0],
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
     lowest_level: bool = False,
-    reset_used_ids: bool = False,
+    reset_used_patches_ids: bool = False,
     asset_configs: list[SceneEntityCfg] | None = None,
+    reset_id: int = 0,
 ):
     """Reset the asset root state to a random position at the lowest level of the scene.
     This might be called multiple times to reset the root state of multiple assets.
-    If assets must not be placed on the same position, the reset_used_ids flag must be set to False
+    If assets must not be placed on the same position, the reset_used_patches_ids flag must be set to False
     for all but the first function call per reset."""
 
     # reset the used ids if required
-    if reset_used_ids:
+    if reset_id == 0:
+        # resample number of obstacles per env
+        num_obs_range = env.cfg.data_container.num_obstacles_range
+        env.cfg.data_container.num_obstacles = torch.randint(
+            num_obs_range[0], num_obs_range[1] + 1, (len(env_ids),), dtype=torch.float
+        ).to(env.device)
+
+    # check if the asset should be removed from the scene
+    spawn_lowest_terrain = reset_id < env.cfg.data_container.num_obstacles
+    all_reset_env_ids = env_ids
+
+    if reset_used_patches_ids:
+        # reset the used patches ids, should be done only once per reset
         env.scene.terrain.terrain_used_flat_patches = {
             "lowest_pos": torch.zeros((len(env_ids), 1), dtype=torch.int64).to(env.device) - 1,
             "init_pos": torch.zeros((len(env_ids), 1), dtype=torch.int64).to(env.device) - 1,
+            "not_lowest_pos": torch.zeros((len(env_ids), 1), dtype=torch.int64).to(env.device) - 1,
         }
 
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject | Articulation = env.scene[asset_cfg.name]
 
     # sample random positions
+    positions = torch.zeros((len(env_ids), 3), device=env.device)
     flat_patch_type = "lowest_pos" if lowest_level else "init_pos"
-    positions = _sample_terrain_pos(env, asset, env_ids, flat_patch_type)
+    positions[spawn_lowest_terrain] = _sample_terrain_pos(env, asset, env_ids, flat_patch_type)[spawn_lowest_terrain]
+    positions[~spawn_lowest_terrain] = _sample_terrain_pos(env, asset, env_ids, "not_lowest_pos")[~spawn_lowest_terrain]
     positions += torch.tensor(offset, device=asset.device)
 
     # sample random orientations
