@@ -11,7 +11,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 
 @configclass
 class HideSeekPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 50
+    num_steps_per_env = 32
     max_iterations = 100_000
     save_interval = 1000
     experiment_name = "hide_and_seek_ppo"
@@ -28,7 +28,7 @@ class HideSeekPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         clip_param=0.2,
         entropy_coef=0.005,
         num_learning_epochs=5,
-        num_mini_batches=2,  # mini batch size = num_envs * num_steps_per_env // num_mini_batches
+        num_mini_batches=4,  # mini batch size = num_envs * num_steps_per_env // num_mini_batches
         learning_rate=1.0e-3,
         schedule="adaptive",
         gamma=0.99,
