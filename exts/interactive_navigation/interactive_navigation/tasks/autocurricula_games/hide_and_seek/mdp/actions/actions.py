@@ -387,7 +387,8 @@ class WrenchAction2D(ActionTerm):
         self.env = env
 
         # movement config
-        self.max_force = cfg.max_force  # Newtons
+        self.max_force = cfg.max_force_forward  # Newtons
+        self.max_force_sideways = cfg.max_foce_sideways  # Newtons
         self.max_torque = cfg.max_torque  # Newton-meters
         self.max_lin_vel = cfg.max_lin_vel  # m/s
 
@@ -442,12 +443,17 @@ class WrenchAction2D(ActionTerm):
         # movement is implemented as a force in the x, y direction and a torque in the yaw direction
         if self.use_teleop:
             delta_pose, gripper_command = self.teleop_interface.advance()
-            self.force_command[:, :2] = torch.tensor(delta_pose[:2]).to(self.env.device)
+            self.force_command[:, 0] = torch.tensor(delta_pose[0]).to(self.env.device)
+            self.force_command[:, 1] = (
+                torch.tensor(delta_pose[1]).to(self.env.device) / self.max_force * self.max_force_sideways
+            )
             self.torque_command[:, 2] = (
                 torch.tensor(delta_pose[2]).to(self.env.device) / self.max_force * self.max_torque
             )
         else:
-            xy_force_body = actions[:, :2] * self.max_force
+            xy_force_body = actions[:, :2]
+            xy_force_body[:, 0] *= self.max_force
+            xy_force_body[:, 1] *= self.max_force_sideways
             yaw_torque = actions[:, 2] * self.max_torque
 
             xy_force_body = torch.clamp(xy_force_body, -self.max_force, self.max_force)
@@ -465,6 +471,11 @@ class WrenchAction2D(ActionTerm):
         Note:
             This is called at every simulation step by the manager.
         """
+
+        # - force the robot to not roll or pitch
+        robot_quat = math_utils.yaw_quat(self.env.scene.rigid_objects[self.robot_name].data.root_quat_w)
+        robot_pos = self.env.scene.rigid_objects[self.robot_name].data.root_pos_w
+        self.env.scene.rigid_objects[self.robot_name].write_root_pose_to_sim(torch.cat([robot_pos, robot_quat], dim=1))
 
         # - moving action
 

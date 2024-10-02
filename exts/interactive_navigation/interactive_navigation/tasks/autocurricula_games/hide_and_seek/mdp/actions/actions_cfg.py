@@ -38,7 +38,10 @@ class SimpleActionCfg(ActionTermCfg):
 class WrenchAction2DCfg(ActionTermCfg):
     class_type: type[ActionTerm] = WrenchAction2D
 
-    max_force: float = 5.0
+    max_force_forward: float = 5.0
+    """Maximum force to apply to the robot."""
+
+    max_foce_sideways: float = 3.5
     """Maximum force to apply to the robot."""
 
     max_torque: float = 5.0
