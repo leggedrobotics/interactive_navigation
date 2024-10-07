@@ -16,7 +16,15 @@ def lidar_obs_dist(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Te
     return distances
 
 
-def pose_2d_w(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
+def lidar_obs_dist_log(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+    """lidar scan from the given sensor w.r.t. the sensor's frame."""
+    sensor: SensorBase = env.scene.sensors[sensor_cfg.name]
+    distances = torch.linalg.vector_norm(sensor.data.ray_hits_w - sensor.data.pos_w.unsqueeze(1), dim=2)
+
+    return torch.log(distances + 1e-6)
+
+
+def pose_2d_to(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
     """Returns the pose of the entity relative to the terrain origin.
     x,y position and heading in the form of cos(theta), sin(theta)."""
     entity: RigidObject | Articulation = env.scene[entity_cfg.name]
@@ -84,20 +92,22 @@ def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) 
     # Stack the results into a single tensor
     pose = torch.stack([x, y, cos_yaw, sin_yaw], dim=-1)
 
-    return pose.view(pose.shape[0], -1)
+    return pose
 
 
-def velocity_2d_w(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
-    """Returns the velocity of the entity relative to the terrain origin.
-    x,y velocity and heading in the form of cos(theta), sin(theta)."""
+def velocity_2d_b(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, pov_entity_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Returns the velocity vector of the entity rotated to the robot's frame (only yaw considered).
+    The robots velocity is neglected."""
     entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+    robot: RigidObject | Articulation = env.scene[pov_entity_cfg.name]
 
-    # - velocity
-    vel = entity.data.body_lin_vel_w.squeeze(1)
+    if entity == robot:
+        lin_vel = entity.data.root_lin_vel_b[..., :2]
+        ang_vel_z = entity.data.root_ang_vel_b[..., 2]
+        return torch.cat([lin_vel, ang_vel_z.unsqueeze(1)], dim=-1)
 
-    # - angular velocity
-    ang_vel = entity.data.body_ang_vel_w.squeeze(1)
-
-    velocity_2d = torch.cat([vel[:, :2], ang_vel[:, 2].unsqueeze(1)], dim=-1)
-
-    return velocity_2d
+    entity_vel_w = entity.data.body_lin_vel_w.squeeze(1)
+    entity_ang_vel_z = entity.data.body_ang_vel_w.squeeze(1)[..., 2]
+    robot_quat_w = math_utils.yaw_quat(robot.data.root_quat_w)
+    entity_vel_b = math_utils.quat_rotate_inverse(robot_quat_w, entity_vel_w)
+    return torch.cat([entity_vel_b[..., :2], entity_ang_vel_z.unsqueeze(1)], dim=-1)
