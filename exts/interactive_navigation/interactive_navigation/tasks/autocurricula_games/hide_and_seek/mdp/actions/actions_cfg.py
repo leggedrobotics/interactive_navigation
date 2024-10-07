@@ -1,71 +1,52 @@
-from __future__ import annotations
+# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
 
 from dataclasses import MISSING
 
+from omni.isaac.lab.controllers import DifferentialIKControllerCfg
 from omni.isaac.lab.managers.action_manager import ActionTerm, ActionTermCfg
 from omni.isaac.lab.utils import configclass
 
-from .actions import SimpleAction, WrenchAction2D, JumpAction
+from . import actions
 
 
 @configclass
-class SimpleActionCfg(ActionTermCfg):
-    class_type: type[ActionTerm] = SimpleAction
+class MyJointActionCfg(ActionTermCfg):
+    """Configuration for the base joint action term.
 
-    min_distance: float = 1.5
-    """Minimum distance to the object to grab it (center to center)."""
+    See :class:`JointAction` for more details.
+    """
 
-    fov_deg: float = 135.0
-    """Horizontal field of view in degrees."""
+    joint_names: list[str] = MISSING
+    """List of joint names or regex expressions that the action will be mapped to."""
+    scale: float | dict[str, float] = 1.0
+    """Scale factor for the action (float or dict of regex expressions). Defaults to 1.0."""
+    offset: float | dict[str, float] = 0.0
+    """Offset factor for the action (float or dict of regex expressions). Defaults to 0.0."""
+    preserve_order: bool = False
+    """Whether to preserve the order of the joint names in the action output. Defaults to False."""
 
-    max_force: float = 5.0
-    """Maximum force to apply to the robot."""
 
-    max_lin_vel: float = 2.5
-    """Maximum linear velocity of the robot in m/s."""
+@configclass
+class ArticulatedJumpActionCfg(ActionTermCfg):
+    """Configuration for the jump action term.
 
-    max_toque: float = 5.0
-    """Maximum torque to apply to the robot."""
+    See :class:`ArticulatedJumpAction` for more details.
+    """
+
+    class_type: type[ActionTerm] = actions.ArticulatedJumpAction
 
     jump_cooldown_secs: float = 1.0
-    """Cooldown time in seconds for the jump action."""
-
-    use_teleop: bool = True
-    """Whether to use teleop interface for controlling the robot."""
+    """Cooldown time in seconds between jumps. Defaults to 1.0."""
 
 
 @configclass
-class WrenchAction2DCfg(ActionTermCfg):
-    class_type: type[ActionTerm] = WrenchAction2D
+class ArticulatedWrench2DActionCfg(ActionTermCfg):
+    """Configuration Wrench2D action term.
 
-    max_force_forward: float = 5.0
-    """Maximum force to apply to the robot."""
+    See :class:`ArticulatedWrench2DAction` for more details.
+    """
 
-    max_foce_sideways: float = 3.5
-    """Maximum force to apply to the robot."""
-
-    max_torque: float = 5.0
-    """Maximum torque to apply to the robot."""
-
-    max_lin_vel: float = 2.5
-    """Maximum linear velocity of the robot in m/s."""
-
-    max_ang_vel: float = 3.14
-    """Maximum angular velocity of the robot in rad/s."""
-
-    use_teleop: bool = False
-    """Whether to use teleop interface for controlling the robot."""
-
-
-@configclass
-class JumpActionCfg(ActionTermCfg):
-    class_type: type[ActionTerm] = JumpAction
-
-    jump_height: float = 1.0
-    """Height of the jump in meters."""
-
-    jump_cooldown_secs: float = 1.0
-    """Cooldown time in seconds for the jump action."""
-
-    use_teleop: bool = False
-    """Whether to use teleop interface for controlling the robot."""
+    class_type: type[ActionTerm] = actions.ArticulatedWrench2DAction

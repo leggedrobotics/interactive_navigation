@@ -1,84 +1,167 @@
+# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
 from __future__ import annotations
 
 import torch
-import math
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
+import math
 
-from omni.isaac.lab.envs import ManagerBasedRLEnv
-from omni.isaac.lab.managers.action_manager import ActionTerm
-from omni.isaac.lab.utils.assets import check_file_path, read_file
-from omni.isaac.lab.utils import math as math_utils
-from omni.isaac.lab.devices import Se3Gamepad, Se3Keyboard, Se3SpaceMouse
+TELEOP = True
+
+if TELEOP:
+    from omni.isaac.lab.devices import Se3Keyboard, Se3SpaceMouse, Se3Gamepad
+import carb
+
+import omni.isaac.lab.utils.string as string_utils
+import omni.isaac.lab.utils.math as math_utils
+
 from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG
+from omni.isaac.lab.assets.articulation import Articulation
+from omni.isaac.lab.managers.action_manager import ActionTerm
 
 if TYPE_CHECKING:
-    from .actions_cfg import SimpleActionCfg, WrenchAction2DCfg, JumpActionCfg
+    from omni.isaac.lab.envs import ManagerBasedEnv
+    from omni.isaac.lab.envs import ManagerBasedRLEnv
+
+    from . import actions_cfg
 
 
-class SimpleAction(ActionTerm):
-    """Simple action for the spherical agent to move around and grab obstacles.
+class MyJointAction(ActionTerm):
+    r"""Base class for joint actions.
 
-    - movement x, y, yaw: continuous action to move the agent in the x, y direction and yaw
+    This action term performs pre-processing of the raw actions using affine transformations (scale and offset).
+    These transformations can be configured to be applied to a subset of the articulation's joints.
 
-    - grab: binary action to grab the closest object within a radius and within the field of view
+    Mathematically, the action term is defined as:
 
-    - climb up: binary action to make the agent climb up by jumping.
-                This action is only available every N steps to prevent the agent from jumping continuously."""
+    .. math::
 
-    cfg: SimpleActionCfg
+       \text{action} = \text{offset} + \text{scaling} \times \text{input action}
+
+    where :math:`\text{action}` is the action that is sent to the articulation's actuated joints, :math:`\text{offset}`
+    is the offset applied to the input action, :math:`\text{scaling}` is the scaling applied to the input
+    action, and :math:`\text{input action}` is the input action from the user.
+
+    Based on above, this kind of action transformation ensures that the input and output actions are in the same
+    units and dimensions. The child classes of this action term can then map the output action to a specific
+    desired command of the articulation's joints (e.g. position, velocity, etc.).
+    """
+
+    cfg: actions_cfg.MyJointActionCfg
+    """The configuration of the action term."""
+    _asset: Articulation
+    """The articulation asset on which the action term is applied."""
+    _scale: torch.Tensor | float
+    """The scaling factor applied to the input action."""
+    _offset: torch.Tensor | float
+    """The offset applied to the input action."""
+
+    def __init__(self, cfg: actions_cfg.MyJointActionCfg, env: ManagerBasedEnv) -> None:
+        # initialize the action term
+        super().__init__(cfg, env)
+
+        # resolve the joints over which the action term is applied
+        self._joint_ids, self._joint_names = self._asset.find_joints(
+            self.cfg.joint_names, preserve_order=self.cfg.preserve_order
+        )
+        self._num_joints = len(self._joint_ids)
+        # log the resolved joint names for debugging
+        carb.log_info(
+            f"Resolved joint names for the action term {self.__class__.__name__}:"
+            f" {self._joint_names} [{self._joint_ids}]"
+        )
+
+        # Avoid indexing across all joints for efficiency
+        if self._num_joints == self._asset.num_joints:
+            self._joint_ids = slice(None)
+
+        # create tensors for raw and processed actions
+        self._raw_actions = torch.zeros(self.num_envs, self.action_dim, device=self.device)
+        self._processed_actions = torch.zeros_like(self.raw_actions)
+
+        # parse scale
+        if isinstance(cfg.scale, (float, int)):
+            self._scale = float(cfg.scale)
+        elif isinstance(cfg.scale, dict):
+            self._scale = torch.ones(self.num_envs, self.action_dim, device=self.device)
+            # resolve the dictionary config
+            index_list, _, value_list = string_utils.resolve_matching_names_values(self.cfg.scale, self._joint_names)
+            self._scale[:, index_list] = torch.tensor(value_list, device=self.device)
+        else:
+            raise ValueError(f"Unsupported scale type: {type(cfg.scale)}. Supported types are float and dict.")
+        # parse offset
+        if isinstance(cfg.offset, (float, int)):
+            self._offset = float(cfg.offset)
+        elif isinstance(cfg.offset, dict):
+            self._offset = torch.zeros_like(self._raw_actions)
+            # resolve the dictionary config
+            index_list, _, value_list = string_utils.resolve_matching_names_values(self.cfg.offset, self._joint_names)
+            self._offset[:, index_list] = torch.tensor(value_list, device=self.device)
+        else:
+            raise ValueError(f"Unsupported offset type: {type(cfg.offset)}. Supported types are float and dict.")
+
+    """
+    Properties.
+    """
+
+    @property
+    def action_dim(self) -> int:
+        return self._num_joints
+
+    @property
+    def raw_actions(self) -> torch.Tensor:
+        return self._raw_actions
+
+    @property
+    def processed_actions(self) -> torch.Tensor:
+        return self._processed_actions
+
+    """
+    Operations.
+    """
+
+    def process_actions(self, actions: torch.Tensor):
+        # store the raw actions
+        self._raw_actions[:] = actions
+        # apply the affine transformations
+        self._processed_actions = self._raw_actions * self._scale + self._offset
+
+    def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        self._raw_actions[env_ids] = 0.0
+
+
+class ArticulatedJumpAction(ActionTerm):
+    """Joint action term that applies the processed actions to the articulation's joints as velocity commands.
+    The jump actions simply actuates the z joint until the robot reaches a certain height."""
+
+    cfg: actions_cfg.ArticulatedJumpActionCfg
     _env: ManagerBasedRLEnv
+    _asset: Articulation
 
-    def __init__(self, cfg: SimpleActionCfg, env: ManagerBasedRLEnv):
+    def __init__(self, cfg: actions_cfg.ArticulatedJumpActionCfg, env: ManagerBasedEnv):
+        # initialize the action term
         super().__init__(cfg, env)
 
         self.robot_name = "robot"
         self.env = env
 
-        # movement config
-        self.max_force = cfg.max_force  # Newtons
-        self.max_torque = cfg.max_toque  # Newton-meters
-        self.max_lin_vel = cfg.max_lin_vel  # m/s
-
-        # grab config
-        self.min_distance = cfg.min_distance  # meters
-        self.half_fov_rad = cfg.fov_deg * torch.pi / 360.0  # radians
-        self.min_valid_z_diff_to_grab = 0.2
-        self.grab_height = 0.05  # meters. if grabbed, the object is lifted by this height
-        self.horizontal_force_threshold = 1.0  # Newtons. if the force is higher, the object is let go
-        self.contact_cool_down = int(math.ceil(0.2 / self.env.step_dt))
-        self.contact_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
-
         # jump config
         self.jump_cooldown_steps = int(math.ceil(cfg.jump_cooldown_secs / self.env.step_dt))
-        jump_height = 0.75  # meters
-        angle_deg = 80.0  # angle from the horizontal plane to jump vector
-        g = 9.81
-        jump_vel_up = math.sqrt(2 * g * jump_height)
-        jump_vel_forward = jump_vel_up / math.tan(angle_deg * math.pi / 180.0)
-        self.jump_vel = torch.tensor([jump_vel_forward, 0.0, jump_vel_up]).to(self.env.device)
+        self.jump_height = 0.75  # meters
 
-        self._processed_actions = torch.zeros(3)
-
-        # asset names
-        self.asset_names = [asset for asset in list(env.scene.rigid_objects.keys()) if "asset" in asset]
-
-        # command buffers
-        self.force_command = torch.zeros(env.num_envs, 3).to(env.device)
-        self.torque_command = torch.zeros(env.num_envs, 3).to(env.device)
-
-        # object pos buffers
-        self.grabbed_asset_pos_body_frame = torch.zeros(env.num_envs, 3).to(env.device)
-        self.grabbed_asset_quat_body_frame = torch.zeros(env.num_envs, 4).to(env.device)
-        self.grabbed_asset_id = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device) - 1
-
-        # jump cooldown
         self.jump_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
+        self.is_jumping = torch.zeros(self.env.num_envs, dtype=torch.bool).to(self.env.device)
+        self.bottom_height = torch.zeros(self.env.num_envs).to(self.env.device)
 
-        # teleop:
-        self.use_teleop = cfg.use_teleop
-        if self.use_teleop:
-            self.teleop_interface = Se3Keyboard(pos_sensitivity=self.max_force, rot_sensitivity=self.max_torque)
+        self.des_vel = torch.zeros_like(self._asset.data.body_lin_vel_w[:, -1, :])
+
+        if TELEOP:
+            self.teleop_interface = Se3Keyboard(pos_sensitivity=1.0, rot_sensitivity=1.0)
             self.teleop_interface.add_callback("L", env.reset)
             print(self.teleop_interface)
 
@@ -89,7 +172,7 @@ class SimpleAction(ActionTerm):
     @property
     def action_dim(self) -> int:
         """Dimension of the action term."""
-        return 3 + 0 + 1  # x, y, yaw (continuous), grab (binary), climb up (binary)
+        return 1  # force x, y, torque z
 
     @property
     def raw_actions(self) -> torch.Tensor:
@@ -101,308 +184,90 @@ class SimpleAction(ActionTerm):
         """The actions computed by the term after applying any processing."""
         raise NotImplementedError
 
-    """
-    Operations.
-    """
-
     def process_actions(self, actions: torch.Tensor):
-        """Processes the actions sent to the environment.
+        """called each env step, i.e., once per {decimation} sim steps"""
+        # set joint effort targets
 
-        Note:
-            This function is called once per environment step by the manager.
+        delta_pose, gripper_command = self.teleop_interface.advance()
 
-        Args:
-            actions: The actions to process.
-        """
+        want_to_jump = (torch.zeros_like(actions.squeeze()) + delta_pose[3]) != 0
+        self.want_to_jump = want_to_jump
 
-        # - movement x, y, yaw:
-        # movement is implemented as a force in the x, y direction and a torque in the yaw direction
-        if self.use_teleop:
-            delta_pose, gripper_command = self.teleop_interface.advance()
-            self.force_command[:, :2] = torch.tensor(delta_pose[:2]).to(self.env.device)
-            self.torque_command[:, 2] = (
-                torch.tensor(delta_pose[2]).to(self.env.device) / self.max_force * self.max_torque
-            )
-        else:
-            xy_force_body = actions[:, :2] * self.max_force
-            yaw_torque = actions[:, 2] * self.max_torque
-
-            xy_force_body = torch.clamp(xy_force_body, -self.max_force, self.max_force)
-            yaw_torque = torch.clamp(yaw_torque, -self.max_torque, self.max_torque)
-            yaw_torque *= 0
-
-            self.force_command = torch.cat([xy_force_body, torch.zeros(self.env.num_envs, 1).to(self.device)], dim=1)
-            self.torque_command = torch.cat(
-                [torch.zeros(self.env.num_envs, 2).to(self.device), yaw_torque.unsqueeze(1)], dim=1
-            )
-
-        # - grab:
-        # when grab is activated (< 0), the closest object within a radius becomes movable for this agent
-        if self.use_teleop:
-            self.is_grabbing = gripper_command
-        else:
-            self.is_grabbing = actions[:, 3] > 0
-        self.contact_cooldown_buffer = torch.clamp(self.contact_cooldown_buffer - 1, min=0)
-
-        # - climb up:
-        # when climb up is activated (< 0), the agent jumps up by setting its velocity up and forward for one step
-        if self.use_teleop:
-            want_to_jump = (torch.tensor(delta_pose[3]).to(self.env.device) / self.max_force * self.max_torque) != 0
-            jump_now = want_to_jump & (self.jump_cooldown_buffer.eq(0))
-        else:
-            jump_now = (actions[:, 4] > 0) & (self.jump_cooldown_buffer.eq(0))
+        jump_now = want_to_jump & (self.jump_cooldown_buffer.eq(0)) & (~self.is_jumping)
 
         if jump_now.any():
-            # set velocities
-            all_robot_velocities = self.env.scene.rigid_objects[self.robot_name].data.root_lin_vel_w
-            jump_robots_quat = self.env.scene.rigid_objects[self.robot_name].data.root_quat_w[jump_now]
-            jump_vel_vec_world = math_utils.quat_apply_yaw(
-                jump_robots_quat, self.jump_vel.unsqueeze(0).expand(int(jump_now.sum()), -1)
-            )
-            all_robot_velocities[jump_now] = jump_vel_vec_world
-            zero_ang_vel = torch.zeros_like(all_robot_velocities)
-            velocity = torch.cat([all_robot_velocities, zero_ang_vel], dim=1)
-            self._asset.write_root_velocity_to_sim(velocity)
-            # set cooldown
+            # set the jump flag and store the current height
+            self.is_jumping[jump_now] = True
+            self.bottom_height[jump_now] = self._asset.data.body_pos_w[jump_now, -1, 2]
+
+            # set the jump cooldown buffer, starting when the jump is initiated, not when it ends
             self.jump_cooldown_buffer[jump_now] = self.jump_cooldown_steps
             self.jump_cooldown_buffer[~jump_now] = torch.clamp(self.jump_cooldown_buffer[~jump_now] - 1, min=0)
         else:
             self.jump_cooldown_buffer = torch.clamp(self.jump_cooldown_buffer - 1, min=0)
 
     def apply_actions(self):
-        """Applies the actions to the asset managed by the term.
+        """called each sim step"""
+        current_height = self._asset.data.body_pos_w[:, -1, 2]
+        at_top = current_height - self.bottom_height > self.jump_height
+        self.is_jumping[at_top] = False
 
-        Note:
-            This is called at every simulation step by the manager.
-        """
-
-        # - moving action
-
-        # get forces
-
-        # check if the robot is moving too fast
-        robot_lin_vel_w = self.env.scene.rigid_objects[self.robot_name].data.root_lin_vel_w
-        above_max_lin_vel = torch.linalg.vector_norm(robot_lin_vel_w[:, :2], dim=1) > self.max_lin_vel
-
-        # if the robot is moving too fast, we set the force in the direction of the velocity to 0
-        # by subtracting the projection of the force on the velocity from the force
-        if above_max_lin_vel.any():
-            # TODO define as torch jit function for performance
-            robot_lin_vel_w = robot_lin_vel_w[above_max_lin_vel]
-            robot_quat = self.env.scene.rigid_objects[self.robot_name].data.root_quat_w[above_max_lin_vel]
-            robot_lin_vel_b = math_utils.quat_apply_yaw(math_utils.quat_inv(robot_quat), robot_lin_vel_w)
-
-            xy_force = self.force_command[above_max_lin_vel, :2]
-            # projection = (a.b / |b|^2) * b
-            dot_products = torch.sum(xy_force * robot_lin_vel_b[:, :2], dim=1)
-            norms_squared = torch.sum(robot_lin_vel_b[:, :2] ** 2, dim=1)
-            eps = 1e-8  # small constant for numerical stability
-            norms_squared = torch.clamp(norms_squared, min=eps)
-            projection = (dot_products / norms_squared).unsqueeze(-1) * robot_lin_vel_b[:, :2]
-            xy_force -= projection
-            self.force_command[above_max_lin_vel, :2] = xy_force
-
-        self._asset.set_external_force_and_torque(
-            forces=self.force_command.unsqueeze(1), torques=self.torque_command.unsqueeze(1)
-        )
-
-        # - grab actions:
-        # TODO grab distance should be to the surface of the asset, not its center
-        # we only grab small objects, so we can assume the center is close to the surface
-
-        # robot quaternion
-        robot_quat_raw = self.env.scene.rigid_objects["robot"].data.root_quat_w
-        robot_quat = math_utils.yaw_quat(robot_quat_raw)
-
-        # get positions
-        robot_pos = self.env.scene.rigid_objects["robot"].data.root_pos_w
-
-        # (force the agent to not roll or pitch too much or at all)
-        # tilt_error = math_utils.quat_error_magnitude(robot_quat, robot_quat_raw)
-        # tilted_too_much = tilt_error > 0.75  # radians
-        # robot_set_quat = torch.where(tilted_too_much, robot_quat, robot_quat_raw)
-        robot_pose_toset = torch.cat([robot_pos, robot_quat], dim=1)
-        self.env.scene.rigid_objects["robot"].write_root_pose_to_sim(robot_pose_toset)
-
-        # check if the agent is grabbing an object
-        grabbed_any = torch.zeros(self.env.num_envs, dtype=torch.bool).to(self.env.device)
-        grabbed_new_ids = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device) - 1
-        closest_asset_dist = torch.ones(self.env.num_envs).to(self.env.device) * self.min_distance * 2
-
-        for id_num, asset_id in enumerate(self.asset_names):
-            asset_pos = self.env.scene.rigid_objects[asset_id].data.root_pos_w
-
-            # get distances
-            dist_vec = asset_pos - robot_pos
-            dist = torch.linalg.vector_norm(dist_vec, dim=1)
-
-            # the boxes are kinematic bodies, meaning they cannot be pushed.
-            # we move them by setting their position directly
-
-            # if the agent was grabbing previously and its still grabbing, we update the position of the grabbed asset.
-            # we increase the grabbing distance to avoid accidentally letting go of the asset
-            potential_still_grabbing = (
-                (dist < self.min_distance * 1.5) & self.is_grabbing & self.contact_cooldown_buffer.eq(0)
+        # if jumping, move up to the desired height
+        if self.is_jumping.any():
+            # reset effort limit
+            self._asset.write_joint_effort_limit_to_sim(
+                limits=torch.ones(self.is_jumping.sum().item(), 1).to(self.device) * 100.0,
+                joint_ids=[2],
+                env_ids=self.is_jumping.nonzero().squeeze(1),
             )
 
-            if potential_still_grabbing.any():
-                # if still grabbing, we need to check if the agent is pushing the asset into a wall
-                contact_sensor = self.env.scene.sensors["boxes_contact_forces"]
-                contact_forces = contact_sensor.data.net_forces_w[potential_still_grabbing, id_num]
-                horizontal_force = torch.linalg.vector_norm(contact_forces[:, :2], dim=1)
-                too_much_force = horizontal_force > self.horizontal_force_threshold
-                potential_grabbing_valid = torch.zeros_like(potential_still_grabbing, dtype=torch.bool)
-                potential_grabbing_valid[potential_still_grabbing] = ~too_much_force
+            # set the joint velocity target
+            self._asset.set_joint_position_target(
+                target=torch.ones(self.is_jumping.sum().item(), 1).to(self.device),
+                joint_ids=[2],
+                env_ids=self.is_jumping.nonzero().squeeze(1),
+            )
 
-                # set cooldown for the asset if the force is too high
-                start_force_cooldown = torch.zeros_like(self.contact_cooldown_buffer, dtype=torch.bool)
-                start_force_cooldown[potential_still_grabbing] = too_much_force
-                self.contact_cooldown_buffer[start_force_cooldown] = self.contact_cool_down + 1
-                potential_still_grabbing = potential_grabbing_valid
-
-            # check if the agent is grabbing and the asset is within the grabbing distance
-            potential_asset_grab = (dist < self.min_distance) & self.is_grabbing
-            # for assets in to be grabbed, check if the assets are within the field of view, not to far in z direction,
-            # and the robot not just jumped
-            if potential_asset_grab.any():
-                asset_to_grab_pos_body_frame = math_utils.quat_apply_yaw(
-                    math_utils.quat_inv(robot_quat[potential_asset_grab]), dist_vec[potential_asset_grab]
-                )
-                # x is forward, y is left
-                in_fov = (
-                    torch.abs(torch.atan2(asset_to_grab_pos_body_frame[:, 1], asset_to_grab_pos_body_frame[:, 0]))
-                    < self.half_fov_rad
-                )
-                # check if asset is not below the robot, since this could be exploited by the agent
-                valid_z_diff = torch.abs(dist_vec[potential_asset_grab][:, 2]) < self.min_valid_z_diff_to_grab
-                # check if the agent is not just jumped
-                not_jumped = self.jump_cooldown_buffer.eq(0)
-                # check if the asset did not just collide:
-                not_collided = self.contact_cooldown_buffer.eq(0)
-                valid_grab = not_jumped & not_collided
-                valid_grab[potential_asset_grab] &= in_fov & valid_z_diff
-                potential_asset_grab = valid_grab
-
-            # if the agent is still grabbing, we update the position of the grabbed asset
-            still_grabbing = (self.grabbed_asset_id == id_num) & potential_still_grabbing
-            if still_grabbing.any():
-
-                # set the position of the grabbed asset in the body frame of the robot
-                asset_pos_body_frame = self.grabbed_asset_pos_body_frame[still_grabbing]
-                asset_quat_body_frame = self.grabbed_asset_quat_body_frame[still_grabbing]
-                asset_pos_world_frame = (
-                    math_utils.quat_apply(robot_quat[still_grabbing], asset_pos_body_frame) + robot_pos[still_grabbing]
-                )
-                asset_quat_world_frame = math_utils.quat_mul(robot_quat[still_grabbing], asset_quat_body_frame)
-                asset_quat = self.env.scene.rigid_objects[asset_id].data.root_quat_w
-                # fill pose tensor for all envs to write to sim
-                asset_quat[still_grabbing] = asset_quat_world_frame
-                asset_pos[still_grabbing] = asset_pos_world_frame
-                asset_pose_world_frame = torch.cat([asset_pos, asset_quat], dim=1)
-
-                self.env.scene.rigid_objects[asset_id].write_root_pose_to_sim(asset_pose_world_frame)
-
-            # if we start grabbing for the first time, we store the relative position of the asset to the robot and set grabbed_asset to True
-            # if multiple assets are within the grabbing distance, we only grab the closest one
-            closest_asset = dist < closest_asset_dist
-            now_grabbing = potential_asset_grab & ~still_grabbing & self.grabbed_asset_id.eq(-1) & closest_asset
-            if now_grabbing.any():
-
-                closest_asset_dist[now_grabbing] = dist[now_grabbing]
-
-                # set the position of the grabbed asset in the body frame of the robot
-                self.grabbed_asset_pos_body_frame[now_grabbing] = math_utils.quat_apply(
-                    math_utils.quat_inv(robot_quat[now_grabbing]), dist_vec[now_grabbing]
-                ) + torch.tensor([0.0, 0.0, self.grab_height]).to(self.env.device)
-                self.grabbed_asset_quat_body_frame[now_grabbing] = math_utils.quat_mul(
-                    math_utils.quat_inv(robot_quat[now_grabbing]),
-                    self.env.scene.rigid_objects[asset_id].data.root_quat_w[now_grabbing],
-                )
-                grabbed_new_ids[now_grabbing] = id_num
-
-            grabbed_any = grabbed_any | potential_asset_grab | still_grabbing
-
-        self.grabbed_asset_id[grabbed_new_ids >= 0] = grabbed_new_ids[grabbed_new_ids >= 0]
-        self.grabbed_asset_id[~grabbed_any] = -1
-
-    def _set_debug_vis_impl(self, debug_vis: bool):
-        # create markers if necessary for the first tome
-        if debug_vis:
-            if not hasattr(self, "force_visualizer"):
-                marker_cfg = BLUE_ARROW_X_MARKER_CFG.copy()
-                marker_cfg.markers["arrow"].scale = (0.1, 0.1, 0.1)
-                marker_cfg.prim_path = "/Visuals/Command/action_force"
-
-                self.force_visualizer = VisualizationMarkers(marker_cfg)
-            # set their visibility to true
-            self.force_visualizer.set_visibility(True)
-
-    def _debug_vis_callback(self, event):
-        # update the markers
-        # -- goal pose
-
-        # - get robot pos
-        robot_pos = self.env.scene.rigid_objects["robot"].data.root_pos_w.clone()
-        robot_quat = math_utils.yaw_quat(self.env.scene.rigid_objects["robot"].data.root_quat_w)
-        # increase z to visualize the force
-        robot_pos[:, 2] += 1.0
-
-        # - get action force
-        force = self.force_command
-        # force_3d = torch.cat(self.force_command, dim=1)
-        force_w = math_utils.quat_apply(robot_quat, self.force_command)
-        force_x = force_w[:, 0]
-        force_y = force_w[:, 1]
-
-        yaw_angle = torch.atan2(force_y, force_x)
-
-        force_dir_quat = math_utils.quat_from_euler_xyz(
-            torch.zeros_like(yaw_angle), torch.zeros_like(yaw_angle), yaw_angle
-        )
-
-        scales = torch.linalg.norm(force, dim=1, keepdim=True)
-        default_scale = torch.ones_like(scales) * 4
-        scales_3d = torch.cat([scales * 2, default_scale, default_scale], dim=1)
-
-        self.force_visualizer.visualize(translations=robot_pos, orientations=force_dir_quat, scales=scales_3d)
+        # if not jumping, relax the joint by setting the effort limit to 0
+        if (~self.is_jumping).any():
+            self._asset.write_joint_effort_limit_to_sim(
+                limits=torch.zeros((~self.is_jumping).sum().item(), 1).to(self.device),
+                joint_ids=[2],
+                env_ids=(~self.is_jumping).nonzero().squeeze(1),
+            )
 
 
-class WrenchAction2D(ActionTerm):
-    """Simple action for the spherical agent to move around and grab obstacles.
+class ArticulatedWrench2DAction(ActionTerm):
+    """Action term for an rigid body that is attached to links preventing it from
+    rolling and pitching. The action term applies a 2D wrench to the body in the body frame."""
 
-    - movement x, y, yaw: continuous action to move the agent in the x, y direction and yaw
-
-    - grab: binary action to grab the closest object within a radius and within the field of view
-
-    - climb up: binary action to make the agent climb up by jumping.
-                This action is only available every N steps to prevent the agent from jumping continuously."""
-
-    cfg: WrenchAction2DCfg
+    cfg: actions_cfg.ArticulatedWrench2DActionCfg
     _env: ManagerBasedRLEnv
+    _asset: Articulation
 
-    def __init__(self, cfg: WrenchAction2DCfg, env: ManagerBasedRLEnv):
+    def __init__(self, cfg: actions_cfg.ArticulatedWrench2DActionCfg, env: ManagerBasedRLEnv):
         super().__init__(cfg, env)
 
-        self.robot_name = "robot"
         self.env = env
+        self.max_lin_vel = 3.0
 
-        # movement config
-        self.max_force = cfg.max_force_forward  # Newtons
-        self.max_force_sideways = cfg.max_foce_sideways  # Newtons
-        self.max_torque = cfg.max_torque  # Newton-meters
-        self.max_lin_vel = cfg.max_lin_vel  # m/s
+        # unlimit joint ranges
+        max_translate_xy = 1000.0
+        max_translate_z = 1000.0
+        max_rotate = 1e9
+        limit_tensor = torch.tensor(
+            [
+                [-max_translate_xy, max_translate_xy],
+                [-max_translate_xy, max_translate_xy],
+                [-max_translate_z, max_translate_z],
+                [-max_rotate, max_rotate],
+            ],
+        ).to(self.device)
+        limit_tensor_envs = limit_tensor.unsqueeze(0).expand(self.num_envs, -1, -1)
+        self._asset.write_joint_limits_to_sim(limit_tensor_envs)
 
-        # command buffers
-        self.force_command = torch.zeros(env.num_envs, 3).to(env.device)
-        self.torque_command = torch.zeros(env.num_envs, 3).to(env.device)
-
-        # jump cooldown
-        self.jump_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
-
-        # teleop:
-        self.use_teleop = cfg.use_teleop
-        if self.use_teleop:
-            self.teleop_interface = Se3Keyboard(pos_sensitivity=self.max_force, rot_sensitivity=self.max_torque)
+        if TELEOP:
+            self.teleop_interface = Se3Keyboard(pos_sensitivity=1.0, rot_sensitivity=1.0)
             self.teleop_interface.add_callback("L", env.reset)
             print(self.teleop_interface)
 
@@ -425,64 +290,40 @@ class WrenchAction2D(ActionTerm):
         """The actions computed by the term after applying any processing."""
         raise NotImplementedError
 
-    """
-    Operations.
-    """
-
     def process_actions(self, actions: torch.Tensor):
-        """Processes the actions sent to the environment.
+        """called each env step, i.e., once per {decimation} sim steps"""
+        # set joint effort targets
 
-        Note:
-            This function is called once per environment step by the manager.
+        delta_pose, gripper_command = self.teleop_interface.advance()
 
-        Args:
-            actions: The actions to process.
-        """
+        action_x = torch.zeros(self.env.num_envs) + delta_pose[0] * 1000
+        action_y = torch.zeros(self.env.num_envs) + delta_pose[1] * 1000
+        action_r_z = torch.zeros(self.env.num_envs) + delta_pose[2] * 1000
 
-        # - movement x, y, yaw:
-        # movement is implemented as a force in the x, y direction and a torque in the yaw direction
-        if self.use_teleop:
-            delta_pose, gripper_command = self.teleop_interface.advance()
-            self.force_command[:, 0] = torch.tensor(delta_pose[0]).to(self.env.device)
-            self.force_command[:, 1] = (
-                torch.tensor(delta_pose[1]).to(self.env.device) / self.max_force * self.max_force_sideways
-            )
-            self.torque_command[:, 2] = (
-                torch.tensor(delta_pose[2]).to(self.env.device) / self.max_force * self.max_torque
-            )
-        else:
-            xy_force_body = actions[:, :2]
-            xy_force_body[:, 0] *= self.max_force
-            xy_force_body[:, 1] *= self.max_force_sideways
-            yaw_torque = actions[:, 2] * self.max_torque
+        # self._asset.set_joint_velocity_target(action_x, joint_ids=[0])  # self._joint_ids)
+        # self._asset.set_joint_velocity_target(action_y, joint_ids=[1])
+        # self._asset.set_joint_velocity_target(action_r_z, joint_ids=[3])
 
-            xy_force_body = torch.clamp(xy_force_body, -self.max_force, self.max_force)
-            yaw_torque = torch.clamp(yaw_torque, -self.max_torque, self.max_torque)
-            yaw_torque *= 0
+        # robot_quat_yaw = math_utils.yaw_quat(asset.data.body_quat_w[:, -1, :])
 
-            self.force_command = torch.cat([xy_force_body, torch.zeros(self.env.num_envs, 1).to(self.device)], dim=1)
-            self.torque_command = torch.cat(
-                [torch.zeros(self.env.num_envs, 2).to(self.device), yaw_torque.unsqueeze(1)], dim=1
-            )
+        force_b = torch.zeros(self.num_envs, 3, device=self.device)
+        force_b[:, 0] = action_x.squeeze()
+        force_b[:, 1] = action_y.squeeze()
+        torque = torch.zeros(self.num_envs, 3, device=self.device)
+        torque[:, 2] = action_r_z.squeeze()
+
+        self.force_b = force_b
+        self.torque = torque
 
     def apply_actions(self):
-        """Applies the actions to the asset managed by the term.
+        """called each sim step"""
+        # robot_quat = self._asset.data.body_quat_w[:, -1, :]
+        # force_w = math_utils.quat_rotate(robot_quat, self.force_b)
 
-        Note:
-            This is called at every simulation step by the manager.
-        """
-
-        # - force the robot to not roll or pitch
-        robot_quat = math_utils.yaw_quat(self.env.scene.rigid_objects[self.robot_name].data.root_quat_w)
-        robot_pos = self.env.scene.rigid_objects[self.robot_name].data.root_pos_w
-        self.env.scene.rigid_objects[self.robot_name].write_root_pose_to_sim(torch.cat([robot_pos, robot_quat], dim=1))
-
-        # - moving action
-
-        # get forces
+        # targets = torch.cat([force_w[:, :2], self.torque[:, 2:]], dim=1)
 
         # check if the robot is moving too fast
-        robot_lin_vel_w = self.env.scene.rigid_objects[self.robot_name].data.root_lin_vel_w
+        robot_lin_vel_w = self._asset.data.body_lin_vel_w[:, -1, :]
         above_max_lin_vel = torch.linalg.vector_norm(robot_lin_vel_w[:, :2], dim=1) > self.max_lin_vel
 
         # if the robot is moving too fast, we set the force in the direction of the velocity to 0
@@ -490,10 +331,10 @@ class WrenchAction2D(ActionTerm):
         if above_max_lin_vel.any():
             # TODO define as torch jit function for performance
             robot_lin_vel_w = robot_lin_vel_w[above_max_lin_vel]
-            robot_quat = self.env.scene.rigid_objects[self.robot_name].data.root_quat_w[above_max_lin_vel]
+            robot_quat = self._asset.data.body_quat_w[above_max_lin_vel, -1, :]
             robot_lin_vel_b = math_utils.quat_apply_yaw(math_utils.quat_inv(robot_quat), robot_lin_vel_w)
 
-            xy_force = self.force_command[above_max_lin_vel, :2]
+            xy_force = self.force_b[above_max_lin_vel, :2]
             # projection = (a.b / |b|^2) * b
             dot_products = torch.sum(xy_force * robot_lin_vel_b[:, :2], dim=1)
             norms_squared = torch.sum(robot_lin_vel_b[:, :2] ** 2, dim=1)
@@ -501,10 +342,10 @@ class WrenchAction2D(ActionTerm):
             norms_squared = torch.clamp(norms_squared, min=eps)
             projection = (dot_products / norms_squared).unsqueeze(-1) * robot_lin_vel_b[:, :2]
             xy_force -= projection
-            self.force_command[above_max_lin_vel, :2] = xy_force
+            self.force_b[above_max_lin_vel, :2] = xy_force
 
         self._asset.set_external_force_and_torque(
-            forces=self.force_command.unsqueeze(1), torques=self.torque_command.unsqueeze(1)
+            forces=self.force_b.unsqueeze(1), torques=self.torque.unsqueeze(1), body_ids=[-1]
         )
 
     def _set_debug_vis_impl(self, debug_vis: bool):
@@ -524,15 +365,15 @@ class WrenchAction2D(ActionTerm):
         # -- goal pose
 
         # - get robot pos
-        robot_pos = self.env.scene.rigid_objects["robot"].data.root_pos_w.clone()
-        robot_quat = math_utils.yaw_quat(self.env.scene.rigid_objects["robot"].data.root_quat_w)
+        robot_pos = self._asset.data.body_pos_w[:, -1, :].clone()
+        robot_quat = self._asset.data.body_quat_w[:, -1, :]
         # increase z to visualize the force
         robot_pos[:, 2] += 1.0
 
         # - get action force
-        force = self.force_command
+        force = self.force_b
         # force_3d = torch.cat(self.force_command, dim=1)
-        force_w = math_utils.quat_apply(robot_quat, self.force_command)
+        force_w = math_utils.quat_apply(robot_quat, self.force_b)
         force_x = force_w[:, 0]
         force_y = force_w[:, 1]
 
@@ -542,120 +383,8 @@ class WrenchAction2D(ActionTerm):
             torch.zeros_like(yaw_angle), torch.zeros_like(yaw_angle), yaw_angle
         )
 
-        scales = torch.linalg.norm(force, dim=1, keepdim=True)
+        scales = torch.linalg.norm(force, dim=1, keepdim=True) / 250
         default_scale = torch.ones_like(scales) * 4
         scales_3d = torch.cat([scales * 2, default_scale, default_scale], dim=1)
 
         self.force_visualizer.visualize(translations=robot_pos, orientations=force_dir_quat, scales=scales_3d)
-
-
-class JumpAction(ActionTerm):
-    """Jump action. Binary action. if enabled, the agent jumpy by setting its velocity up and forward for one step.
-    A cooldown is applied to prevent the agent from jumping continuously."""
-
-    cfg: JumpActionCfg
-    _env: ManagerBasedRLEnv
-
-    def __init__(self, cfg: JumpActionCfg, env: ManagerBasedRLEnv):
-        super().__init__(cfg, env)
-
-        self.robot_name = "robot"
-        self.env = env
-
-        # jump config
-        self.jump_cooldown_steps = int(math.ceil(cfg.jump_cooldown_secs / self.env.step_dt))
-        jump_height = 0.75  # meters
-        angle_deg = 80.0  # angle from the horizontal plane to jump vector
-        g = 9.81
-        jump_vel_up = math.sqrt(2 * g * jump_height)
-        jump_vel_forward = jump_vel_up / math.tan(angle_deg * math.pi / 180.0)
-        self.jump_vel = torch.tensor([jump_vel_forward, 0.0, jump_vel_up]).to(self.env.device)
-
-        self._processed_actions = torch.zeros(3)
-
-        # jump cooldown
-        self.jump_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
-
-        # teleop:
-        self.use_teleop = cfg.use_teleop
-        if self.use_teleop:
-            self.teleop_interface = Se3Keyboard()
-            self.teleop_interface.add_callback("L", env.reset)
-            print(self.teleop_interface)
-
-    """
-    Properties.
-    """
-
-    @property
-    def action_dim(self) -> int:
-        """Dimension of the action term."""
-        return 1  # jump (binary)
-
-    @property
-    def raw_actions(self) -> torch.Tensor:
-        """The input/raw actions sent to the term."""
-        return torch.empty()
-
-    @property
-    def processed_actions(self) -> torch.Tensor:
-        """The actions computed by the term after applying any processing."""
-        raise NotImplementedError
-
-    """
-    Operations.
-    """
-
-    def process_actions(self, actions: torch.Tensor):
-        """Processes the actions sent to the environment.
-
-        Note:
-            This function is called once per environment step by the manager.
-
-        Args:
-            actions: The actions to process.
-        """
-
-        # - movement x, y, yaw:
-        # movement is implemented as a force in the x, y direction and a torque in the yaw direction
-
-        # when climb up is activated (< 0), the agent jumps up by setting its velocity up and forward for one step
-        if self.use_teleop:
-            delta_pose, gripper_command = self.teleop_interface.advance()
-            want_to_jump = torch.tensor(delta_pose[3]).to(self.env.device) != 0
-            jump_now = want_to_jump & (self.jump_cooldown_buffer.eq(0))
-        else:
-            jump_now = (actions.squeeze() > 0) & (self.jump_cooldown_buffer.eq(0))
-
-        if jump_now.any():
-            # set velocities
-            all_robot_velocities = self.env.scene.rigid_objects[self.robot_name].data.root_lin_vel_w
-            jump_robots_quat = self.env.scene.rigid_objects[self.robot_name].data.root_quat_w[jump_now]
-            jump_vel_vec_world = math_utils.quat_apply_yaw(
-                jump_robots_quat, self.jump_vel.unsqueeze(0).expand(int(jump_now.sum()), -1)
-            )
-            all_robot_velocities[jump_now] = jump_vel_vec_world
-            zero_ang_vel = torch.zeros_like(all_robot_velocities)
-            velocity = torch.cat([all_robot_velocities, zero_ang_vel], dim=1)
-            self._asset.write_root_velocity_to_sim(velocity)
-            # set cooldown
-            self.jump_cooldown_buffer[jump_now] = self.jump_cooldown_steps
-            self.jump_cooldown_buffer[~jump_now] = torch.clamp(self.jump_cooldown_buffer[~jump_now] - 1, min=0)
-        else:
-            self.jump_cooldown_buffer = torch.clamp(self.jump_cooldown_buffer - 1, min=0)
-
-    def apply_actions(self):
-        """Applies the actions to the asset managed by the term.
-
-        Note:
-            This is called at every simulation step by the manager.
-        """
-        pass
-
-    def _set_debug_vis_impl(self, debug_vis: bool):
-        # create markers if necessary for the first tome
-        pass
-
-    def _debug_vis_callback(self, event):
-        # update the markers
-        pass
