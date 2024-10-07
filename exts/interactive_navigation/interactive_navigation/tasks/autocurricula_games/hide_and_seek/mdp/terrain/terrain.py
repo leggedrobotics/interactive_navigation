@@ -76,8 +76,8 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
     size=(20.0, 20.0),
     border_width=1.0,
     border_height=4.0,
-    num_rows=8,
-    num_cols=8,
+    num_rows=12,  # difficulty levels
+    num_cols=4,
     horizontal_scale=0.5,
     vertical_scale=0.05,
     slope_threshold=0.75,
@@ -105,6 +105,47 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
                     patch_radius=0.3,
                     max_height_diff=50.0,
                     z_range=(0.75, 50.0),
+                ),
+            },
+        )
+    },
+)
+
+
+MESH_FLAT_TERRAIN_CFG = TerrainGeneratorCfg(
+    size=(10.0, 10.0),
+    border_width=20.0,
+    border_height=0.0,
+    num_rows=24,
+    num_cols=24,
+    horizontal_scale=1.0,
+    vertical_scale=1.0,
+    slope_threshold=0.75,
+    use_cache=False,
+    curriculum=True,
+    sub_terrains={
+        "pyramid_stairs": MeshPyramidTerrainCfg(
+            proportion=1.0,
+            step_height_range=0.0,
+            step_width=(100.0, 100.5),
+            platform_width=3.0,
+            border_width=0.0,
+            holes=False,
+            flat_patch_sampling={
+                "init_pos": FlatPatchSamplingCfg(
+                    num_patches=128,
+                    patch_radius=1.5,
+                    max_height_diff=5.0,
+                ),
+                "lowest_pos": FlatPatchSamplingCfg(
+                    num_patches=128,
+                    patch_radius=0.5,
+                    max_height_diff=0.5,
+                ),
+                "not_lowest_pos": FlatPatchSamplingCfg(
+                    num_patches=128,
+                    patch_radius=0.3,
+                    max_height_diff=50.0,
                 ),
             },
         )
