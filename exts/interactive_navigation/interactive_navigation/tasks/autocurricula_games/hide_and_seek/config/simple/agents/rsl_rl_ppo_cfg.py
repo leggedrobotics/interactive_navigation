@@ -6,6 +6,8 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
     RslRlOnPolicyRunnerCfg,
     RslRlPpoActorCriticCfg,
     RslRlPpoAlgorithmCfg,
+    RslRlPpoRelationalActorCriticCfg,
+    RslRlPpoRecurrentActorCriticCfg,
 )
 
 
@@ -20,6 +22,66 @@ class HideSeekPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         init_noise_std=1.0,
         actor_hidden_dims=[512, 256, 128],
         critic_hidden_dims=[512, 256, 128],
+        activation="elu",
+    )
+    algorithm = RslRlPpoAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.005,
+        num_learning_epochs=5,
+        num_mini_batches=4,  # mini batch size = num_envs * num_steps_per_env // num_mini_batches
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.99,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+    )
+
+
+"""Transformer-based relational actor-critic"""
+
+
+@configclass
+class HideSeekRelationlPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+    num_steps_per_env = 32
+    max_iterations = 100_000
+    save_interval = 1000
+    experiment_name = "transformer_ppo"
+    empirical_normalization = False
+    policy = RslRlPpoRelationalActorCriticCfg(
+        init_noise_std=1.0,
+        activation="elu",
+    )
+    algorithm = RslRlPpoAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.005,
+        num_learning_epochs=5,
+        num_mini_batches=4,  # mini batch size = num_envs * num_steps_per_env // num_mini_batches
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.99,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+    )
+
+
+"""Recurrent actor-critic"""
+
+
+@configclass
+class RecurrentPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+    num_steps_per_env = 32
+    max_iterations = 100_000
+    save_interval = 1000
+    experiment_name = "recurrent_ppo"
+    empirical_normalization = False
+    policy = RslRlPpoRecurrentActorCriticCfg(
+        init_noise_std=1.0,
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(
