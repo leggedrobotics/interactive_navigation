@@ -106,7 +106,7 @@ class CloseToBoxReward:
 
         reward = 1 - min_dist_to_box_per_env / half_max_dist
 
-        return reward
+        return torch.clamp(reward, -1, 1)
 
 
 class JumpReward:
@@ -172,3 +172,27 @@ def outside_env(env: ManagerBasedRLEnv, threshold: float) -> torch.Tensor:
     is_outside = diff > threshold
 
     return is_outside.float()
+
+
+def action_penalty(env: ManagerBasedRLEnv, jump_penalty_factor: float = 2.0) -> torch.Tensor:
+    """Penalize action."""
+    action = env.action_manager.action
+
+    max_force = env.cfg.actions.simple_wrench.max_force_forward
+    max_torque = env.cfg.actions.simple_wrench.max_torque
+    force_action = torch.clamp(torch.linalg.vector_norm(action[:, :2], dim=1), -max_force, max_force) / max_force
+    torque_action = torch.clamp(action[:, 2], -max_torque, max_torque) / max_torque
+    jump_action = (action[:, 3] > 0).float()
+
+    penalty = torch.abs(force_action) + torch.abs(torque_action) + jump_action
+
+    return penalty
+
+
+def high_up(env: ManagerBasedRLEnv, height_range: tuple[float, float]) -> torch.Tensor:
+    """Dense reward increaseing from 0 to 1 if the robot is within the heigh range."""
+    robot_pos = env.scene["robot"].data.root_pos_w
+
+    height = torch.clamp(robot_pos[:, 2], height_range[0], height_range[1])
+    reward = (height - height_range[0]) / (height_range[1] - height_range[0])
+    return reward
