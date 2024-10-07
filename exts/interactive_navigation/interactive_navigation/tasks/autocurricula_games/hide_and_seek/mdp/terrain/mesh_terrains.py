@@ -104,6 +104,28 @@ def pyramid_terrain(
         prev_box_pos = box_pos
         prev_box_height = step_height
 
+    if cfg.walls:
+        wall_height = 20.0
+        wall_thickness = 0.1
+        # south wall
+        center_south = [wall_thickness / 2, cfg.size[1] / 2, wall_height / 2]
+        dims = [wall_thickness, cfg.size[1], wall_height]
+        wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_south))
+        meshes_list.append(wall_box)
+        # # north wall
+        # center_north = [wall_thickness / 2, 0, wall_height / 2]
+        # wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_north))
+        # meshes_list.append(wall_box)
+        # east wall
+        center_east = [cfg.size[1] / 2, wall_thickness / 2, wall_height / 2]
+        dims = [cfg.size[0], wall_thickness, wall_height]
+        wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_east))
+        meshes_list.append(wall_box)
+        # # west wall
+        # center_west = [0, wall_thickness / 2, wall_height / 2]
+        # wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_west))
+        # meshes_list.append(wall_box)
+
     # Origin of the terrain
     # total_height = prev_box_pos[2] + 0.5 * prev_box_height
     origin = np.array([terrain_center[0], terrain_center[1], 0])

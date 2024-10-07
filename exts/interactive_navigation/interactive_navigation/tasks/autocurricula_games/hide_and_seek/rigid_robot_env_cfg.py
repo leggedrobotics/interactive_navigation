@@ -353,7 +353,7 @@ class ViewerCfg:
     """Configuration of the scene viewport camera."""
 
     # eye: tuple[float, float, float] = (-60.0, 0.5, 70.0)
-    eye: tuple[float, float, float] = (-10.0, 0.0, 20.0)
+    eye: tuple[float, float, float] = (0.0, 0.0, 20.0)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
     lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
