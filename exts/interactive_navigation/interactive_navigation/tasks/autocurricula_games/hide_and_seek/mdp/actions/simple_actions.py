@@ -4,7 +4,7 @@ import torch
 import math
 from typing import TYPE_CHECKING
 
-TELEOP = False
+TELEOP = True
 
 from omni.isaac.lab.envs import ManagerBasedRLEnv
 from omni.isaac.lab.managers.action_manager import ActionTerm
@@ -83,7 +83,7 @@ class SimpleAction(ActionTerm):
         self.jump_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
 
         # teleop:
-        self.use_teleop = cfg.use_teleop and TELEOP
+        self.use_teleop = TELEOP
         if self.use_teleop:
             self.teleop_interface = Se3Keyboard(pos_sensitivity=self.max_force, rot_sensitivity=self.max_torque)
             self.teleop_interface.add_callback("L", env.reset)
@@ -407,7 +407,7 @@ class WrenchAction2D(ActionTerm):
         self.jump_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
 
         # teleop:
-        self.use_teleop = cfg.use_teleop and TELEOP
+        self.use_teleop = TELEOP
         if self.use_teleop:
             self.teleop_interface = Se3Keyboard(pos_sensitivity=self.max_force, rot_sensitivity=self.max_torque)
             self.teleop_interface.add_callback("L", env.reset)
@@ -584,7 +584,7 @@ class JumpAction(ActionTerm):
         self.jump_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
 
         # teleop:
-        self.use_teleop = cfg.use_teleop and TELEOP
+        self.use_teleop = TELEOP
         if self.use_teleop:
             self.teleop_interface = Se3Keyboard()
             self.teleop_interface.add_callback("L", env.reset)

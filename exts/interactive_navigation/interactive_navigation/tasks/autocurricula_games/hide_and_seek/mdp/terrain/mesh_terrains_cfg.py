@@ -29,8 +29,11 @@ class MeshPyramidTerrainCfg(SubTerrainBaseCfg):
     """The width of the steps (in m)."""
     platform_width: float = 1.0
     """The width of the square platform at the center of the terrain. Defaults to 1.0."""
+    walls: bool = False
+    """If True, each terrain is surrounded by walls. Defaults to False."""
     holes: bool = False
     """If True, the terrain will have holes in the steps. Defaults to False.
+    
 
     If :obj:`holes` is True, the terrain will have pyramid stairs of length or width
     :obj:`platform_width` (depending on the direction) with no steps in the remaining area. Additionally,

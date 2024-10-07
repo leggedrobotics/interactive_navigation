@@ -30,9 +30,6 @@ class SimpleActionCfg(ActionTermCfg):
     jump_cooldown_secs: float = 1.0
     """Cooldown time in seconds for the jump action."""
 
-    use_teleop: bool = False
-    """Whether to use teleop interface for controlling the robot."""
-
 
 @configclass
 class WrenchAction2DCfg(ActionTermCfg):
@@ -53,9 +50,6 @@ class WrenchAction2DCfg(ActionTermCfg):
     max_ang_vel: float = 3.14
     """Maximum angular velocity of the robot in rad/s."""
 
-    use_teleop: bool = False
-    """Whether to use teleop interface for controlling the robot."""
-
 
 @configclass
 class JumpActionCfg(ActionTermCfg):
@@ -66,6 +60,3 @@ class JumpActionCfg(ActionTermCfg):
 
     jump_cooldown_secs: float = 1.0
     """Cooldown time in seconds for the jump action."""
-
-    use_teleop: bool = False
-    """Whether to use teleop interface for controlling the robot."""
