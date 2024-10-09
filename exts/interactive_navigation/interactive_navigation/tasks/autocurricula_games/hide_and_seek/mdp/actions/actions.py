@@ -172,7 +172,7 @@ class ArticulatedJumpAction(ActionTerm):
     @property
     def action_dim(self) -> int:
         """Dimension of the action term."""
-        return 1  # force x, y, torque z
+        return 1
 
     @property
     def raw_actions(self) -> torch.Tensor:
@@ -249,7 +249,8 @@ class ArticulatedWrench2DAction(ActionTerm):
         super().__init__(cfg, env)
 
         self.env = env
-        self.max_lin_vel = 3.0
+        self.max_lin_vel = cfg.max_velocity
+        self.max_rot_vel = cfg.max_rotvel
 
         # unlimit joint ranges
         max_translate_xy = 1000.0
@@ -266,6 +267,10 @@ class ArticulatedWrench2DAction(ActionTerm):
         limit_tensor_envs = limit_tensor.unsqueeze(0).expand(self.num_envs, -1, -1)
         self._asset.write_joint_limits_to_sim(limit_tensor_envs)
 
+        # set link masses
+        self._asset.data.default_mass[:, :-1] *= 0.0001
+
+        # enable teleoperation
         if TELEOP:
             self.teleop_interface = Se3Keyboard(pos_sensitivity=1.0, rot_sensitivity=1.0)
             self.teleop_interface.add_callback("L", env.reset)
@@ -296,9 +301,9 @@ class ArticulatedWrench2DAction(ActionTerm):
 
         delta_pose, gripper_command = self.teleop_interface.advance()
 
-        action_x = torch.zeros(self.env.num_envs) + delta_pose[0] * 1000
-        action_y = torch.zeros(self.env.num_envs) + delta_pose[1] * 1000
-        action_r_z = torch.zeros(self.env.num_envs) + delta_pose[2] * 1000
+        action_x = torch.zeros(self.env.num_envs) + delta_pose[0] * 4
+        action_y = torch.zeros(self.env.num_envs) + delta_pose[1] * 4
+        action_r_z = torch.zeros(self.env.num_envs) + delta_pose[2] * 4
 
         # self._asset.set_joint_velocity_target(action_x, joint_ids=[0])  # self._joint_ids)
         # self._asset.set_joint_velocity_target(action_y, joint_ids=[1])
@@ -317,36 +322,12 @@ class ArticulatedWrench2DAction(ActionTerm):
 
     def apply_actions(self):
         """called each sim step"""
-        # robot_quat = self._asset.data.body_quat_w[:, -1, :]
-        # force_w = math_utils.quat_rotate(robot_quat, self.force_b)
 
-        # targets = torch.cat([force_w[:, :2], self.torque[:, 2:]], dim=1)
+        robot_quat = self._asset.data.body_quat_w[:, -1, :]
+        vel_b = math_utils.quat_apply_yaw(robot_quat, self.force_b)
 
-        # check if the robot is moving too fast
-        robot_lin_vel_w = self._asset.data.body_lin_vel_w[:, -1, :]
-        above_max_lin_vel = torch.linalg.vector_norm(robot_lin_vel_w[:, :2], dim=1) > self.max_lin_vel
-
-        # if the robot is moving too fast, we set the force in the direction of the velocity to 0
-        # by subtracting the projection of the force on the velocity from the force
-        if above_max_lin_vel.any():
-            # TODO define as torch jit function for performance
-            robot_lin_vel_w = robot_lin_vel_w[above_max_lin_vel]
-            robot_quat = self._asset.data.body_quat_w[above_max_lin_vel, -1, :]
-            robot_lin_vel_b = math_utils.quat_apply_yaw(math_utils.quat_inv(robot_quat), robot_lin_vel_w)
-
-            xy_force = self.force_b[above_max_lin_vel, :2]
-            # projection = (a.b / |b|^2) * b
-            dot_products = torch.sum(xy_force * robot_lin_vel_b[:, :2], dim=1)
-            norms_squared = torch.sum(robot_lin_vel_b[:, :2] ** 2, dim=1)
-            eps = 1e-8  # small constant for numerical stability
-            norms_squared = torch.clamp(norms_squared, min=eps)
-            projection = (dot_products / norms_squared).unsqueeze(-1) * robot_lin_vel_b[:, :2]
-            xy_force -= projection
-            self.force_b[above_max_lin_vel, :2] = xy_force
-
-        self._asset.set_external_force_and_torque(
-            forces=self.force_b.unsqueeze(1), torques=self.torque.unsqueeze(1), body_ids=[-1]
-        )
+        self._asset.set_joint_velocity_target(vel_b[:, :2], joint_ids=[0, 1])
+        self._asset.set_joint_velocity_target(self.torque[:, 2:], joint_ids=[3])
 
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary for the first tome
@@ -383,7 +364,7 @@ class ArticulatedWrench2DAction(ActionTerm):
             torch.zeros_like(yaw_angle), torch.zeros_like(yaw_angle), yaw_angle
         )
 
-        scales = torch.linalg.norm(force, dim=1, keepdim=True) / 250
+        scales = torch.linalg.norm(force, dim=1, keepdim=True)
         default_scale = torch.ones_like(scales) * 4
         scales_3d = torch.cat([scales * 2, default_scale, default_scale], dim=1)
 
