@@ -49,8 +49,8 @@ class ArticulatedWrench2DActionCfg(ActionTermCfg):
     See :class:`ArticulatedWrench2DAction` for more details.
     """
 
-    max_velocity: float = 5.0
+    max_velocity: float = 6.0
 
-    max_rotvel: float = 2.0
+    max_rotvel: float = 4.0
 
     class_type: type[ActionTerm] = actions.ArticulatedWrench2DAction

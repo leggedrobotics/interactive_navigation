@@ -152,10 +152,12 @@ class ArticulatedJumpAction(ActionTerm):
 
         # jump config
         self.jump_cooldown_steps = int(math.ceil(cfg.jump_cooldown_secs / self.env.step_dt))
-        self.jump_height = 0.75  # meters
+        jump_height = 0.85  # meters
+        g = 9.81  # m/s^2
+        self.jump_velocity = math.sqrt(2 * g * jump_height)
 
         self.jump_cooldown_buffer = torch.zeros(self.env.num_envs, dtype=torch.long).to(self.env.device)
-        self.is_jumping = torch.zeros(self.env.num_envs, dtype=torch.bool).to(self.env.device)
+        self.jumping_now = torch.zeros(self.env.num_envs, dtype=torch.bool).to(self.env.device)
         self.bottom_height = torch.zeros(self.env.num_envs).to(self.env.device)
 
         self.des_vel = torch.zeros_like(self._asset.data.body_lin_vel_w[:, -1, :])
@@ -187,54 +189,32 @@ class ArticulatedJumpAction(ActionTerm):
     def process_actions(self, actions: torch.Tensor):
         """called each env step, i.e., once per {decimation} sim steps"""
         # set joint effort targets
-
         delta_pose, gripper_command = self.teleop_interface.advance()
 
         want_to_jump = (torch.zeros_like(actions.squeeze()) + delta_pose[3]) != 0
-        self.want_to_jump = want_to_jump
 
-        jump_now = want_to_jump & (self.jump_cooldown_buffer.eq(0)) & (~self.is_jumping)
+        # check if the jump is requested and the cooldown is over
+        self.jumping_now = want_to_jump & (self.jump_cooldown_buffer.eq(0))
 
-        if jump_now.any():
-            # set the jump flag and store the current height
-            self.is_jumping[jump_now] = True
-            self.bottom_height[jump_now] = self._asset.data.body_pos_w[jump_now, -1, 2]
+        # update cooldown buffer
+        self.jump_cooldown_buffer = torch.clamp(self.jump_cooldown_buffer - 1, min=0)
 
+        if self.jumping_now.any():
             # set the jump cooldown buffer, starting when the jump is initiated, not when it ends
-            self.jump_cooldown_buffer[jump_now] = self.jump_cooldown_steps
-            self.jump_cooldown_buffer[~jump_now] = torch.clamp(self.jump_cooldown_buffer[~jump_now] - 1, min=0)
-        else:
-            self.jump_cooldown_buffer = torch.clamp(self.jump_cooldown_buffer - 1, min=0)
+            self.jump_cooldown_buffer[self.jumping_now] = self.jump_cooldown_steps
 
     def apply_actions(self):
         """called each sim step"""
-        current_height = self._asset.data.body_pos_w[:, -1, 2]
-        at_top = current_height - self.bottom_height > self.jump_height
-        self.is_jumping[at_top] = False
 
-        # if jumping, move up to the desired height
-        if self.is_jumping.any():
-            # reset effort limit
-            self._asset.write_joint_effort_limit_to_sim(
-                limits=torch.ones(self.is_jumping.sum().item(), 1).to(self.device) * 100.0,
-                joint_ids=[2],
-                env_ids=self.is_jumping.nonzero().squeeze(1),
+        if self.jumping_now.any():
+            joint_pos = self._asset.data.joint_pos[self.jumping_now, 2].clone().unsqueeze(1)
+            joint_vel = torch.zeros_like(joint_pos) + self.jump_velocity
+
+            self._asset.write_joint_state_to_sim(
+                position=joint_pos, velocity=joint_vel, joint_ids=[2], env_ids=torch.nonzero(self.jumping_now).squeeze()
             )
 
-            # set the joint velocity target
-            self._asset.set_joint_position_target(
-                target=torch.ones(self.is_jumping.sum().item(), 1).to(self.device),
-                joint_ids=[2],
-                env_ids=self.is_jumping.nonzero().squeeze(1),
-            )
-
-        # if not jumping, relax the joint by setting the effort limit to 0
-        if (~self.is_jumping).any():
-            self._asset.write_joint_effort_limit_to_sim(
-                limits=torch.zeros((~self.is_jumping).sum().item(), 1).to(self.device),
-                joint_ids=[2],
-                env_ids=(~self.is_jumping).nonzero().squeeze(1),
-            )
+            self.jumping_now = torch.zeros_like(self.jumping_now, dtype=torch.bool)
 
 
 class ArticulatedWrench2DAction(ActionTerm):
