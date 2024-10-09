@@ -44,6 +44,7 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 # Scene definition
 ##
+N_BOXES = 8
 
 
 @configclass
@@ -60,8 +61,8 @@ class MySceneCfg(InteractiveSceneCfg):
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
             restitution_combine_mode="multiply",
-            static_friction=1.0,
-            dynamic_friction=1.0,
+            static_friction=0.0,
+            dynamic_friction=0.0,
         ),
         visual_material=sim_utils.MdlFileCfg(
             mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
@@ -72,32 +73,6 @@ class MySceneCfg(InteractiveSceneCfg):
     # robots
 
     robot: ArticulationCfg = ROBOT_USD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
-
-    # assets:
-    box_1: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box_1", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    # box_2: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Box_2", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # box_3: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Box_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # box_4: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Box_4", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # box_5: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Box_5", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # box_6: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Box_6", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # box_7: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Box_7", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
-    # box_8: RigidObjectCfg = CUBOID_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Box_8", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    # )
 
     # sensors
     lidar = RayCasterCfg(
@@ -112,7 +87,7 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
-        debug_vis=True,
+        debug_vis=False,
         history_length=0,
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
         mesh_prim_paths=[
@@ -134,7 +109,7 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
-        debug_vis=True,
+        debug_vis=False,
         history_length=0,
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
         mesh_prim_paths=[
@@ -158,7 +133,7 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
-        debug_vis=True,
+        debug_vis=False,
         history_length=0,
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
         mesh_prim_paths=[
@@ -181,6 +156,10 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=2000.0),
     )
+
+    def __post_init__(self):
+        for i in range(1, N_BOXES + 1):
+            setattr(self, f"box_{i}", CUBOID_CFG.replace(prim_path=f"{{ENV_REGEX_NS}}/Box_{i}"))
 
 
 ##
@@ -297,7 +276,7 @@ class EventCfg:
         },
     )
 
-    reset_box_1 = EventTerm(
+    reset_boxes = EventTerm(
         func=mdp.reset_root_state_uniform_on_terrain_aware,
         mode="reset",
         params={
@@ -307,16 +286,7 @@ class EventCfg:
             "lowest_level": True,
             "offset": [0.0, 0.0, Z_BOX],
             # "asset_cfg": SceneEntityCfg("box_1"),
-            "asset_configs": [
-                SceneEntityCfg("box_1"),
-                # SceneEntityCfg("box_2"),
-                # SceneEntityCfg("box_3"),
-                # SceneEntityCfg("box_4"),
-                # SceneEntityCfg("box_5"),
-                # SceneEntityCfg("box_6"),
-                # SceneEntityCfg("box_7"),
-                # SceneEntityCfg("box_8"),
-            ],
+            "asset_configs": [SceneEntityCfg(f"box_{i}") for i in range(1, N_BOXES + 1)],
         },
     )
 
@@ -420,7 +390,7 @@ class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
         self.episode_length_s = 120.0
         # simulation settings
         # self.sim.dt = 0.005  # 200 Hz
-        self.sim.dt = 0.005  # 100 Hz
+        self.sim.dt = 0.01  # 100 Hz
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material

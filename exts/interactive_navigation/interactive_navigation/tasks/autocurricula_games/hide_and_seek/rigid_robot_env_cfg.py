@@ -45,6 +45,8 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 # Scene definition
 ##
 
+N_BOXES = 8
+
 
 @configclass
 class MySceneCfg(InteractiveSceneCfg):
@@ -60,8 +62,8 @@ class MySceneCfg(InteractiveSceneCfg):
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
             restitution_combine_mode="multiply",
-            static_friction=1.0,
-            dynamic_friction=1.0,
+            static_friction=0.0,
+            dynamic_friction=0.0,
         ),
         visual_material=sim_utils.MdlFileCfg(
             mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
@@ -71,32 +73,6 @@ class MySceneCfg(InteractiveSceneCfg):
     )
     # robots
     robot: RigidObjectCfg = ROBOT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
-
-    # assets:
-    box_1: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box_1", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    box_2: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box_2", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    box_3: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box_3", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    box_4: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box_4", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    box_5: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box_5", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    box_6: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box_6", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    box_7: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box_7", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
-    box_8: RigidObjectCfg = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box_8", init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0))
-    )
 
     # sensors
     lidar = RayCasterCfg(
@@ -159,6 +135,10 @@ class MySceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=2000.0),
     )
 
+    def __post_init__(self):
+        for i in range(1, N_BOXES + 1):
+            setattr(self, f"box_{i}", CUBOID_CFG.replace(prim_path=f"{{ENV_REGEX_NS}}/Box_{i}"))
+
 
 ##
 # MDP settings
@@ -214,19 +194,19 @@ class ObservationsCfg:
             params={"entity_cfg": SceneEntityCfg("robot"), "pov_entity_cfg": SceneEntityCfg("robot")},
         )
 
-        # lidar_scan = ObsTerm(
-        #     func=mdp.lidar_obs_dist,
-        #     params={"sensor_cfg": SceneEntityCfg("lidar")},
-        #     noise=Unoise(n_min=-0.1, n_max=0.1),
-        #     clip=(0.0, 100.0),
-        # )
+        lidar_scan = ObsTerm(
+            func=mdp.lidar_obs_dist,
+            params={"sensor_cfg": SceneEntityCfg("lidar")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(0.0, 100.0),
+        )
 
-        # lidar_scan_top = ObsTerm(
-        #     func=mdp.lidar_obs_dist,
-        #     params={"sensor_cfg": SceneEntityCfg("lidar_top")},
-        #     noise=Unoise(n_min=-0.1, n_max=0.1),
-        #     clip=(0.0, 100.0),
-        # )
+        lidar_scan_top = ObsTerm(
+            func=mdp.lidar_obs_dist,
+            params={"sensor_cfg": SceneEntityCfg("lidar_top")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(0.0, 100.0),
+        )
 
         # boxes:
         boxes_poses = ObsTerm(
@@ -277,16 +257,7 @@ class EventCfg:
             "lowest_level": True,
             "offset": [0.0, 0.0, Z_BOX],
             # "asset_cfg": SceneEntityCfg("box_1"),
-            "asset_configs": [
-                SceneEntityCfg("box_1"),
-                SceneEntityCfg("box_2"),
-                SceneEntityCfg("box_3"),
-                SceneEntityCfg("box_4"),
-                SceneEntityCfg("box_5"),
-                SceneEntityCfg("box_6"),
-                SceneEntityCfg("box_7"),
-                SceneEntityCfg("box_8"),
-            ],
+            "asset_configs": [SceneEntityCfg(f"box_{i}") for i in range(1, N_BOXES + 1)],
         },
     )
 
@@ -400,10 +371,10 @@ class RigidRobotEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 10  # 10 Hz
-        self.episode_length_s = 30.0
+        self.episode_length_s = 90.0
         # simulation settings
         # self.sim.dt = 0.005  # 200 Hz
-        self.sim.dt = 0.005  # 100 Hz
+        self.sim.dt = 0.01  # 100 Hz
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material
