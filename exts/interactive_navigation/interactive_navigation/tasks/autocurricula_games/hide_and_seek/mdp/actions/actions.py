@@ -283,7 +283,7 @@ class ArticulatedWrench2DAction(ActionTerm):
     @property
     def action_dim(self) -> int:
         """Dimension of the action term."""
-        return 3  # force x, y, torque z
+        return 3  # vel x, y, rot_vel z
 
     @property
     def raw_actions(self) -> torch.Tensor:
@@ -299,47 +299,52 @@ class ArticulatedWrench2DAction(ActionTerm):
         """called each env step, i.e., once per {decimation} sim steps"""
         # set joint effort targets
 
-        delta_pose, gripper_command = self.teleop_interface.advance()
+        if TELEOP:
+            delta_pose, gripper_command = self.teleop_interface.advance()
+            action_x = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[0] * 4
+            action_y = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[1] * 4
+            action_r_z = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[2] * 4
 
-        action_x = torch.zeros(self.env.num_envs) + delta_pose[0] * 4
-        action_y = torch.zeros(self.env.num_envs) + delta_pose[1] * 4
-        action_r_z = torch.zeros(self.env.num_envs) + delta_pose[2] * 4
+        else:
+            # limit action to max vel:
+            vel_norm = torch.linalg.norm(actions[:, :2], dim=1)
+            above_max_vel = vel_norm > self.max_lin_vel
+            actions[above_max_vel, :2] = (
+                actions[above_max_vel, :2] / vel_norm[above_max_vel].unsqueeze(1) * self.max_lin_vel
+            )
 
-        # self._asset.set_joint_velocity_target(action_x, joint_ids=[0])  # self._joint_ids)
-        # self._asset.set_joint_velocity_target(action_y, joint_ids=[1])
-        # self._asset.set_joint_velocity_target(action_r_z, joint_ids=[3])
+            action_x = actions[:, 0]
+            action_y = actions[:, 1]
+            action_r_z = torch.clamp(actions[:, 2], -self.max_rot_vel, self.max_rot_vel)
 
-        # robot_quat_yaw = math_utils.yaw_quat(asset.data.body_quat_w[:, -1, :])
+        vel_b = torch.zeros(self.num_envs, 3, device=self.device)
+        vel_b[:, 0] = action_x.squeeze()
+        vel_b[:, 1] = action_y.squeeze()
+        rot_vel = action_r_z.squeeze()
 
-        force_b = torch.zeros(self.num_envs, 3, device=self.device)
-        force_b[:, 0] = action_x.squeeze()
-        force_b[:, 1] = action_y.squeeze()
-        torque = torch.zeros(self.num_envs, 3, device=self.device)
-        torque[:, 2] = action_r_z.squeeze()
-
-        self.force_b = force_b
-        self.torque = torque
+        self.vel_b = vel_b
+        self.rot_vel = rot_vel
 
     def apply_actions(self):
         """called each sim step"""
 
         robot_quat = self._asset.data.body_quat_w[:, -1, :]
-        vel_b = math_utils.quat_apply_yaw(robot_quat, self.force_b)
+        vel_b = math_utils.quat_apply_yaw(robot_quat, self.vel_b)
 
         self._asset.set_joint_velocity_target(vel_b[:, :2], joint_ids=[0, 1])
-        self._asset.set_joint_velocity_target(self.torque[:, 2:], joint_ids=[3])
+        self._asset.set_joint_velocity_target(self.rot_vel.unsqueeze(1), joint_ids=[3])
 
     def _set_debug_vis_impl(self, debug_vis: bool):
         # create markers if necessary for the first tome
         if debug_vis:
-            if not hasattr(self, "force_visualizer"):
+            if not hasattr(self, "vel_visualizer"):
                 marker_cfg = BLUE_ARROW_X_MARKER_CFG.copy()
                 marker_cfg.markers["arrow"].scale = (0.1, 0.1, 0.1)
-                marker_cfg.prim_path = "/Visuals/Command/action_force"
+                marker_cfg.prim_path = "/Visuals/Command/action_vel"
 
-                self.force_visualizer = VisualizationMarkers(marker_cfg)
+                self.vel_visualizer = VisualizationMarkers(marker_cfg)
             # set their visibility to true
-            self.force_visualizer.set_visibility(True)
+            self.vel_visualizer.set_visibility(True)
 
     def _debug_vis_callback(self, event):
         # update the markers
@@ -348,24 +353,24 @@ class ArticulatedWrench2DAction(ActionTerm):
         # - get robot pos
         robot_pos = self._asset.data.body_pos_w[:, -1, :].clone()
         robot_quat = self._asset.data.body_quat_w[:, -1, :]
-        # increase z to visualize the force
+        # increase z to visualize the vel
         robot_pos[:, 2] += 1.0
 
-        # - get action force
-        force = self.force_b
-        # force_3d = torch.cat(self.force_command, dim=1)
-        force_w = math_utils.quat_apply(robot_quat, self.force_b)
-        force_x = force_w[:, 0]
-        force_y = force_w[:, 1]
+        # - get action vel
+        vel = self.vel_b
+        # vel_3d = torch.cat(self.vel_command, dim=1)
+        vel_w = math_utils.quat_apply(robot_quat, self.vel_b)
+        vel_x = vel_w[:, 0]
+        vel_y = vel_w[:, 1]
 
-        yaw_angle = torch.atan2(force_y, force_x)
+        yaw_angle = torch.atan2(vel_y, vel_x)
 
-        force_dir_quat = math_utils.quat_from_euler_xyz(
+        vel_dir_quat = math_utils.quat_from_euler_xyz(
             torch.zeros_like(yaw_angle), torch.zeros_like(yaw_angle), yaw_angle
         )
 
-        scales = torch.linalg.norm(force, dim=1, keepdim=True)
+        scales = torch.linalg.norm(vel, dim=1, keepdim=True)
         default_scale = torch.ones_like(scales) * 4
         scales_3d = torch.cat([scales * 2, default_scale, default_scale], dim=1)
 
-        self.force_visualizer.visualize(translations=robot_pos, orientations=force_dir_quat, scales=scales_3d)
+        self.vel_visualizer.visualize(translations=robot_pos, orientations=vel_dir_quat, scales=scales_3d)
