@@ -24,8 +24,8 @@ ROBOT_USD_CFG = ArticulationCfg(
         usd_path="/home/rafael/Projects/MT/interactive_navigation/exts/interactive_navigation/interactive_navigation/tasks/autocurricula_games/hide_and_seek/mdp/urdfs/output.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
-            max_linear_velocity=10.0,
-            max_angular_velocity=10.0,
+            max_linear_velocity=30.0,
+            max_angular_velocity=30.0,
             max_depenetration_velocity=100.0,
             enable_gyroscopic_forces=True,
         ),
@@ -46,7 +46,7 @@ ROBOT_USD_CFG = ArticulationCfg(
         "x_actuator": ImplicitActuatorCfg(
             joint_names_expr=["joint_x"],
             effort_limit=1000.0,
-            velocity_limit=5.0,
+            velocity_limit=25.0,
             stiffness=0.0,
             damping=100.0,
             friction=0.5,
@@ -54,7 +54,7 @@ ROBOT_USD_CFG = ArticulationCfg(
         "y_actuator": ImplicitActuatorCfg(
             joint_names_expr=["joint_y"],
             effort_limit=10000.0,
-            velocity_limit=5.0,
+            velocity_limit=25.0,
             stiffness=0.0,
             damping=100.0,
             friction=0.5,
@@ -62,7 +62,7 @@ ROBOT_USD_CFG = ArticulationCfg(
         "z_actuator": ImplicitActuatorCfg(
             joint_names_expr=["joint_z"],
             effort_limit=1000.0,
-            velocity_limit=5.0,
+            velocity_limit=25.0,
             stiffness=0.0,
             damping=1.0,
             friction=1.0,
@@ -70,7 +70,7 @@ ROBOT_USD_CFG = ArticulationCfg(
         "yaw_actuator": ImplicitActuatorCfg(
             joint_names_expr=["joint_yaw"],
             effort_limit=1000.0,
-            velocity_limit=2.0,
+            velocity_limit=10.0,
             stiffness=0.0,
             damping=100.0,
             friction=0.5,
@@ -90,7 +90,9 @@ CUBOID_CFG = RigidObjectCfg(
             max_depenetration_velocity=1.0, disable_gravity=False, max_angular_velocity=3.14, kinematic_enabled=False
         ),
         mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
-        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=0.3, dynamic_friction=0.3),
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            static_friction=0.75, dynamic_friction=0.75, friction_combine_mode="max"
+        ),
         collision_props=sim_utils.CollisionPropertiesCfg(),
         visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.2, 0.2)),
         activate_contact_sensors=True,
