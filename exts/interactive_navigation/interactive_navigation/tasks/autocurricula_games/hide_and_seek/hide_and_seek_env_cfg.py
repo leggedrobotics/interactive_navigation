@@ -271,10 +271,29 @@ class EventCfg:
         func=mdp.reset_root_state_uniform_on_terrain_aware,
         mode="reset",
         params={
-            "pose_range": {"yaw": (-3.14, 3.14)},
+            "pose_range": {"yaw": (0, 0)},
             "lowest_level": True,
             "offset": [0.0, 0.0, Z_ROBOT],
             "reset_used_patches_ids": True,
+        },
+    )
+
+    reset_robot_joints = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "position_range": (0.0, 0.0),
+            "velocity_range": (0.0, 0.0),
+        },
+    )
+
+    reset_robot_yaw_joint = EventTerm(
+        func=mdp.reset_id_joints_by_offset,
+        mode="reset",
+        params={
+            "position_range": (-3.1416, 3.1416),
+            "velocity_range": (0.0, 0.0),
+            "joint_names": ["joint_yaw"],
         },
     )
 
@@ -352,20 +371,20 @@ class ViewerCfg:
     """Configuration of the scene viewport camera."""
 
     # eye: tuple[float, float, float] = (-60.0, 0.5, 70.0)
-    eye: tuple[float, float, float] = (0.0, 0.0, 60.0)
+    eye: tuple[float, float, float] = (0.0, 0.0, 10.0)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
     lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
     cam_prim_path: str = "/OmniverseKit_Persp"
     resolution: tuple[int, int] = (1280, 720)
-    origin_type: Literal["world", "env", "asset_root"] = "env"
+    origin_type: Literal["world", "env", "asset_root"] = "asset_root"
     """
     * ``"world"``: The origin of the world.
     * ``"env"``: The origin of the environment defined by :attr:`env_index`.
     * ``"asset_root"``: The center of the asset defined by :attr:`asset_name` in environment :attr:`env_index`.
     """
     env_index: int = 0
-    asset_name: str | None = None  # "robot"
+    asset_name: str | None = "robot"
 
 
 ##
