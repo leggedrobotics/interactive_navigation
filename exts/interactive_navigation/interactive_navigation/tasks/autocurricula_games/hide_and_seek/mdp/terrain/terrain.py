@@ -76,14 +76,14 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
     size=(20.0, 20.0),
     border_width=1.0,
     border_height=10.0,
-    num_rows=8,  # difficulty levels
-    num_cols=8,  # number of terrains per difficulty level
+    num_rows=16,  # difficulty levels
+    num_cols=16,  # number of terrains per difficulty level
     horizontal_scale=0.5,
     vertical_scale=0.05,
     slope_threshold=0.75,
     use_cache=False,
     curriculum=False,
-    difficulty_range=(0, 0),
+    difficulty_range=(0, 0.75),
     sub_terrains={
         "pyramid_stairs": MeshPyramidTerrainCfg(
             proportion=1.0,
@@ -100,7 +100,7 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
                     max_height_diff=5.0,
                 ),
                 "lowest_pos": FlatPatchSamplingCfg(
-                    num_patches=128, patch_radius=0.5, max_height_diff=0.5, z_range=(0.0, 0.5)
+                    num_patches=128, patch_radius=1.0, max_height_diff=0.5, z_range=(0.0, 0.25)
                 ),
                 "not_lowest_pos": FlatPatchSamplingCfg(
                     num_patches=128,
