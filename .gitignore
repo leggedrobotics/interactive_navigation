@@ -2,3 +2,8 @@
 *.egg-info
 logs/
 wandb/
+
+# usd assets:
+**/*.usd
+**/*_hash
+**/*.png
