@@ -62,8 +62,8 @@ class MySceneCfg(InteractiveSceneCfg):
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
             restitution_combine_mode="multiply",
-            static_friction=0.0,
-            dynamic_friction=0.0,
+            static_friction=0.5,
+            dynamic_friction=0.5,
         ),
         visual_material=sim_utils.MdlFileCfg(
             mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
@@ -87,7 +87,7 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
-        debug_vis=False,
+        debug_vis=True,
         history_length=0,
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
         mesh_prim_paths=[
@@ -111,7 +111,7 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
-        debug_vis=False,
+        debug_vis=True,
         history_length=0,
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
         mesh_prim_paths=[
@@ -172,6 +172,7 @@ class ActionsCfg:
     simple_wrench = mdp.WrenchAction2DCfg(
         asset_name="robot",
         debug_vis=True,
+        max_force_forward=10.0,
     )
 
     simple_jump = mdp.JumpActionCfg(
@@ -267,14 +268,25 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # rewards
+    box_moving = RewTerm(
+        func=mdp.BoxMovingReward().box_interaction,
+        weight=0.1,
+    )
+
     close_to_box = RewTerm(
         func=mdp.CloseToBoxReward().close_to_box_reward,
-        weight=1,
+        weight=0.1,
         params={"threshold": 1.0},
     )
 
-    jump = RewTerm(
+    successful_jump = RewTerm(
         func=mdp.JumpReward().successful_jump_reward,
+        weight=10,
+        params={},
+    )
+
+    new_height = RewTerm(
+        func=mdp.JumpReward().new_height_reached_reward,
         weight=1000,
         params={},
     )
@@ -286,14 +298,14 @@ class RewardsCfg:
     )
 
     # penalty
-    outside = RewTerm(
-        func=mdp.outside_env,
-        weight=-1,
-        params={"threshold": 12.5 * 2**0.5},
-    )
+    # outside = RewTerm(
+    #     func=mdp.outside_env,
+    #     weight=-1,
+    #     params={"threshold": 12.5 * 2**0.5},
+    # )
 
     action_penalty = RewTerm(
-        func=mdp.action_penalty,
+        func=mdp.action_penalty_rigidbody,
         weight=-0.01,
         params={},
     )
