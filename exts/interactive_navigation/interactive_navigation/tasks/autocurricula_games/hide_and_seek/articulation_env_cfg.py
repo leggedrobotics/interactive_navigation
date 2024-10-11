@@ -44,7 +44,7 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 # Scene definition
 ##
-N_BOXES = 8
+N_BOXES = 6
 
 
 @configclass
@@ -76,14 +76,14 @@ class MySceneCfg(InteractiveSceneCfg):
 
     # sensors
     lidar = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/yaw_link/sphere_link",
+        prim_path="{ENV_REGEX_NS}/Robot/yaw_link",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
         attach_yaw_only=True,
         pattern_cfg=patterns.LidarPatternCfg(
             channels=1,
             vertical_fov_range=(-0.0, 0.0),
             horizontal_fov_range=(0, 360),
-            horizontal_res=45,
+            horizontal_res=10,
         ),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
@@ -99,37 +99,37 @@ class MySceneCfg(InteractiveSceneCfg):
         visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
     )
 
-    height_scan = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/yaw_link/sphere_link",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.75, 0.0, 0.0)),
-        attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(
-            resolution=0.5,
-            size=(5, 2),
-        ),
-        max_distance=100.0,
-        drift_range=(-0.0, 0.0),
-        debug_vis=False,
-        history_length=0,
-        # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
-        mesh_prim_paths=[
-            "/World/ground",
-            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
-            # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
-        ],
-        track_mesh_transforms=True,
-        visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
-    )
+    # height_scan = RayCasterCfg(
+    #     prim_path="{ENV_REGEX_NS}/Robot/yaw_link/sphere_link",
+    #     offset=RayCasterCfg.OffsetCfg(pos=(0.75, 0.0, 0.0)),
+    #     attach_yaw_only=True,
+    #     pattern_cfg=patterns.GridPatternCfg(
+    #         resolution=0.5,
+    #         size=(5, 2),
+    #     ),
+    #     max_distance=100.0,
+    #     drift_range=(-0.0, 0.0),
+    #     debug_vis=False,
+    #     history_length=0,
+    #     # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
+    #     mesh_prim_paths=[
+    #         "/World/ground",
+    #         RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
+    #         # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
+    #     ],
+    #     track_mesh_transforms=True,
+    #     visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
+    # )
 
     lidar_top = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/yaw_link/sphere_link",
+        prim_path="{ENV_REGEX_NS}/Robot/yaw_link",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 1)),
         attach_yaw_only=True,
         pattern_cfg=patterns.LidarPatternCfg(
             channels=1,
             vertical_fov_range=(-0.0, 0.0),
             horizontal_fov_range=(0, 360),
-            horizontal_res=45,
+            horizontal_res=10,
         ),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
@@ -145,7 +145,7 @@ class MySceneCfg(InteractiveSceneCfg):
         visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCasterTop"),
     )
 
-    boxes_contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Box_.*", history_length=1, track_air_time=False)
+    # boxes_contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Box_.*", history_length=1, track_air_time=False)
 
     # lights
     light = AssetBaseCfg(
@@ -159,7 +159,33 @@ class MySceneCfg(InteractiveSceneCfg):
 
     def __post_init__(self):
         for i in range(1, N_BOXES + 1):
+            # add boxes with lidar sensors (only used for reward computation)
             setattr(self, f"box_{i}", CUBOID_CFG.replace(prim_path=f"{{ENV_REGEX_NS}}/Box_{i}"))
+            setattr(
+                self,
+                f"box_lidar_bot_{i}",
+                RayCasterCfg(
+                    prim_path=f"{{ENV_REGEX_NS}}/Box_{i}",
+                    offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
+                    attach_yaw_only=True,
+                    pattern_cfg=patterns.LidarPatternCfg(
+                        channels=1,
+                        vertical_fov_range=(-0.0, 0.0),
+                        horizontal_fov_range=(0, 360),
+                        horizontal_res=45,
+                    ),
+                    max_distance=100.0,
+                    debug_vis=False,
+                    mesh_prim_paths=["/World/ground"],
+                    track_mesh_transforms=False,
+                    visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCasterBox"),
+                ),
+            )
+            setattr(
+                self,
+                f"box_lidar_top_{i}",
+                getattr(self, f"box_lidar_bot_{i}").replace(offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 1.0))),
+            )
 
 
 ##
@@ -295,25 +321,74 @@ class EventCfg:
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    # # rewards
-    # close_to_box = RewTerm(
-    #     func=mdp.CloseToBoxReward().close_to_box_reward,
-    #     weight=1,
-    #     params={"threshold": 1.0},
-    # )
+    # rewards
+    box_moving = RewTerm(
+        func=mdp.BoxMovingReward().box_interaction,
+        weight=0.1,
+    )
 
-    # jump = RewTerm(
-    #     func=mdp.JumpReward().successful_jump_reward,
-    #     weight=1000,
-    #     params={},
-    # )
+    any_box_close_to_step = RewTerm(
+        func=mdp.any_box_close_to_step_reward,
+        weight=0.25,
+        params={
+            "robot_str": "robot",
+            "dist_sensor_1_str": "box_lidar_bot",
+            "dist_sensor_2_str": "box_lidar_top",
+            "proximity_threshold": 0.5,
+            "proximity_std": 0.3,
+            "step_size_threshold": 0.75,
+        },
+    )
 
-    # # penalty
+    closest_box_close_to_step = RewTerm(
+        func=mdp.closest_box_close_to_step_reward,
+        weight=0.5,
+        params={
+            "robot_str": "robot",
+            "dist_sensor_1_str": "box_lidar_bot",
+            "dist_sensor_2_str": "box_lidar_top",
+            "proximity_threshold": 0.5,
+            "proximity_std": 1.0,
+            "step_size_threshold": 0.75,
+        },
+    )
+
+    close_to_box = RewTerm(
+        func=mdp.CloseToBoxReward().close_to_box_reward,
+        weight=0.1,
+        params={"threshold": 1.0},
+    )
+
+    successful_jump = RewTerm(
+        func=mdp.JumpReward().successful_jump_reward,
+        weight=50,
+        params={},
+    )
+
+    new_height = RewTerm(
+        func=mdp.JumpReward().new_height_reached_reward,
+        weight=1000,
+        params={},
+    )
+
+    high_up = RewTerm(
+        func=mdp.high_up,
+        weight=0.01,
+        params={"height_range": (0.0, 3.0)},
+    )
+
+    # penalty
     # outside = RewTerm(
     #     func=mdp.outside_env,
     #     weight=-1,
-    #     params={"threshold": 10.0 * 2**0.5},
+    #     params={"threshold": 12.5 * 2**0.5},
     # )
+
+    action_penalty = RewTerm(
+        func=mdp.action_penalty,
+        weight=-0.01,
+        params={},
+    )
 
 
 @configclass
@@ -341,7 +416,7 @@ class ViewerCfg:
     """Configuration of the scene viewport camera."""
 
     # eye: tuple[float, float, float] = (-60.0, 0.5, 70.0)
-    eye: tuple[float, float, float] = (0.0, 0.0, 30.0)
+    eye: tuple[float, float, float] = (9.7, 9.7, 8.0)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
     lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
@@ -363,7 +438,7 @@ class ViewerCfg:
 
 
 @configclass
-class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
+class MoveUpBoxesEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Data container
@@ -387,7 +462,7 @@ class HideSeekEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 10  # 10 Hz
-        self.episode_length_s = 120.0
+        self.episode_length_s = 60.0
         # simulation settings
         # self.sim.dt = 0.005  # 200 Hz
         self.sim.dt = 0.01  # 100 Hz

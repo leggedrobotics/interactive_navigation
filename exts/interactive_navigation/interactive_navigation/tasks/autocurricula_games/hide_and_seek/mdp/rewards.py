@@ -4,8 +4,9 @@ import torch
 from typing import TYPE_CHECKING
 
 from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.sensors import ContactSensor
+from omni.isaac.lab.sensors import ContactSensor, RayCaster
 from omni.isaac.lab.assets import Articulation, RigidObject
+from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
@@ -35,6 +36,143 @@ def dummy_reward(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, threshold: 
     # TODO calculate a reward from this
 
     return torch.zeros(env.num_envs).to(env.device)
+
+
+def any_box_close_to_step_reward(
+    env: ManagerBasedRLEnv,
+    robot_str: str,
+    dist_sensor_1_str: str,
+    dist_sensor_2_str: str,
+    proximity_threshold: float,
+    proximity_std: float,
+    step_size_threshold: float,
+) -> torch.Tensor:
+    """Compute dense reward based on the proximity of any box to a step that can be jumped.
+    Reward is given for closest box to the step on the same level as the robot.
+
+    Args:
+        env: The environment object.
+        robot_str: Substring to match for the robot.
+        dist_sensor_1_str: Substring to match for the first set of distance sensors.
+        dist_sensor_2_str: Substring to match for the second set of distance sensors.
+        proximity_threshold: Used in reward scaling; higher values shift the reward curve.
+        proximity_std: Determines the steepness of the reward function.
+        step_size_threshold: Minimum width of the step to be considered valid.
+
+    Returns:
+        torch.Tensor: Reward tensor for each environment.
+    """
+    # get z pos
+    robot_pos = get_robot_pos(env.scene[robot_str])[..., 2]
+
+    # Get sensor names matching the given substrings
+    sensor_names_1 = sorted([name for name in env.scene.sensors if dist_sensor_1_str in name])
+    sensor_names_2 = sorted([name for name in env.scene.sensors if dist_sensor_2_str in name])
+
+    # Ensure we have the same number of sensors in both lists
+    assert len(sensor_names_1) == len(sensor_names_2), "Sensor lists must be of equal length."
+
+    min_dist_to_step = torch.full((env.num_envs,), float("inf"), device=env.device)
+
+    for name1, name2 in zip(sensor_names_1, sensor_names_2):
+        # Retrieve sensor data
+        sensor1_data = env.scene.sensors[name1].data
+        sensor2_data = env.scene.sensors[name2].data
+
+        # Positions and hits in XY plane
+        pos1 = sensor1_data.pos_w[..., :2].unsqueeze(1)
+        z_pos1 = sensor1_data.pos_w[..., 2]
+        hits1 = sensor1_data.ray_hits_w[..., :2]
+        hits2 = sensor2_data.ray_hits_w[..., :2]
+
+        z_diff = torch.abs(z_pos1 - robot_pos)
+        distances1 = torch.linalg.vector_norm(hits1 - pos1, dim=2)
+        diff_xy = torch.linalg.vector_norm(hits2 - hits1, dim=2)
+        # a step is detected if the distance between the two sensors is greater than the threshold
+        is_step = diff_xy > step_size_threshold
+        same_z_level = z_diff < 0.5
+
+        distances_to_steps = torch.where(is_step, distances1, torch.tensor(float("inf"), device=env.device))
+        min_distances, _ = distances_to_steps.min(dim=1)
+        min_distances[~same_z_level] = float("inf")
+
+        min_dist_to_step = torch.min(min_dist_to_step, min_distances)
+
+    # Compute the continuous reward based on the minimum distance to a step
+    reward = 0.5 + 0.5 * torch.tanh((proximity_threshold - min_dist_to_step) / proximity_std)
+    return reward
+
+
+def closest_box_close_to_step_reward(
+    env: ManagerBasedRLEnv,
+    robot_str: str,
+    dist_sensor_1_str: str,
+    dist_sensor_2_str: str,
+    proximity_threshold: float,
+    proximity_std: float,
+    step_size_threshold: float,
+) -> torch.Tensor:
+    """Compute dense reward based on the proximity of a box to a step that can be jumped.
+    Reward is given only for the closest box to the robot on the same level as the robot.
+
+    Args:
+        env: The environment object.
+        robot_str: Substring to match for the robot.
+        dist_sensor_1_str: Substring to match for the first set of distance sensors.
+        dist_sensor_2_str: Substring to match for the second set of distance sensors.
+        proximity_threshold: Used in reward scaling; higher values shift the reward curve.
+        proximity_std: Determines the steepness of the reward function.
+        step_size_threshold: Minimum width of the step to be considered valid.
+
+    Returns:
+        torch.Tensor: Reward tensor for each environment.
+    """
+    robot_pos = get_robot_pos(env.scene[robot_str])
+
+    # Get sensor names matching the given substrings
+    sensor_names_1 = sorted([name for name in env.scene.sensors if dist_sensor_1_str in name])
+    sensor_names_2 = sorted([name for name in env.scene.sensors if dist_sensor_2_str in name])
+
+    # Ensure we have the same number of sensors in both lists
+    assert len(sensor_names_1) == len(sensor_names_2), "Sensor lists must be of equal length."
+
+    min_distances = torch.full((env.num_envs,), float("inf"), device=env.device)
+
+    min_dist_box_robot = torch.full((env.num_envs,), float("inf"), device=env.device)
+    for name1, name2 in zip(sensor_names_1, sensor_names_2):
+        # Retrieve sensor data
+        sensor1_data = env.scene.sensors[name1].data
+        sensor2_data = env.scene.sensors[name2].data
+
+        # Positions and hits in XY plane
+        pos1 = sensor1_data.pos_w[..., :2]
+        z_pos1 = sensor1_data.pos_w[..., 2]
+        hits1 = sensor1_data.ray_hits_w[..., :2]
+        hits2 = sensor2_data.ray_hits_w[..., :2]
+
+        z_diff = torch.abs(z_pos1 - robot_pos[..., 2])
+        distance_box_robot = torch.linalg.vector_norm(pos1 - robot_pos[..., :2], dim=1)
+        distances1 = torch.linalg.vector_norm(hits1 - pos1.unsqueeze(1), dim=2)
+        diff_xy = torch.linalg.vector_norm(hits2 - hits1, dim=2)
+
+        # check if the box is closer to the robot than the previous closest box
+        closest_to_robot = distance_box_robot < min_dist_box_robot
+        min_dist_box_robot = torch.where(closest_to_robot, distance_box_robot, min_dist_box_robot)
+
+        # a step is detected if the distance between the two sensors is greater than the threshold
+        is_step = diff_xy > step_size_threshold
+        same_z_level = z_diff < 0.5
+
+        # find the min distance to a step
+        distances_to_steps = torch.where(is_step, distances1, torch.tensor(float("inf"), device=env.device))
+        # only consider min distance if the box is on the same level as the robot and closest to the robot
+        min_distances[same_z_level & closest_to_robot] = distances_to_steps.min(dim=1)[0][
+            same_z_level & closest_to_robot
+        ]
+
+    # Compute the continuous reward based on the minimum distance to a step
+    reward = 0.5 + 0.5 * torch.tanh((proximity_threshold - min_distances) / proximity_std)
+    return reward
 
 
 class BoxMovingReward:
