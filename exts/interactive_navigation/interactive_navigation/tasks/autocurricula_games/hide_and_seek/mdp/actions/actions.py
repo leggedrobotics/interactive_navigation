@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 import math
 
-TELEOP = True
+TELEOP = False
 
 if TELEOP:
     from omni.isaac.lab.devices import Se3Keyboard, Se3SpaceMouse, Se3Gamepad
@@ -189,9 +189,11 @@ class ArticulatedJumpAction(ActionTerm):
     def process_actions(self, actions: torch.Tensor):
         """called each env step, i.e., once per {decimation} sim steps"""
         # set joint effort targets
-        delta_pose, gripper_command = self.teleop_interface.advance()
-
-        want_to_jump = (torch.zeros_like(actions.squeeze()) + delta_pose[3]) != 0
+        if TELEOP:
+            delta_pose, gripper_command = self.teleop_interface.advance()
+            want_to_jump = (torch.zeros_like(actions.squeeze()) + delta_pose[3]) != 0
+        else:
+            want_to_jump = actions.squeeze() > 0
 
         # check if the jump is requested and the cooldown is over
         self.jumping_now = want_to_jump & (self.jump_cooldown_buffer.eq(0))
@@ -211,7 +213,10 @@ class ArticulatedJumpAction(ActionTerm):
             joint_vel = torch.zeros_like(joint_pos) + self.jump_velocity
 
             self._asset.write_joint_state_to_sim(
-                position=joint_pos, velocity=joint_vel, joint_ids=[2], env_ids=torch.nonzero(self.jumping_now).squeeze()
+                position=joint_pos,
+                velocity=joint_vel,
+                joint_ids=[2],
+                env_ids=torch.nonzero(self.jumping_now).squeeze(1),
             )
 
             self.jumping_now = torch.zeros_like(self.jumping_now, dtype=torch.bool)
