@@ -6,14 +6,33 @@ from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.assets import Articulation, AssetBaseCfg, RigidObject
 from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg, RayCasterCfg, patterns, RayCaster, SensorBase
 from omni.isaac.lab.utils import math as math_utils
+from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
 
 
 def lidar_obs_dist(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """lidar scan from the given sensor w.r.t. the sensor's frame."""
     sensor: SensorBase = env.scene.sensors[sensor_cfg.name]
-    distances = torch.linalg.vector_norm(sensor.data.ray_hits_w - sensor.data.pos_w.unsqueeze(1), dim=2)
+    distances = torch.linalg.vector_norm(
+        sensor.data.ray_hits_w[..., :2] - sensor.data.pos_w[..., :2].unsqueeze(1), dim=2
+    )
 
     return distances
+
+
+# def lidar_obs_dist(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+#     sensor: SensorBase = env.scene.sensors[sensor_cfg.name]
+
+#     # Extract and ensure tensors are contiguous
+#     ray_hits_w = sensor.data.ray_hits_w  # [..., :2]  # Shape: (N, 36, 2)
+#     pos_w = sensor.data.pos_w  # [..., :2]  # Shape: (N, 2)
+
+#     # Use broadcasting without unsqueeze
+#     diff = ray_hits_w - pos_w[:, None, :]  # Shape: (N, 36, 2)
+
+#     # Compute distances
+#     distances = torch.norm(diff, dim=2)  # Shape: (N, 36)
+
+#     return distances
 
 
 def lidar_obs_dist_log(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
