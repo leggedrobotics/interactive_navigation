@@ -44,8 +44,8 @@ class HideSeekPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 
 
 @configclass
-class HideSeekRelationlPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 32
+class HideSeekRelationalPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+    num_steps_per_env = 64
     max_iterations = 100_000
     save_interval = 1000
     experiment_name = "transformer_ppo"
@@ -63,7 +63,7 @@ class HideSeekRelationlPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         num_mini_batches=4,  # mini batch size = num_envs * num_steps_per_env // num_mini_batches
         learning_rate=1.0e-3,
         schedule="adaptive",
-        gamma=0.99,
+        gamma=0.995,
         lam=0.95,
         desired_kl=0.01,
         max_grad_norm=1.0,
@@ -75,13 +75,13 @@ class HideSeekRelationlPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class RecurrentPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 32
+    num_steps_per_env = 50
     max_iterations = 100_000
     save_interval = 1000
     experiment_name = "recurrent_ppo"
     empirical_normalization = False
     policy = RslRlPpoRecurrentActorCriticCfg(
-        init_noise_std=1.0,
+        init_noise_std=5.0,
         activation="elu",
     )
     algorithm = RslRlPpoAlgorithmCfg(

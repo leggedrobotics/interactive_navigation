@@ -1,7 +1,7 @@
 import gymnasium as gym
 
 from . import agents, rough_env_cfg
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.hide_and_seek_env_cfg import HideSeekEnvCfg
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.articulation_env_cfg import MoveUpBoxesEnvCfg
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.rigid_robot_env_cfg import RigidRobotEnvCfg
 
 ##
@@ -9,12 +9,12 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.rigid_robot_
 ##
 
 gym.register(
-    id="Isaac-Games-HideAndSeek-Simple-D-v0",
+    id="Isaac-Games-Articulation-D-v0",
     entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": HideSeekEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:HideSeekRelationlPPORunnerCfg",
+        "env_cfg_entry_point": MoveUpBoxesEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:HideSeekRelationalPPORunnerCfg",
     },
 )
 
@@ -24,7 +24,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": RigidRobotEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:HideSeekRelationlPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:HideSeekRelationalPPORunnerCfg",
     },
 )
 
