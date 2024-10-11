@@ -4,7 +4,7 @@ import torch
 import math
 from typing import TYPE_CHECKING
 
-TELEOP = True
+TELEOP = False
 
 from omni.isaac.lab.envs import ManagerBasedRLEnv
 from omni.isaac.lab.managers.action_manager import ActionTerm
