@@ -40,7 +40,7 @@ ROBOT_USD_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 2.0), joint_pos={"joint_x": 0.0, "joint_y": 0.0, "joint_z": 0.0, "joint_yaw": 0.0}
+        pos=(0.0, 0.0, 0.35), joint_pos={"joint_x": 0.0, "joint_y": 0.0, "joint_z": 0.0, "joint_yaw": 0.0}
     ),
     actuators={
         "x_actuator": ImplicitActuatorCfg(
@@ -85,7 +85,7 @@ ROBOT_USD_CFG = ArticulationCfg(
 CUBOID_CFG = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/Cuboid",
     spawn=sim_utils.CuboidCfg(
-        size=(0.75, 0.75, 0.5),
+        size=(0.95, 0.95, 0.5),
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             max_depenetration_velocity=1.0, disable_gravity=False, max_angular_velocity=3.14, kinematic_enabled=False
         ),
