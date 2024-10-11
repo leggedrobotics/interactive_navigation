@@ -39,12 +39,42 @@
         },
         // custom env debuggers
         {
-            "name": "Python: Train Hide and Seek",
+            "name": "Python: TRAIN Articulation",
             "type": "debugpy",
             "request": "launch",
             "args": [
                 "--task",
-                "Isaac-Games-HideAndSeek-Simple-D-v0",
+                "Isaac-Games-Articulation-D-v0",
+                "--num_envs",
+                "16",
+                // "--headless"
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        {
+            "name": "Python: TRAIN RigidRobot",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--task",
+                "Isaac-Games-RigidRobot-Simple-D-v0",
+                "--num_envs",
+                "16",
+                // "--headless"
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        {
+            "name": "Python: TRAIN Recurrent",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--task",
+                "Isaac-Games-RigidRobot-Recurrent-D-v0",
                 "--num_envs",
                 "16",
                 // "--headless"
