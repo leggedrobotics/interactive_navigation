@@ -45,10 +45,13 @@ class HideSeekPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class HideSeekRelationalPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+    seed = 123
     num_steps_per_env = 64
     max_iterations = 100_000
     save_interval = 1000
     experiment_name = "transformer_ppo"
+    run_name = "small_steps"
+    wandb_project = "simple_articulation_ppo"
     empirical_normalization = False
     policy = RslRlPpoRelationalActorCriticCfg(
         init_noise_std=1.0,

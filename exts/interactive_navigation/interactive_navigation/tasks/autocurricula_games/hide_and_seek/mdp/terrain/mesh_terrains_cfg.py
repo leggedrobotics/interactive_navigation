@@ -23,7 +23,7 @@ class MeshPyramidTerrainCfg(SubTerrainBaseCfg):
 
     The border is a flat terrain with the same height as the terrain.
     """
-    step_height_range: float = MISSING
+    step_height: float = MISSING
     """The height of the steps (in m)."""
     step_width: tuple[float, float] = MISSING
     """The width of the steps (in m)."""

@@ -44,7 +44,7 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 # Scene definition
 ##
-N_BOXES = 6
+N_BOXES = 1
 
 
 @configclass
@@ -55,7 +55,7 @@ class MySceneCfg(InteractiveSceneCfg):
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
         terrain_type="generator",
-        terrain_generator=mdp.terrain.MESH_PYRAMID_TERRAIN_CFG,
+        terrain_generator=mdp.terrain.MESH_STEPPABLE_PYRAMID_TERRAIN_CFG,
         max_init_terrain_level=1000,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -322,42 +322,42 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # rewards
-    box_moving = RewTerm(
-        func=mdp.BoxMovingReward().box_interaction,
-        weight=0.1,
-    )
+    # box_moving = RewTerm(
+    #     func=mdp.BoxMovingReward().box_interaction,
+    #     weight=0.1,
+    # )
 
-    any_box_close_to_step = RewTerm(
-        func=mdp.any_box_close_to_step_reward,
-        weight=0.25,
-        params={
-            "robot_str": "robot",
-            "dist_sensor_1_str": "box_lidar_bot",
-            "dist_sensor_2_str": "box_lidar_top",
-            "proximity_threshold": 0.5,
-            "proximity_std": 0.3,
-            "step_size_threshold": 0.75,
-        },
-    )
+    # any_box_close_to_step = RewTerm(
+    #     func=mdp.any_box_close_to_step_reward,
+    #     weight=0.1,
+    #     params={
+    #         "robot_str": "robot",
+    #         "dist_sensor_1_str": "box_lidar_bot",
+    #         "dist_sensor_2_str": "box_lidar_top",
+    #         "proximity_threshold": 0.5,
+    #         "proximity_std": 0.3,
+    #         "step_size_threshold": 0.75,
+    #     },
+    # )
 
-    closest_box_close_to_step = RewTerm(
-        func=mdp.closest_box_close_to_step_reward,
-        weight=0.5,
-        params={
-            "robot_str": "robot",
-            "dist_sensor_1_str": "box_lidar_bot",
-            "dist_sensor_2_str": "box_lidar_top",
-            "proximity_threshold": 0.5,
-            "proximity_std": 1.0,
-            "step_size_threshold": 0.75,
-        },
-    )
+    # closest_box_close_to_step = RewTerm(
+    #     func=mdp.closest_box_close_to_step_reward,
+    #     weight=0.5,
+    #     params={
+    #         "robot_str": "robot",
+    #         "dist_sensor_1_str": "box_lidar_bot",
+    #         "dist_sensor_2_str": "box_lidar_top",
+    #         "proximity_threshold": 0.5,
+    #         "proximity_std": 1.0,
+    #         "step_size_threshold": 0.75,
+    #     },
+    # )
 
-    close_to_box = RewTerm(
-        func=mdp.CloseToBoxReward().close_to_box_reward,
-        weight=0.1,
-        params={"threshold": 1.0},
-    )
+    # close_to_box = RewTerm(
+    #     func=mdp.CloseToBoxReward().close_to_box_reward,
+    #     weight=0.1,
+    #     params={"threshold": 1.0},
+    # )
 
     successful_jump = RewTerm(
         func=mdp.JumpReward().successful_jump_reward,

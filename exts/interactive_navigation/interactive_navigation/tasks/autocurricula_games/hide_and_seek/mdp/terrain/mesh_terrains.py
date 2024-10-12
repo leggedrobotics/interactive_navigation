@@ -38,7 +38,7 @@ def pyramid_terrain(
         A tuple containing the tri-mesh of the terrain and the origin of the terrain (in m).
     """
     # Resolve the terrain configuration
-    step_height = cfg.step_height_range  # + difficulty * (cfg.step_height_range[1] - cfg.step_height_range[0])
+    step_height = cfg.step_height  # + difficulty * (cfg.step_height_range[1] - cfg.step_height_range[0])
 
     # Compute number of steps
     step_width = cfg.step_width[0] + difficulty * (cfg.step_width[1] - cfg.step_width[0])

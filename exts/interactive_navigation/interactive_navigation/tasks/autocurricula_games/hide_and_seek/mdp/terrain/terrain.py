@@ -87,7 +87,7 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
     sub_terrains={
         "pyramid_stairs": MeshPyramidTerrainCfg(
             proportion=1.0,
-            step_height_range=1.0,
+            step_height=1.0,
             step_width=(5.0, 1.5),
             platform_width=3.0,
             border_width=0.0,
@@ -114,6 +114,48 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
 )
 
 
+MESH_STEPPABLE_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
+    size=(20.0, 20.0),
+    border_width=1.0,
+    border_height=10.0,
+    num_rows=16,  # difficulty levels
+    num_cols=16,  # number of terrains per difficulty level
+    horizontal_scale=0.5,
+    vertical_scale=0.05,
+    slope_threshold=0.75,
+    use_cache=False,
+    curriculum=False,
+    difficulty_range=(0, 1.0),
+    sub_terrains={
+        "pyramid_stairs": MeshPyramidTerrainCfg(
+            proportion=1.0,
+            step_height=0.5,
+            step_width=(2.0, 1.0),
+            platform_width=3.0,
+            border_width=0.0,
+            holes=False,
+            walls=True,
+            flat_patch_sampling={
+                "init_pos": FlatPatchSamplingCfg(
+                    num_patches=128,
+                    patch_radius=1.5,
+                    max_height_diff=5.0,
+                ),
+                "lowest_pos": FlatPatchSamplingCfg(
+                    num_patches=128, patch_radius=1.0, max_height_diff=0.25, z_range=(0.0, 0.25)
+                ),
+                "not_lowest_pos": FlatPatchSamplingCfg(
+                    num_patches=128,
+                    patch_radius=0.3,
+                    max_height_diff=50.0,
+                    z_range=(0.25, 50.0),
+                ),
+            },
+        )
+    },
+)
+
+
 MESH_FLAT_TERRAIN_CFG = TerrainGeneratorCfg(
     size=(10.0, 10.0),
     border_width=20.0,
@@ -128,7 +170,7 @@ MESH_FLAT_TERRAIN_CFG = TerrainGeneratorCfg(
     sub_terrains={
         "pyramid_stairs": MeshPyramidTerrainCfg(
             proportion=1.0,
-            step_height_range=0.0,
+            step_height=0.0,
             step_width=(100.0, 100.5),
             platform_width=3.0,
             border_width=0.0,
