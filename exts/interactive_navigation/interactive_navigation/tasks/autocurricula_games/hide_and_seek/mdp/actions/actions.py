@@ -237,6 +237,8 @@ class ArticulatedWrench2DAction(ActionTerm):
         self.max_lin_vel = cfg.max_velocity
         self.max_rot_vel = cfg.max_rotvel
 
+        self.vel_b = torch.zeros(self.num_envs, 3, device=self.device)
+
         # unlimit joint ranges
         max_translate_xy = 1000.0
         max_translate_z = 1000.0
