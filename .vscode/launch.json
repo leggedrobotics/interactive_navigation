@@ -47,6 +47,25 @@
                 "Isaac-Games-Articulation-D-v0",
                 "--num_envs",
                 "16",
+                "--run_name",
+                "test",
+                // "--headless"
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        {
+            "name": "Python: CRL TEST",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--task",
+                "Isaac-CRL-TEST-v0",
+                "--num_envs",
+                "16",
+                "--run_name",
+                "test_crl",
                 // "--headless"
             ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
