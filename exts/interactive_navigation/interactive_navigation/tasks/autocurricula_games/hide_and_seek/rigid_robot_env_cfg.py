@@ -196,14 +196,14 @@ class ObservationsCfg:
         )
 
         lidar_scan = ObsTerm(
-            func=mdp.lidar_obs_dist,
+            func=mdp.lidar_obs_dist_2d,
             params={"sensor_cfg": SceneEntityCfg("lidar")},
             noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(0.0, 100.0),
         )
 
         lidar_scan_top = ObsTerm(
-            func=mdp.lidar_obs_dist,
+            func=mdp.lidar_obs_dist_2d,
             params={"sensor_cfg": SceneEntityCfg("lidar_top")},
             noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(0.0, 100.0),
