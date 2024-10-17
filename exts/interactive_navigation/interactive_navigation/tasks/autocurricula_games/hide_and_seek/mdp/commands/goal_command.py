@@ -17,6 +17,12 @@ from omni.isaac.lab.assets import Articulation, RigidObject
 from omni.isaac.lab.managers import CommandTerm
 from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.utils import math as math_utils
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
+    get_robot_pos,
+    get_robot_quat,
+    get_robot_lin_vel,
+    get_robot_rot_vel,
+)
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
@@ -92,12 +98,14 @@ class GoalCommand(CommandTerm):
         self.goal_pos_w[env_ids] = new_goals
 
     def _update_command(self):
-        """The goal height has to be updated to be in the robots frame.
-        Its simply the difference between the goal height and the current height of the robot."""
+        """The goal height has to be updated to be in the robots frame"""
 
         # get the current height of the robot
-        robot_heights_w = get_robot_pos(self.robot) - self.robot_height
-        self.goal_pos_b = robot_heights_w - self.goal_pos_w
+        robot_pos_w = get_robot_pos(self.robot)
+        robot_pos_w[:, 2] -= self.robot_height
+        robot_quat = math_utils.yaw_quat(get_robot_quat(self.robot))
+
+        self.goal_pos_b, _ = math_utils.subtract_frame_transforms(robot_pos_w, robot_quat, self.goal_pos_w)
 
     """
     Debug Visualizations
@@ -210,19 +218,3 @@ class GoalCommand(CommandTerm):
                 highest_positions[row, col] = top_hits
 
         return highest_positions
-
-
-##
-#  Utility functions
-##
-
-
-def get_robot_pos(robot: Articulation | RigidObject) -> torch.Tensor:
-    """Get the position of the robot."""
-    if not isinstance(robot, (Articulation, RigidObject)):
-        raise ValueError(f"Expected robot to be of type Articulation or RigidObject, got {type(robot)}")
-
-    if isinstance(robot, Articulation):
-        return robot.data.body_pos_w[:, -1, :]
-    else:
-        return robot.data.root_pos_w

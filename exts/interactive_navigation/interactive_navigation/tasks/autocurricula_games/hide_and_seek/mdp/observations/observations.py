@@ -8,6 +8,13 @@ from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg, RayCasterCfg, pa
 from omni.isaac.lab.utils import math as math_utils
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
 
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
+    get_robot_pos,
+    get_robot_quat,
+    get_robot_lin_vel,
+    get_robot_rot_vel,
+)
+
 
 def lidar_obs_dist_2d(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """lidar scan from the given sensor w.r.t. the sensor's frame."""
@@ -58,13 +65,13 @@ def pose_2d_to(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor
     entity: RigidObject | Articulation = env.scene[entity_cfg.name]
 
     # - position
-    pos = entity.data.body_pos_w
+    pos = get_robot_pos(entity)
     terrain = env.scene.terrain
     terrain_origins = terrain.env_origins
     rel_pos = pos.squeeze(1) - terrain_origins
 
     # - heading
-    quat = entity.data.body_quat_w.squeeze(1)
+    quat = get_robot_quat(entity).squeeze(1)
     roll, pitch, yaw = math_utils.euler_xyz_from_quat(quat)
     cos_yaw, sin_yaw = torch.cos(yaw).unsqueeze(1), torch.sin(yaw).unsqueeze(1)
 
@@ -90,8 +97,8 @@ def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) 
 
     # - robot pose
     robot = env.scene[pov_entity.name]
-    robot_pos_w = robot.data.root_pos_w
-    robot_quat_w = robot.data.root_quat_w
+    robot_pos_w = get_robot_pos(robot)
+    robot_quat_w = get_robot_quat(robot)
 
     # Expand robot pose to match the number of boxes
     robot_pos_w_expanded = robot_pos_w.unsqueeze(1).expand_as(boxes_positions_w)
@@ -130,8 +137,8 @@ def velocity_2d_b(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, pov_entity_c
     robot: RigidObject | Articulation = env.scene[pov_entity_cfg.name]
 
     if entity == robot:
-        lin_vel = entity.data.root_lin_vel_b[..., :2]
-        ang_vel_z = entity.data.root_ang_vel_b[..., 2]
+        lin_vel = get_robot_lin_vel(robot)[..., :2]
+        ang_vel_z = get_robot_rot_vel(robot)[..., 2]
         return torch.cat([lin_vel, ang_vel_z.unsqueeze(1)], dim=-1)
 
     entity_vel_w = entity.data.body_lin_vel_w.squeeze(1)
