@@ -10,6 +10,7 @@ from .events import *  # noqa: F401, F403
 from .commands import *  # noqa: F401, F403
 
 from . import terrain  # noqa: F401, F403
+from . import utils
 
 from .goals import *  # noqa: F401, F403
 
