@@ -9,7 +9,7 @@ from omni.isaac.lab.utils import math as math_utils
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
 
 
-def lidar_obs_dist(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+def lidar_obs_dist_2d(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """lidar scan from the given sensor w.r.t. the sensor's frame."""
     sensor: SensorBase = env.scene.sensors[sensor_cfg.name]
     distances = torch.linalg.vector_norm(
@@ -19,7 +19,16 @@ def lidar_obs_dist(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Te
     return distances
 
 
-# def lidar_obs_dist(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+def lidar_height_scan(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+    """lidar scan from the given sensor w.r.t. the sensor's frame."""
+    sensor: SensorBase = env.scene.sensors[sensor_cfg.name]
+
+    height_diffs = sensor.data.ray_hits_w[..., 2] - sensor.data.pos_w[..., 2].unsqueeze(1)
+
+    return height_diffs
+
+
+# def lidar_obs_dist_2d(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
 #     sensor: SensorBase = env.scene.sensors[sensor_cfg.name]
 
 #     # Extract and ensure tensors are contiguous
@@ -35,7 +44,7 @@ def lidar_obs_dist(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Te
 #     return distances
 
 
-def lidar_obs_dist_log(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+def lidar_obs_dist_2d_log(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """lidar scan from the given sensor w.r.t. the sensor's frame."""
     sensor: SensorBase = env.scene.sensors[sensor_cfg.name]
     distances = torch.linalg.vector_norm(sensor.data.ray_hits_w - sensor.data.pos_w.unsqueeze(1), dim=2)
