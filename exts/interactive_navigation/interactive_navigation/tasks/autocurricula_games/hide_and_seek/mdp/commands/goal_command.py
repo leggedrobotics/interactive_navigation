@@ -77,8 +77,8 @@ class GoalCommand(CommandTerm):
 
     def _update_metrics(self) -> None:
         """Update the metrics for the goal command."""
-        self.metrics["goal_height_w"] = self.goal_pos_w[:, 2]
-        self.metrics["goal_height_b"] = self.goal_pos_b[:, 2]
+        self.metrics["goal_height_w"] = self.goal_pos_w[:, 2].clone()
+        self.metrics["goal_height_b"] = self.goal_pos_b[:, 2].clone()
 
     def _resample_command(self, env_ids: Sequence[int]):
         """The goal is to reach the max height of the current terrain."""
@@ -122,6 +122,7 @@ class GoalCommand(CommandTerm):
                 marker_cfg.prim_path = "/Visuals/Command/line_to_goal"
                 marker_cfg.markers["cylinder"].height = 1
                 marker_cfg.markers["cylinder"].radius = 0.05
+                marker_cfg.markers["cylinder"].visual_material.diffuse_color = (0.0, 0.0, 1.0)
                 self.line_to_goal_visualiser = VisualizationMarkers(marker_cfg)
 
             # set their visibility to true
@@ -141,7 +142,9 @@ class GoalCommand(CommandTerm):
 
         # update the line marker
         # calculate the difference vector between the robot root position and the goal position
-        difference = self.goal_pos_w - get_robot_pos(self.robot)
+        line_goal_pos = self.goal_pos_w.clone()
+        line_goal_pos[:, 2] += 0.5  # for better visaibility
+        difference = line_goal_pos - get_robot_pos(self.robot)
         translations = get_robot_pos(self.robot).clone()
         # calculate the scale of the arrow (Mx3)
         scales = torch.norm(difference, dim=1)
