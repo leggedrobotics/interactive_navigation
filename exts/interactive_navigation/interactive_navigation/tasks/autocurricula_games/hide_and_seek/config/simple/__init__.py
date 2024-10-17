@@ -2,7 +2,7 @@ import gymnasium as gym
 
 from . import agents, rough_env_cfg
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.articulation_env_cfg import MoveUpBoxesEnvCfg
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.articulation_crl_env_cfg import CrlTestEnvCfg
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.simple_crl_env_cfg import CrlTestEnvCfg
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.rigid_robot_env_cfg import RigidRobotEnvCfg
 
 ##
