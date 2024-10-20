@@ -15,3 +15,9 @@ class GoalCommandCfg(CommandTermCfg):
 
     show_line_to_goal: bool = True
     """If true, a line is drawn from the robot to the goal if debug vis is true."""
+
+    show_goal_heading: bool = True
+    """If true, an arrow is drawn to show the goal heading if debug vis is true."""
+
+    randomize_goal: bool = False
+    """If true, the goal is randomized at the start of each episode."""
