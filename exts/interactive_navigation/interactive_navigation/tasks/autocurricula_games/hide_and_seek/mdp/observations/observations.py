@@ -11,8 +11,8 @@ from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
     get_robot_pos,
     get_robot_quat,
-    get_robot_lin_vel,
-    get_robot_rot_vel,
+    get_robot_lin_vel_w,
+    get_robot_rot_vel_w,
 )
 
 
@@ -136,13 +136,22 @@ def velocity_2d_b(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, pov_entity_c
     entity: RigidObject | Articulation = env.scene[entity_cfg.name]
     robot: RigidObject | Articulation = env.scene[pov_entity_cfg.name]
 
+    robot_quat_w = math_utils.yaw_quat(get_robot_quat(robot))
     if entity == robot:
-        lin_vel = get_robot_lin_vel(robot)[..., :2]
-        ang_vel_z = get_robot_rot_vel(robot)[..., 2]
-        return torch.cat([lin_vel, ang_vel_z.unsqueeze(1)], dim=-1)
+        lin_vel_w = get_robot_lin_vel_w(robot)
+        lin_vel_b = math_utils.quat_rotate_inverse(robot_quat_w, lin_vel_w)
+        ang_vel_z_w = get_robot_rot_vel_w(robot)[..., 2]
+        return torch.cat([lin_vel_b, ang_vel_z_w.unsqueeze(1)], dim=-1)
 
     entity_vel_w = entity.data.body_lin_vel_w.squeeze(1)
     entity_ang_vel_z = entity.data.body_ang_vel_w.squeeze(1)[..., 2]
-    robot_quat_w = math_utils.yaw_quat(robot.data.root_quat_w)
     entity_vel_b = math_utils.quat_rotate_inverse(robot_quat_w, entity_vel_w)
     return torch.cat([entity_vel_b[..., :2], entity_ang_vel_z.unsqueeze(1)], dim=-1)
+
+
+def velocity_2d_w(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Returns the velocity vector of the entity in the terrain frame."""
+    entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+    entity_vel_w = entity.data.body_lin_vel_w.squeeze(1)
+    entity_ang_vel_z = entity.data.body_ang_vel_w.squeeze(1)[..., 2]
+    return torch.cat([entity_vel_w[..., :2], entity_ang_vel_z.unsqueeze(1)], dim=-1)
