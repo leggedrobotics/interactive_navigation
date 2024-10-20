@@ -109,7 +109,12 @@ def pyramid_terrain(
             (0.5, -0.5),  # Lower-right corner
             (0.5, 0.5),  # Upper-right corner
         ]
-        corner = random.choice(corners)
+        if cfg.type == "random":
+            corner = random.choice(corners)
+        elif cfg.type == "spiral":
+            corner = corners[k % 4]
+        else:
+            corner = corners[0]
 
         # Calculate the position of the new box
         offset_x = corner[0] * (prev_box_size[0] - box_size[0])
