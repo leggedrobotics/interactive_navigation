@@ -46,7 +46,7 @@
                 "--task",
                 "Isaac-Games-Articulation-D-v0",
                 "--num_envs",
-                "16",
+                "128",
                 "--run_name",
                 "test",
                 // "--headless"
@@ -63,7 +63,7 @@
                 "--task",
                 "Isaac-CRL-TEST-v0",
                 "--num_envs",
-                "16",
+                "2",
                 "--run_name",
                 "test_crl",
                 // "--headless"
