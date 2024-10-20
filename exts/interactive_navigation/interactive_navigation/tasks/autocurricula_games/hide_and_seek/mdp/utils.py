@@ -24,7 +24,7 @@ def get_robot_quat(robot: Articulation | RigidObject) -> torch.Tensor:
         return robot.data.root_quat_w
 
 
-def get_robot_lin_vel(robot: Articulation | RigidObject) -> torch.Tensor:
+def get_robot_lin_vel_w(robot: Articulation | RigidObject) -> torch.Tensor:
     """Get the linear velocity of the robot."""
     if not isinstance(robot, (Articulation, RigidObject)):
         raise ValueError(f"Expected robot to be of type Articulation or RigidObject, got {type(robot)}")
@@ -35,7 +35,7 @@ def get_robot_lin_vel(robot: Articulation | RigidObject) -> torch.Tensor:
         return robot.data.root_lin_vel_w
 
 
-def get_robot_rot_vel(robot: Articulation | RigidObject) -> torch.Tensor:
+def get_robot_rot_vel_w(robot: Articulation | RigidObject) -> torch.Tensor:
     """Get the rotational velocity of the robot."""
     if not isinstance(robot, (Articulation, RigidObject)):
         raise ValueError(f"Expected robot to be of type Articulation or RigidObject, got {type(robot)}")
