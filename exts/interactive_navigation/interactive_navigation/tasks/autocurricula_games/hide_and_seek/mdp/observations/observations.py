@@ -1,12 +1,13 @@
 import torch
 
 
-from omni.isaac.lab.envs import ManagerBasedEnv
+from omni.isaac.lab.envs import ManagerBasedEnv, ManagerBasedRLEnv
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.assets import Articulation, AssetBaseCfg, RigidObject
 from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg, RayCasterCfg, patterns, RayCaster, SensorBase
 from omni.isaac.lab.utils import math as math_utils
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.commands import GoalCommand
 
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
     get_robot_pos,
@@ -16,6 +17,9 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils im
 )
 
 
+##
+# - lidar
+##
 def lidar_obs_dist_2d(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """lidar scan from the given sensor w.r.t. the sensor's frame."""
     sensor: SensorBase = env.scene.sensors[sensor_cfg.name]
@@ -59,6 +63,9 @@ def lidar_obs_dist_2d_log(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> t
     return torch.log(distances + 1e-6)
 
 
+##
+# - positions
+##
 def pose_2d_to(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
     """Returns the pose of the entity relative to the terrain origin.
     x,y position and heading in the form of cos(theta), sin(theta)."""
@@ -130,6 +137,9 @@ def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) 
     return pose
 
 
+##
+# - velocities
+##
 def velocity_2d_b(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, pov_entity_cfg: SceneEntityCfg) -> torch.Tensor:
     """Returns the velocity vector of the entity rotated to the robot's frame (only yaw considered).
     The robots velocity is neglected."""
@@ -149,9 +159,41 @@ def velocity_2d_b(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, pov_entity_c
     return torch.cat([entity_vel_b[..., :2], entity_ang_vel_z.unsqueeze(1)], dim=-1)
 
 
+def rotation_velocity_2d_b(
+    env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, pov_entity_cfg: SceneEntityCfg
+) -> torch.Tensor:
+    """Returns the angular velocity in z direction (yaw rotation)"""
+    entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+    robot: RigidObject | Articulation = env.scene[pov_entity_cfg.name]
+
+    if entity == robot:
+        ang_vel_z_w = get_robot_rot_vel_w(robot)[..., 2]
+        return ang_vel_z_w.unsqueeze(1)
+
+    entity_ang_vel_z = entity.data.body_ang_vel_w.squeeze(1)[..., 2]
+    return entity_ang_vel_z.unsqueeze(1)
+
+
 def velocity_2d_w(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
     """Returns the velocity vector of the entity in the terrain frame."""
     entity: RigidObject | Articulation = env.scene[entity_cfg.name]
     entity_vel_w = entity.data.body_lin_vel_w.squeeze(1)
     entity_ang_vel_z = entity.data.body_ang_vel_w.squeeze(1)[..., 2]
     return torch.cat([entity_vel_w[..., :2], entity_ang_vel_z.unsqueeze(1)], dim=-1)
+
+
+##
+# - goal
+##
+
+
+def dist_to_goal(env: ManagerBasedRLEnv, entity_cfg: SceneEntityCfg, command_name: str) -> torch.Tensor:
+    """Returns the distance to the goal for the given entity."""
+    entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+    goal_cmd_geneator: GoalCommand = env.command_manager._terms[command_name]
+
+    entity_pos = get_robot_pos(entity)
+    goal_pos = goal_cmd_geneator.goal_pos_w
+
+    diff = torch.linalg.norm(entity_pos - goal_pos, dim=-1).unsqueeze(1)
+    return diff
