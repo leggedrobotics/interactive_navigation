@@ -21,8 +21,10 @@ from omni.isaac.lab.utils.warp import convert_to_warp_mesh
 from omni.isaac.lab.terrains.utils import find_flat_patches
 from omni.isaac.lab.terrains.terrain_generator_cfg import FlatPatchSamplingCfg
 
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.commands import GoalCommand
+
 if TYPE_CHECKING:
-    from omni.isaac.lab.envs import ManagerBasedEnv
+    from omni.isaac.lab.envs import ManagerBasedEnv, ManagerBasedRLEnv
 
 
 def reset_multiple_instances_decorator(reset_func: callable) -> callable:
@@ -179,3 +181,32 @@ def reset_id_joints_by_offset(
 
     # set into the physics simulation
     asset.write_joint_state_to_sim(joint_pos, joint_vel, joint_ids=joint_ids, env_ids=env_ids)
+
+
+def reset_random_dist_from_goal(
+    env: ManagerBasedRLEnv,
+    env_ids: torch.Tensor,
+    asset_cfg: SceneEntityCfg,
+    radius_range: tuple[float, float],
+    command_name: str = "robot_goal",
+):
+
+    # extract the used quantities (to enable type-hinting)
+    robot: RigidObject | Articulation = env.scene[asset_cfg.name]
+    goal_cmd_geneator: GoalCommand = env.command_manager._terms[command_name]
+
+    # sample random vector from the goal
+    goal_pos_w = goal_cmd_geneator.goal_pos_w[env_ids]
+    random_radius = math_utils.sample_uniform(*radius_range, (len(env_ids),), device=robot.device)
+    random_angle = math_utils.sample_uniform(0, 2 * np.pi, (len(env_ids),), device=robot.device)
+    random_2d_offset = torch.stack(
+        [random_radius * torch.cos(random_angle), random_radius * torch.sin(random_angle)], dim=-1
+    )
+
+    # set orientation to 0
+    orientations = torch.zeros((len(env_ids), 4), device=robot.device)
+    orientations[:, 0] = 1.0
+
+    # set the new position
+    new_pos = goal_pos_w + torch.cat([random_2d_offset, torch.zeros((len(env_ids), 1), device=robot.device)], dim=-1)
+    robot.write_root_pose_to_sim(torch.cat([new_pos, orientations], dim=-1), env_ids=env_ids)
