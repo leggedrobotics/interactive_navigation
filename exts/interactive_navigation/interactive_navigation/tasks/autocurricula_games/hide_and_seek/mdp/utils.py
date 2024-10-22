@@ -3,7 +3,7 @@ from omni.isaac.lab.assets import Articulation, RigidObject
 
 
 def get_robot_pos(robot: Articulation | RigidObject) -> torch.Tensor:
-    """Get the position of the robot."""
+    """Get the position of the robot in world frame."""
     if not isinstance(robot, (Articulation, RigidObject)):
         raise ValueError(f"Expected robot to be of type Articulation or RigidObject, got {type(robot)}")
 
