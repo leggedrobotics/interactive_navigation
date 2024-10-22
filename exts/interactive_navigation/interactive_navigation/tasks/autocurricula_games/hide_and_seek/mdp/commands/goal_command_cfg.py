@@ -21,3 +21,6 @@ class GoalCommandCfg(CommandTermCfg):
 
     randomize_goal: bool = False
     """If true, the goal is randomized at the start of each episode."""
+
+    only_heading: bool = False
+    """If true, the goal is only the heading direction."""

@@ -49,10 +49,15 @@ class ArticulatedWrench2DActionCfg(ActionTermCfg):
     See :class:`ArticulatedWrench2DAction` for more details.
     """
 
-    max_velocity: float = 6.0
+    max_velocity_forward: float = 6.0
 
-    max_vel_sideways: float = 3.5
+    max_velocity_backward: float = 2.0
+
+    max_vel_sideways: float = 2.0
 
     max_rotvel: float = 4.0
+
+    disable_translation: bool = False
+    """If true, robot can only rotate. Defaults to False."""
 
     class_type: type[ActionTerm] = actions.ArticulatedWrench2DAction

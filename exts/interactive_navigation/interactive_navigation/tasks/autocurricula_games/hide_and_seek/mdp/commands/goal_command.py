@@ -59,8 +59,6 @@ class GoalCommand(CommandTerm):
         self.goal_pos_w = torch.zeros((self.num_envs, 3), device=self.device)  # to be sampled
         # goal position in robot frame
         self.goal_pos_b = torch.zeros((self.num_envs, 3), device=self.device)
-        # sample potential goals
-        self.highest_positions = self._resample_highest_pos()
 
         # - heading
         # goal heading in world frame. This is THE goal heading angle in the world frame
@@ -85,7 +83,9 @@ class GoalCommand(CommandTerm):
         Future samples of this are used to train the actor and critic.
         This is also used for observations."""
         # position (3d) and heading (2d)
-        return torch.cat([self.goal_pos_b, self.heading_error], dim=1)
+        if self.cfg.only_heading:
+            return self.heading_error
+        return torch.cat([self.goal_pos_b[..., :2], self.heading_error], dim=1)
 
     @property
     def goal(self) -> torch.Tensor:
@@ -93,8 +93,9 @@ class GoalCommand(CommandTerm):
         This is used to condition the policy during rollouts."""
         # this is zero because the desired goal pos in the robot frame is always 0 = at the goal
         # the goal heading error is 0 --> cos sin of 0 = 1, 0
-
-        return torch.cat([torch.zeros_like(self.goal_pos_b), self.goal_heading_error], dim=1)
+        if self.cfg.only_heading:
+            return self.goal_heading_error
+        return torch.cat([torch.zeros_like(self.goal_pos_b[..., :2]), self.goal_heading_error], dim=1)
 
     """
     Implementation specific functions.
@@ -102,24 +103,16 @@ class GoalCommand(CommandTerm):
 
     def _update_metrics(self) -> None:
         """Update the metrics for the goal command."""
-        self.metrics["goal_height_w"] = self.goal_pos_w[:, 2].clone()
-        self.metrics["goal_height_b"] = self.goal_pos_b[:, 2].clone()
+        self.metrics["dist_to_goal"] = torch.linalg.norm(self.goal_pos_b[:, :2], dim=1)
+        self.metrics["heading_error"] = torch.acos(self.heading_error[:, 0])
 
     def _resample_command(self, env_ids: Sequence[int]):
         """The goal is to reach the max height of the current terrain."""
         # - goal position
         # get potential goals
         terrain = self.env.scene.terrain
-        potential_goals = self.highest_positions[terrain.terrain_levels[env_ids], terrain.terrain_types[env_ids]]
 
-        if self.cfg.randomize_goal:
-            # select random goal:
-            random_indices = torch.randint(0, potential_goals.shape[1], (len(env_ids),))
-            new_goals = potential_goals[torch.arange(len(env_ids)), random_indices]
-        else:
-            mid_index = potential_goals.shape[1] // 2 - int(potential_goals.shape[1] ** 0.5 / 2)
-            new_goals = potential_goals[:, mid_index]
-        self.goal_pos_w[env_ids] = new_goals
+        self.goal_pos_w[env_ids] = terrain.env_origins[env_ids]
 
         # - goal heading
         self.goal_heading[env_ids] = torch.rand(len(env_ids), device=self.device) * 2 * math.pi
@@ -212,13 +205,13 @@ class GoalCommand(CommandTerm):
         self.line_to_goal_visualiser.visualize(translations=translations, scales=scales, orientations=quat)
 
         # update the goal heading marker
+        line_goal_pos[:, 2] += 1.0
         goal_quat = math_utils.quat_from_angle_axis(self.goal_heading, torch.tensor([0.0, 0.0, 1.0]).to(self.device))
         self.goal_heading_visualizer.visualize(translations=line_goal_pos, orientations=goal_quat)
 
     ##
     #  Utility functions
     ##
-
     def _resample_highest_pos(self):
         """This function samples the highest points on the terrain for each terrain in the environment.
         It uses raycasting to find the highest points on the terrain."""
