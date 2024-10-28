@@ -7,6 +7,14 @@ from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.sensors import ContactSensor, RayCaster
 from omni.isaac.lab.assets import Articulation, RigidObject
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.commands import GoalCommand
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
+    get_robot_pos,
+    get_robot_quat,
+    get_robot_lin_vel_w,
+    get_robot_rot_vel_w,
+)
+
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
@@ -344,6 +352,63 @@ def action_penalty(env: ManagerBasedRLEnv, jump_penalty_factor: float = 2.0) -> 
     penalty = torch.abs(force_action) + torch.abs(torque_action) + jump_action
 
     return penalty
+
+
+def close_to_goal(
+    env: ManagerBasedRLEnv, command_name: str, robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+    """Dense Reward for being close to the goal"""
+    goal_command: GoalCommand = env.command_manager._terms[command_name]
+    desired_goal = goal_command.goal
+    current_goal = goal_command.command
+    dist = torch.linalg.norm(desired_goal - current_goal, dim=-1)
+
+    reward = torch.tanh((0.5 - dist) / 5) + 1
+    return reward
+
+
+def moving_towards_goal(
+    env: ManagerBasedRLEnv, command_name: str, robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
+    """Reward for moving towards the goal"""
+    robot: RigidObject | Articulation = env.scene[robot_cfg.name]
+    robot_vel_w = get_robot_lin_vel_w(robot)
+    robot_pos = get_robot_pos(robot)
+
+    goal_command: GoalCommand = env.command_manager._terms[command_name]
+    goal_pos_w = goal_command.goal_pos_w
+
+    to_goal_vec = goal_pos_w - robot_pos
+    to_goal_vec = to_goal_vec / torch.linalg.norm(to_goal_vec, dim=-1, keepdim=True)
+
+    vel_to_goal = torch.sum(robot_vel_w * to_goal_vec, dim=-1)
+    reward = torch.clamp(vel_to_goal, -1, 1)
+    return reward
+
+
+def at_goal(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    threshold: float = 1.0,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    interpolate: bool = False,
+) -> torch.Tensor:
+    """Dense Reward for being at the goal"""
+    goal_command: GoalCommand = env.command_manager._terms[command_name]
+    desired_goal = goal_command.goal
+    current_goal = goal_command.command
+    dist = torch.linalg.norm(desired_goal - current_goal, dim=-1)
+    at_goal = dist < threshold
+
+    if interpolate:
+
+        # linearly interpolate between 0 and 1 from threshold to 0
+        linear_reward = (dist - threshold) / threshold
+        reward = torch.where(at_goal, linear_reward, torch.zeros_like(linear_reward))
+    else:
+        reward = at_goal.float()
+
+    return reward
 
 
 def action_penalty_rigidbody(env: ManagerBasedRLEnv, jump_penalty_factor: float = 2.0) -> torch.Tensor:
