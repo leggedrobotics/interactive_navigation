@@ -86,6 +86,27 @@ def pose_2d_to(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor
     return pose_2d
 
 
+class POSE_CLASS:
+    def __init__(self):
+        self.state = None
+
+    def pose_3d_env(self, env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, something_bla: int = 2) -> torch.Tensor:
+        """Position and Quaternion in environment frame"""
+        entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+
+        # - position
+        pos = get_robot_pos(entity)
+        terrain = env.scene.terrain
+        terrain_origins = terrain.env_origins
+        rel_pos = pos.squeeze(1) - terrain_origins
+
+        # - quaternion
+        quat = get_robot_quat(entity).squeeze(1)
+        self.state = quat
+
+        return torch.cat([rel_pos, quat], dim=-1)
+
+
 def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) -> torch.Tensor:
     """Returns the pose of all entities relative to the terrain origin.
     x,y position and heading in the form of cos(theta), sin(theta)."""
@@ -177,9 +198,17 @@ def rotation_velocity_2d_b(
 def velocity_2d_w(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
     """Returns the velocity vector of the entity in the terrain frame."""
     entity: RigidObject | Articulation = env.scene[entity_cfg.name]
-    entity_vel_w = entity.data.body_lin_vel_w.squeeze(1)
-    entity_ang_vel_z = entity.data.body_ang_vel_w.squeeze(1)[..., 2]
+    entity_vel_w = get_robot_lin_vel_w(entity)
+    entity_ang_vel_z = get_robot_rot_vel_w(entity)[..., 2]
     return torch.cat([entity_vel_w[..., :2], entity_ang_vel_z.unsqueeze(1)], dim=-1)
+
+
+def velocity_3d_w(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Returns the linear and angular velocity vector in the world frame"""
+    entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+    entity_vel_w = get_robot_lin_vel_w(entity)
+    entity_angvel_w = get_robot_rot_vel_w(entity)
+    return torch.cat([entity_vel_w, entity_angvel_w], dim=-1)
 
 
 ##
