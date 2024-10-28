@@ -24,6 +24,10 @@ from omni.isaac.lab.terrains.terrain_generator_cfg import FlatPatchSamplingCfg
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv
 
+##
+# reset terrain aware
+##
+
 
 def reset_multiple_instances_decorator(reset_func: callable) -> callable:
     """Decorator to reset multiple instances of an asset at once."""
@@ -142,6 +146,9 @@ def _sample_terrain_pos(
     return positions
 
 
+##
+# reset joints
+##
 def reset_id_joints_by_offset(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor,
@@ -181,6 +188,11 @@ def reset_id_joints_by_offset(
     asset.write_joint_state_to_sim(joint_pos, joint_vel, joint_ids=joint_ids, env_ids=env_ids)
 
 
+##
+# reset near step
+##
+
+
 def reset_near_step(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor,
@@ -210,6 +222,41 @@ def reset_near_step(
     asset.write_root_pose_to_sim(torch.cat([positions, orientations], dim=-1).float(), env_ids=env_ids)
 
 
+def reset_box_near_step_and_robot_near_box(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor,
+    pose_range: dict[str, tuple[float, float]],
+    box_asset_cfg: SceneEntityCfg,
+    robot_asset_cfg: SceneEntityCfg,
+):
+    robot: RigidObject | Articulation = env.scene[robot_asset_cfg.name]
+    box: RigidObject = env.scene[box_asset_cfg.name]
+
+    # get positions
+    dist_box_to_step = env.box_from_step_dist_curriculum
+    dist_robot_to_box = env.robot_from_box_dist_curriculum
+
+    box_pos = _sample_pos_near_step(dist=dist_box_to_step, min_offset=0.5, terrain=env.scene.terrain, env_ids=env_ids)
+    robot_pos = _sample_pos_near_box(
+        dist=dist_robot_to_box, box_positions=box_pos, terrain=env.scene.terrain, env_ids=env_ids
+    )
+
+    # place box
+    box_pos[:, 2] += 0.5
+    range_list = [pose_range.get(key, (0.0, 0.0)) for key in ["roll", "pitch", "yaw"]]
+    ranges = torch.tensor(range_list, device=robot.device)
+    rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 3), device=robot.device)
+    orientations = math_utils.quat_from_euler_xyz(rand_samples[:, 0], rand_samples[:, 1], rand_samples[:, 2])
+    box.write_root_pose_to_sim(torch.cat([box_pos, orientations], dim=-1).float(), env_ids=env_ids)
+
+    # place robot
+    robot_pos = _sample_pos_near_box(
+        dist=dist_robot_to_box, box_positions=box_pos, terrain=env.scene.terrain, env_ids=env_ids
+    )
+    orientations = torch.tensor([0.0, 0.0, 0.0, 1.0], device=robot.device).repeat(len(env_ids), 1)
+    robot.write_root_pose_to_sim(torch.cat([robot_pos, orientations], dim=-1).float(), env_ids=env_ids)
+
+
 def _sample_pos_near_step(
     dist: float, min_offset: float, terrain: TerrainImporter, env_ids: torch.Tensor
 ) -> torch.Tensor:
@@ -225,6 +272,7 @@ def _sample_pos_near_step(
     random_points = []
 
     for env_id in range(env_ids.shape[0]):
+        # find points in terrain
         env_origin = env_origins[env_id]
         diff = torch.abs(env_origin - mesh_points)
         valid_points = (
@@ -236,11 +284,11 @@ def _sample_pos_near_step(
         points = mesh_points[valid_points]
         min_step_height = points[:, 2].min()
         min_step_points = points[points[:, 2] == min_step_height]
-
         lowest_corner = min_step_points.max(dim=0)[0]
+        lowest_corner[2] = 0
 
+        # random shift
         left_right_space = (lowest_corner - env_origin)[0] + size[0] / 2 - min_offset
-
         random_shift = torch.rand(1).to(terrain.device) * left_right_space
         in_x = torch.rand(1).to(terrain.device) < 0.5
 
@@ -250,6 +298,90 @@ def _sample_pos_near_step(
 
         random_points.append(lowest_corner + corner_offset)
 
-        print(f"points: {points.shape}")
-
     return torch.stack(random_points)
+
+
+def _sample_pos_near_box(
+    dist: float, box_positions: torch.Tensor, terrain: TerrainImporter, env_ids: torch.Tensor
+) -> torch.Tensor:
+    """Sample a point near the box, such that its on the same terrain level as the box.
+    We use raycasting."""
+
+    wp_terrain_mesh = terrain.warp_meshes["terrain"]
+
+    # create a circular ray pattern:
+    N_rays = 100
+    angles = torch.linspace(0, 2 * torch.pi, N_rays + 1)[:-1].to(terrain.device)
+    ray_starts = torch.stack([torch.cos(angles) * dist, torch.sin(angles) * dist, torch.ones_like(angles) + 100]).T
+
+    # ray_starts_envs = box_positions.unsqueeze(1) + ray_starts.unsqueeze(0)
+
+    ray_directions = torch.stack([torch.zeros(N_rays), torch.zeros(N_rays), -torch.ones(N_rays)]).T.to(
+        terrain.device
+    )  # .repeat(env_ids.shape[0], 1, 1)
+
+    robot_positions = []
+    for env_id in range(env_ids.shape[0]):
+        sub_ray_starts = ray_starts + box_positions[env_id]
+        ray_hits = raycast_mesh(
+            sub_ray_starts.unsqueeze(0).float().contiguous(),
+            ray_directions.unsqueeze(0).float().contiguous(),
+            wp_terrain_mesh.id,
+        )[0].squeeze(0)
+
+        # find points on lowest level
+        valid = ray_hits[:, 2] < 0.1
+        # we need to not sample points directly at an edge
+        # we do this by trimming left and right from sequences of valid points
+        # we remove as many points as the width of the box
+        robot_width = 0.5
+        width_per_point = torch.pi * dist / N_rays
+        N_trim = int(robot_width / width_per_point)
+        valid = _trim_sequences(valid, N_trim)
+
+        # random sample
+        valid_points = ray_hits[valid]
+        random_point = valid_points[torch.randint(0, valid_points.shape[0], (1,))].squeeze()
+        robot_positions.append(random_point)
+    return torch.stack(robot_positions)
+
+
+def _trim_sequences(tensor: torch.Tensor, N: int) -> torch.Tensor:
+    # Ensure the tensor is a 1D boolean tensor
+    if tensor.dim() != 1 or tensor.dtype != torch.bool:
+        raise ValueError("Input must be a 1D boolean tensor.")
+
+    length = len(tensor)
+
+    # Convert boolean tensor to integer tensor for calculations
+    int_tensor = tensor.int()
+
+    # Pad the tensor at both ends with zeros to handle edge cases
+    padded = torch.nn.functional.pad(int_tensor, (1, 1), value=0)
+
+    # Compute the differences to find the start and end indices of sequences
+    diffs = padded[1:] - padded[:-1]
+
+    # Start indices where the value changes from 0 to 1
+    starts = torch.where(diffs == 1)[0]
+
+    # End indices where the value changes from 1 to 0
+    ends = torch.where(diffs == -1)[0] - 1  # Subtract 1 to make 'ends' inclusive
+
+    # Adjust starts and ends by trimming N ones from both sides
+    adjusted_starts = starts + N
+    adjusted_ends = ends - N
+
+    # Clamp the adjusted indices to be within the valid range
+    adjusted_starts = adjusted_starts.clamp(0, length - 1)
+    adjusted_ends = adjusted_ends.clamp(0, length - 1)
+
+    # Initialize the output tensor with zeros (False)
+    output = torch.zeros_like(tensor, dtype=torch.bool)
+
+    # Efficiently set the trimmed sequences to True
+    for start, end in zip(adjusted_starts, adjusted_ends):
+        if start <= end:
+            output[start : end + 1] = True  # end + 1 because the end index is inclusive
+
+    return output
