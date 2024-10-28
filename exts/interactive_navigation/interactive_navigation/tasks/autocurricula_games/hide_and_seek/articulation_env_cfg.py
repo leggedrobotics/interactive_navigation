@@ -55,7 +55,7 @@ class MySceneCfg(InteractiveSceneCfg):
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
         terrain_type="generator",
-        terrain_generator=mdp.terrain.MESH_STEPPABLE_PYRAMID_TERRAIN_CFG,
+        terrain_generator=mdp.terrain.MESH_PYRAMID_TERRAIN_CFG,
         max_init_terrain_level=1000,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -75,37 +75,15 @@ class MySceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = ROBOT_USD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # sensors
-    lidar = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/yaw_link",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
-        attach_yaw_only=True,
-        pattern_cfg=patterns.LidarPatternCfg(
-            channels=1,
-            vertical_fov_range=(-0.0, 0.0),
-            horizontal_fov_range=(0, 360),
-            horizontal_res=10,
-        ),
-        max_distance=100.0,
-        drift_range=(-0.0, 0.0),
-        debug_vis=False,
-        history_length=0,
-        # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
-        mesh_prim_paths=[
-            "/World/ground",
-            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
-            # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
-        ],
-        track_mesh_transforms=True,
-        visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
-    )
-
-    # height_scan = RayCasterCfg(
-    #     prim_path="{ENV_REGEX_NS}/Robot/yaw_link/sphere_link",
-    #     offset=RayCasterCfg.OffsetCfg(pos=(0.75, 0.0, 0.0)),
+    # lidar = RayCasterCfg(
+    #     prim_path="{ENV_REGEX_NS}/Robot/yaw_link",
+    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
     #     attach_yaw_only=True,
-    #     pattern_cfg=patterns.GridPatternCfg(
-    #         resolution=0.5,
-    #         size=(5, 2),
+    #     pattern_cfg=patterns.LidarPatternCfg(
+    #         channels=1,
+    #         vertical_fov_range=(-0.0, 0.0),
+    #         horizontal_fov_range=(0, 360),
+    #         horizontal_res=10,
     #     ),
     #     max_distance=100.0,
     #     drift_range=(-0.0, 0.0),
@@ -121,15 +99,13 @@ class MySceneCfg(InteractiveSceneCfg):
     #     visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
     # )
 
-    lidar_top = RayCasterCfg(
+    height_scan = RayCasterCfg(
         prim_path="{ENV_REGEX_NS}/Robot/yaw_link",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 1)),
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 30.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.LidarPatternCfg(
-            channels=1,
-            vertical_fov_range=(-0.0, 0.0),
-            horizontal_fov_range=(0, 360),
-            horizontal_res=10,
+        pattern_cfg=patterns.GridPatternCfg(
+            resolution=0.5,
+            size=(5, 5),
         ),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
@@ -142,8 +118,32 @@ class MySceneCfg(InteractiveSceneCfg):
             # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
         ],
         track_mesh_transforms=True,
-        visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCasterTop"),
+        visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
     )
+
+    # lidar_top = RayCasterCfg(
+    #     prim_path="{ENV_REGEX_NS}/Robot/yaw_link",
+    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 1)),
+    #     attach_yaw_only=True,
+    #     pattern_cfg=patterns.LidarPatternCfg(
+    #         channels=1,
+    #         vertical_fov_range=(-0.0, 0.0),
+    #         horizontal_fov_range=(0, 360),
+    #         horizontal_res=10,
+    #     ),
+    #     max_distance=100.0,
+    #     drift_range=(-0.0, 0.0),
+    #     debug_vis=False,
+    #     history_length=0,
+    #     # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
+    #     mesh_prim_paths=[
+    #         "/World/ground",
+    #         RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
+    #         # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
+    #     ],
+    #     track_mesh_transforms=True,
+    #     visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCasterTop"),
+    # )
 
     # boxes_contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Box_.*", history_length=1, track_air_time=False)
 
@@ -197,13 +197,11 @@ class MySceneCfg(InteractiveSceneCfg):
 class CommandsCfg:
     """Command specifications for the MDP."""
 
-    # base_velocity = mdp.UniformPose2dCommandCfg(
-    #     asset_name="robot",
-    #     resampling_time_range=(10.0, 10.0),
-    #     simple_heading=True,
-    #     debug_vis=True,
-    #     ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-20, 20), pos_y=(-0.5, 0.5), heading=(-0.0, 0.0)),
-    # )
+    robot_goal = mdp.GoalCommandCfg(
+        asset_name="robot",
+        resampling_time_range=(1e9, 1e9),
+        debug_vis=True,
+    )
 
 
 @configclass
@@ -230,18 +228,25 @@ class ObservationsCfg:
             params={"entity_cfg": SceneEntityCfg("robot"), "pov_entity_cfg": SceneEntityCfg("robot")},
         )
 
-        lidar_scan = ObsTerm(
-            func=mdp.lidar_obs_dist_2d,
-            params={"sensor_cfg": SceneEntityCfg("lidar")},
-            noise=Unoise(n_min=-0.1, n_max=0.1),
-            clip=(0.0, 100.0),
-        )
+        # lidar_scan = ObsTerm(
+        #     func=mdp.lidar_obs_dist_2d,
+        #     params={"sensor_cfg": SceneEntityCfg("lidar")},
+        #     noise=Unoise(n_min=-0.1, n_max=0.1),
+        #     clip=(0.0, 100.0),
+        # )
 
-        lidar_scan_top = ObsTerm(
-            func=mdp.lidar_obs_dist_2d,
-            params={"sensor_cfg": SceneEntityCfg("lidar_top")},
+        # lidar_scan_top = ObsTerm(
+        #     func=mdp.lidar_obs_dist_2d,
+        #     params={"sensor_cfg": SceneEntityCfg("lidar_top")},
+        #     noise=Unoise(n_min=-0.1, n_max=0.1),
+        #     clip=(0.0, 100.0),
+        # )
+
+        height_scan = ObsTerm(
+            func=mdp.lidar_height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scan")},
             noise=Unoise(n_min=-0.1, n_max=0.1),
-            clip=(0.0, 100.0),
+            clip=(-10.0, 10.0),
         )
 
         # boxes:
@@ -302,17 +307,35 @@ class EventCfg:
         },
     )
 
-    reset_boxes = EventTerm(
-        func=mdp.reset_root_state_uniform_on_terrain_aware,
+    # reset_boxes = EventTerm(
+    #     func=mdp.reset_root_state_uniform_on_terrain_aware,
+    #     mode="reset",
+    #     params={
+    #         "pose_range": {
+    #             "yaw": (-3.14, 3.14),
+    #         },
+    #         "lowest_level": True,
+    #         "offset": [0.0, 0.0, Z_BOX],
+    #         # "asset_cfg": SceneEntityCfg("box_1"),
+    #         "asset_configs": [SceneEntityCfg(f"box_{i}") for i in range(1, N_BOXES + 1)],
+    #     },
+    # )
+    # reset_box_near_step = EventTerm(
+    #     func=mdp.reset_near_step,
+    #     mode="reset",
+    #     params={
+    #         "pose_range": {"yaw": (0, 0)},
+    #         "asset_cfg": SceneEntityCfg("box_1"),
+    #     },
+    # )
+
+    reset_box_n_robot = EventTerm(
+        func=mdp.reset_box_near_step_and_robot_near_box,
         mode="reset",
         params={
-            "pose_range": {
-                "yaw": (-3.14, 3.14),
-            },
-            "lowest_level": True,
-            "offset": [0.0, 0.0, Z_BOX],
-            # "asset_cfg": SceneEntityCfg("box_1"),
-            "asset_configs": [SceneEntityCfg(f"box_{i}") for i in range(1, N_BOXES + 1)],
+            "pose_range": {"yaw": (0, 0)},
+            "box_asset_cfg": SceneEntityCfg("box_1"),
+            "robot_asset_cfg": SceneEntityCfg("robot"),
         },
     )
 
@@ -340,24 +363,24 @@ class RewardsCfg:
     #     },
     # )
 
-    # closest_box_close_to_step = RewTerm(
-    #     func=mdp.closest_box_close_to_step_reward,
-    #     weight=0.5,
-    #     params={
-    #         "robot_str": "robot",
-    #         "dist_sensor_1_str": "box_lidar_bot",
-    #         "dist_sensor_2_str": "box_lidar_top",
-    #         "proximity_threshold": 0.5,
-    #         "proximity_std": 1.0,
-    #         "step_size_threshold": 0.75,
-    #     },
-    # )
+    closest_box_close_to_step = RewTerm(
+        func=mdp.closest_box_close_to_step_reward,
+        weight=0.5,
+        params={
+            "robot_str": "robot",
+            "dist_sensor_1_str": "box_lidar_bot",
+            "dist_sensor_2_str": "box_lidar_top",
+            "proximity_threshold": 0.5,
+            "proximity_std": 1.0,
+            "step_size_threshold": 0.75,
+        },
+    )
 
-    # close_to_box = RewTerm(
-    #     func=mdp.CloseToBoxReward().close_to_box_reward,
-    #     weight=0.1,
-    #     params={"threshold": 1.0},
-    # )
+    close_to_box = RewTerm(
+        func=mdp.CloseToBoxReward().close_to_box_reward,
+        weight=0.1,
+        params={"threshold": 1.0},
+    )
 
     successful_jump = RewTerm(
         func=mdp.JumpReward().successful_jump_reward,
@@ -407,6 +430,9 @@ class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
     num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
+
+    box_from_step_dist_curriculum = CurrTerm(func=mdp.box_from_step_dist_curriculum)
+    robot_from_box_dist_curriculum = CurrTerm(func=mdp.robot_from_box_dist_curriculum)
 
     # terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
 
@@ -476,8 +502,10 @@ class MoveUpBoxesEnvCfg(ManagerBasedRLEnvCfg):
 
         # update sensor update periods
         # we tick all the sensors based on the smallest update period (physics update period)
-        if self.scene.lidar is not None:
-            self.scene.lidar.update_period = self.decimation * self.sim.dt
+        # if self.scene.lidar is not None:
+        #     self.scene.lidar.update_period = self.decimation * self.sim.dt
+        if self.scene.height_scan is not None:
+            self.scene.height_scan.update_period = self.decimation * self.sim.dt
 
         # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
         # this generates terrains with increasing difficulty and is useful for training
