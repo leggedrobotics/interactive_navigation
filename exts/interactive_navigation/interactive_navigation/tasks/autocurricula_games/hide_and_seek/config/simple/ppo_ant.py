@@ -15,9 +15,16 @@ class RewardsCfg:
 
     close_to_goal = RewTerm(func=mdp.close_to_goal, params={"command_name": "robot_goal"}, weight=1.0)
 
-    at_goal = RewTerm(func=mdp.at_goal, params={"command_name": "robot_goal"}, weight=100.0)
+    at_goal = RewTerm(
+        func=mdp.at_goal, params={"command_name": "robot_goal", "threshold": 0.34, "interpolate": False}, weight=100.0
+    )
 
-    move_to_goal = RewTerm(func=mdp.moving_towards_goal, params={"command_name": "robot_goal"}, weight=0.1)
+    move_to_goal = RewTerm(func=mdp.moving_towards_goal, params={"command_name": "robot_goal"}, weight=1.0)
+
+    # episode_termination = RewTerm(
+    #     func=mdp.is_terminated,
+    #     weight=200.0,  #
+    # )
 
 
 @configclass

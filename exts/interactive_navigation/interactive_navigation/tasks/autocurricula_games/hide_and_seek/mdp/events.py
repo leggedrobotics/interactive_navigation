@@ -188,6 +188,7 @@ def reset_random_dist_from_goal(
     env_ids: torch.Tensor,
     asset_cfg: SceneEntityCfg,
     radius_range: tuple[float, float],
+    z_offset: float = 0.0,
     command_name: str = "robot_goal",
 ):
 
@@ -209,4 +210,5 @@ def reset_random_dist_from_goal(
 
     # set the new position
     new_pos = goal_pos_w + torch.cat([random_2d_offset, torch.zeros((len(env_ids), 1), device=robot.device)], dim=-1)
+    new_pos[:, 2] += z_offset
     robot.write_root_pose_to_sim(torch.cat([new_pos, orientations], dim=-1), env_ids=env_ids)

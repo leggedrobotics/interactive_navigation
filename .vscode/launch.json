@@ -55,6 +55,7 @@
             "console": "integratedTerminal",
             "envFile": "${workspaceFolder}/.vscode/.python.env",
         },
+        // CRL
         {
             "name": "Python: CRL TEST",
             "type": "debugpy",
@@ -63,10 +64,52 @@
                 "--task",
                 "Isaac-CRL-TEST-v0",
                 "--num_envs",
-                "2",
+                "512",
                 "--run_name",
                 "test_crl",
                 // "--headless"
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        {
+            "name": "Python: CRL ANT",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--task",
+                "Isaac-CRL-ANT-v0",
+                "--num_envs",
+                "512",
+                "--run_name",
+                "crl_ant_debug",
+                // "--headless"
+                "--resume",
+                "RESUME",
+                "--load_run",
+                "ant_goal_cond_nav_ppo_2"
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        {
+            "name": "Python: PPO ANT",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--task",
+                "Isaac-PPO-ANT-v0",
+                "--num_envs",
+                "512",
+                "--run_name",
+                "ppo_ant_debug",
+                // "--headless"
+                "--resume",
+                "RESUME",
+                "--load_run",
+                "ant_goal_cond_nav_ppo"
             ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
             "console": "integratedTerminal",

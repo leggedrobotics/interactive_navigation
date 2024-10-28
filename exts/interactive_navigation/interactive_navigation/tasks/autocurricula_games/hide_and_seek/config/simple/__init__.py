@@ -33,12 +33,12 @@ gym.register(
 )
 
 gym.register(
-    id="Isaac-ANT-PPO-v0",
+    id="Isaac-PPO-ANT-v0",
     entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": PPOAntEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:HideSeekRelationalPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:AntGoalCondPPORunnerCfg",
     },
 )
 

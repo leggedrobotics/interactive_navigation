@@ -32,7 +32,7 @@ one epoch = one iteration of the main loop
     = 10 * 2 * 256 * 1 = 5120
 
     num_learning_samples_actor = num_learning_steps * num_actor_steps_per_update * actor_batch_size 
-    = 10 * 1 * 256 = 2560
+    = 10 * 2 * 256 = 5120
 
     num_new_samples_per_epoch = num_envs * num_steps_per_env = 4096 * 20 = 81_920
 
@@ -47,21 +47,23 @@ one epoch = one iteration of the main loop
 
 @configclass
 class TestCrlRunnerCfg(RslCRlOnPolicyRunnerCfg):
-    num_steps_per_env = 20
-    buffer_fill_steps = 1000
-    num_learning_steps = 10
-    max_iterations = 1_000_000
+    num_steps_per_env = 250  # 62 * 100
+    buffer_fill_steps = 5000
+    num_learning_steps = 1
+    update_actor_critic_simultaneously = False
+    max_iterations = 1_220_000
     save_interval = 1000
-    experiment_name = "contrastive_RL_test"
-    run_name = "crl_test"
-    wandb_project = "crl_test"
+    experiment_name = "contrastive_RL_ant"
+    run_name = "crl_ant"
+    wandb_project = "crl_comparison_test"
     empirical_normalization = False
     policy = RslRlGoalConditionedActorCfg(
+        class_name="GoalConditionedGaussianPolicy",
         init_noise_std=1.0,
         activation="elu",
     )
     critic = RslRlContrastiveCriticCfg(
-        representation_dim=32,
+        representation_dim=64,
         activation="elu",
     )
 
@@ -69,9 +71,9 @@ class TestCrlRunnerCfg(RslCRlOnPolicyRunnerCfg):
         mini_batch_size_and_num_inserts_per_sample=256,
         stack_N_critic_batches=1,
         actor_batch_size=256,
-        replay_buffer_size_per_env=1_000,
-        num_critic_learning_steps_per_update=2,
-        num_actor_learning_steps_per_update=2,
+        replay_buffer_size_per_env=5000,
+        num_critic_learning_steps_per_update=15_000,
+        num_actor_learning_steps_per_update=1,
         log_sum_exp_regularization_coef=0.05,
         entropy_coef=0.001,
         tau=1.0,  #
