@@ -50,6 +50,31 @@ def pyramid_terrain(
     # Initialize list of meshes
     meshes_list = []
 
+    if cfg.walls:
+        wall_height = cfg.wall_height
+        wall_thickness = cfg.wall_thickness
+        # south wall
+        center_south = [wall_thickness / 2, cfg.size[1] / 2, wall_height / 2]
+        dims = [wall_thickness, cfg.size[1], wall_height]
+        wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_south))
+        meshes_list.append(wall_box)
+        # # north wall
+        # center_north = [wall_thickness / 2, 0, wall_height / 2]
+        # wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_north))
+        # meshes_list.append(wall_box)
+        # east wall
+        center_east = [cfg.size[1] / 2, wall_thickness / 2, wall_height / 2]
+        dims = [cfg.size[0], wall_thickness, wall_height]
+        wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_east))
+        meshes_list.append(wall_box)
+        # # west wall
+        # center_west = [0, wall_thickness / 2, wall_height / 2]
+        # wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_west))
+        # meshes_list.append(wall_box)
+
+        # Adjust the size of the terrain to account for the walls
+        # cfg.size = (cfg.size[0] - cfg.wall_thickness, cfg.size[1] - cfg.wall_thickness)
+
     # Generate the border if needed
     if cfg.border_width > 0.0:
         border_center = [0.5 * cfg.size[0], 0.5 * cfg.size[1], -step_height / 2]
@@ -84,7 +109,12 @@ def pyramid_terrain(
             (0.5, -0.5),  # Lower-right corner
             (0.5, 0.5),  # Upper-right corner
         ]
-        corner = random.choice(corners)
+        if cfg.type == "random":
+            corner = random.choice(corners)
+        elif cfg.type == "spiral":
+            corner = corners[k % 4]
+        else:
+            corner = corners[0]
 
         # Calculate the position of the new box
         offset_x = corner[0] * (prev_box_size[0] - box_size[0])
@@ -103,28 +133,6 @@ def pyramid_terrain(
         prev_box_size = box_size
         prev_box_pos = box_pos
         prev_box_height = step_height
-
-    if cfg.walls:
-        wall_height = 20.0
-        wall_thickness = 0.1
-        # south wall
-        center_south = [wall_thickness / 2, cfg.size[1] / 2, wall_height / 2]
-        dims = [wall_thickness, cfg.size[1], wall_height]
-        wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_south))
-        meshes_list.append(wall_box)
-        # # north wall
-        # center_north = [wall_thickness / 2, 0, wall_height / 2]
-        # wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_north))
-        # meshes_list.append(wall_box)
-        # east wall
-        center_east = [cfg.size[1] / 2, wall_thickness / 2, wall_height / 2]
-        dims = [cfg.size[0], wall_thickness, wall_height]
-        wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_east))
-        meshes_list.append(wall_box)
-        # # west wall
-        # center_west = [0, wall_thickness / 2, wall_height / 2]
-        # wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_west))
-        # meshes_list.append(wall_box)
 
     # Origin of the terrain
     # total_height = prev_box_pos[2] + 0.5 * prev_box_height

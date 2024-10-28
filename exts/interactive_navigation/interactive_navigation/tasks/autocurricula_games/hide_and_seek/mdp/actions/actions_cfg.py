@@ -51,6 +51,8 @@ class ArticulatedWrench2DActionCfg(ActionTermCfg):
 
     max_velocity: float = 6.0
 
+    max_vel_sideways: float = 3.5
+
     max_rotvel: float = 4.0
 
     class_type: type[ActionTerm] = actions.ArticulatedWrench2DAction

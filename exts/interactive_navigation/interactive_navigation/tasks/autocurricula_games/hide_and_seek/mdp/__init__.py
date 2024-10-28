@@ -7,7 +7,11 @@ from .rewards import *  # noqa: F401, F403
 from .actions import *  # noqa: F401, F403
 from .observations import *  # noqa: F401, F403
 from .events import *  # noqa: F401, F403
+from .commands import *  # noqa: F401, F403
 
 from . import terrain  # noqa: F401, F403
+from . import utils
+
+from .goals import *  # noqa: F401, F403
 
 from .data_container import DataContainer

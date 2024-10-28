@@ -31,8 +31,17 @@ class MeshPyramidTerrainCfg(SubTerrainBaseCfg):
     """The width of the square platform at the center of the terrain. Defaults to 1.0."""
     walls: bool = False
     """If True, each terrain is surrounded by walls. Defaults to False."""
+    wall_height: float = 2.0
+    """The height of the walls (in m). Defaults to 2.0."""
+    wall_thickness: float = 0.1
+    """The thickness of the walls (in m). Defaults to 0.1."""
+    type: Literal["random", "spiral", "pyramid"] = "random"
+    """The type of the terrain. Defaults to "random"."""
+
     holes: bool = False
     """If True, the terrain will have holes in the steps. Defaults to False.
+    
+    
     
 
     If :obj:`holes` is True, the terrain will have pyramid stairs of length or width

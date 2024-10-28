@@ -115,40 +115,43 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
 
 
 MESH_STEPPABLE_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
-    size=(20.0, 20.0),
-    border_width=1.0,
-    border_height=10.0,
-    num_rows=16,  # difficulty levels
-    num_cols=16,  # number of terrains per difficulty level
+    size=(25.0, 25.0),
+    border_width=10.0,
+    border_height=7.5,
+    num_rows=8,  # difficulty levels
+    num_cols=8,  # number of terrains per difficulty level
     horizontal_scale=0.5,
     vertical_scale=0.05,
     slope_threshold=0.75,
     use_cache=False,
     curriculum=False,
-    difficulty_range=(0, 1.0),
+    difficulty_range=(1.0, 1.0),
     sub_terrains={
         "pyramid_stairs": MeshPyramidTerrainCfg(
             proportion=1.0,
             step_height=0.5,
-            step_width=(2.0, 1.0),
+            step_width=(3.0, 1.75),
             platform_width=3.0,
             border_width=0.0,
             holes=False,
             walls=True,
+            type="pyramid",
+            wall_height=7.5,
+            wall_thickness=1.25,
             flat_patch_sampling={
                 "init_pos": FlatPatchSamplingCfg(
-                    num_patches=128,
+                    num_patches=8,
                     patch_radius=1.5,
                     max_height_diff=5.0,
                 ),
                 "lowest_pos": FlatPatchSamplingCfg(
-                    num_patches=128, patch_radius=1.0, max_height_diff=0.25, z_range=(0.0, 0.25)
+                    num_patches=64, patch_radius=1.0, max_height_diff=0.25, z_range=(0.0, 0.25)
                 ),
                 "not_lowest_pos": FlatPatchSamplingCfg(
-                    num_patches=128,
+                    num_patches=256,
                     patch_radius=0.3,
                     max_height_diff=50.0,
-                    z_range=(0.25, 50.0),
+                    z_range=(0.25, 6.0),
                 ),
             },
         )

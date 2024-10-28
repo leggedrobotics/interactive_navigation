@@ -193,7 +193,7 @@ class ArticulatedJumpAction(ActionTerm):
             delta_pose, gripper_command = self.teleop_interface.advance()
             want_to_jump = (torch.zeros_like(actions.squeeze()) + delta_pose[3]) != 0
         else:
-            want_to_jump = actions.squeeze() > 0
+            want_to_jump = actions.squeeze() > 0.5  # actions from beta distribution are in the range [0, 1]
 
         # check if the jump is requested and the cooldown is over
         self.jumping_now = want_to_jump & (self.jump_cooldown_buffer.eq(0))
@@ -235,7 +235,10 @@ class ArticulatedWrench2DAction(ActionTerm):
 
         self.env = env
         self.max_lin_vel = cfg.max_velocity
+        self.max_vel_sideways = cfg.max_vel_sideways
         self.max_rot_vel = cfg.max_rotvel
+
+        self.vel_b = torch.zeros(self.num_envs, 3, device=self.device)
 
         # unlimit joint ranges
         max_translate_xy = 1000.0
@@ -281,7 +284,8 @@ class ArticulatedWrench2DAction(ActionTerm):
         raise NotImplementedError
 
     def process_actions(self, actions: torch.Tensor):
-        """called each env step, i.e., once per {decimation} sim steps"""
+        """called each env step, i.e., once per {decimation} sim steps
+        Actions from beta distribution are in the range [0, 1]"""
         # set joint effort targets
 
         if TELEOP:
@@ -291,16 +295,22 @@ class ArticulatedWrench2DAction(ActionTerm):
             action_r_z = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[2] * 4
 
         else:
-            # limit action to max vel:
-            vel_norm = torch.linalg.norm(actions[:, :2], dim=1)
-            above_max_vel = vel_norm > self.max_lin_vel
-            actions[above_max_vel, :2] = (
-                actions[above_max_vel, :2] / vel_norm[above_max_vel].unsqueeze(1) * self.max_lin_vel
-            )
+            ## scale action to max vel:
+            ## ie scale [0, 1] to [-max_vel, max_vel]
+            action_x = self.scale_tensor(actions[:, 0], (0, 0.5, 1), (-self.max_lin_vel, 0, self.max_lin_vel))
+            action_y = self.scale_tensor(actions[:, 1], (0, 0.5, 1), (-self.max_vel_sideways, 0, self.max_vel_sideways))
+            action_r_z = self.scale_tensor(actions[:, 2], (0, 0.5, 1), (-self.max_rot_vel, 0, self.max_rot_vel))
 
-            action_x = actions[:, 0]
-            action_y = actions[:, 1]
-            action_r_z = torch.clamp(actions[:, 2], -self.max_rot_vel, self.max_rot_vel)
+            ## limit action to max vel:
+            # vel_norm = torch.linalg.norm(actions[:, :2], dim=1)
+            # above_max_vel = vel_norm > self.max_lin_vel
+            # actions[above_max_vel, :2] = (
+            #     actions[above_max_vel, :2] / vel_norm[above_max_vel].unsqueeze(1) * self.max_lin_vel
+            # )
+
+            # action_x = actions[:, 0]
+            # action_y = actions[:, 1]
+            # action_r_z = torch.clamp(actions[:, 2], -self.max_rot_vel, self.max_rot_vel)
 
         vel_b = torch.zeros(self.num_envs, 3, device=self.device)
         vel_b[:, 0] = action_x.squeeze()
@@ -314,9 +324,9 @@ class ArticulatedWrench2DAction(ActionTerm):
         """called each sim step"""
 
         robot_quat = self._asset.data.body_quat_w[:, -1, :]
-        vel_b = math_utils.quat_apply_yaw(robot_quat, self.vel_b)
+        vel_w = math_utils.quat_apply_yaw(robot_quat, self.vel_b)
 
-        self._asset.set_joint_velocity_target(vel_b[:, :2], joint_ids=[0, 1])
+        self._asset.set_joint_velocity_target(vel_w[:, :2], joint_ids=[0, 1])
         self._asset.set_joint_velocity_target(self.rot_vel.unsqueeze(1), joint_ids=[3])
 
     def _set_debug_vis_impl(self, debug_vis: bool):
@@ -359,3 +369,31 @@ class ArticulatedWrench2DAction(ActionTerm):
         scales_3d = torch.cat([scales * 2, default_scale, default_scale], dim=1)
 
         self.vel_visualizer.visualize(translations=robot_pos, orientations=vel_dir_quat, scales=scales_3d)
+
+    def scale_tensor(
+        self,
+        input_tensor: torch.Tensor,
+        input_range: tuple[float, float, float],
+        output_range: tuple[float, float, float],
+    ) -> torch.Tensor:
+        """Scales the input tensor from the input range to the output range.
+        Args:
+            input_tensor: The input tensor to be scaled.
+            input_range: The range of the input tensor.
+            output_range: The range of the output tensor.
+        """
+        input_min, input_mid, input_max = input_range
+        output_min, output_mid, output_max = output_range
+
+        lower_scale = (output_mid - output_min) / (input_mid - input_min)
+        upper_scale = (output_max - output_mid) / (input_max - input_mid)
+
+        lower_offset = output_min - lower_scale * input_min
+        upper_offset = output_mid - upper_scale * input_mid
+
+        # Apply scaling in one step using where
+        return torch.where(
+            input_tensor <= input_mid,
+            lower_scale * input_tensor + lower_offset,
+            upper_scale * input_tensor + upper_offset,
+        )
