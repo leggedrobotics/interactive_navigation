@@ -63,3 +63,15 @@ def num_boxes_curriculum(
 
     num_range = env.cfg.data_container.num_obstacles_range
     return (num_range[0] + num_range[1]) / 2
+
+
+def box_from_step_dist_curriculum(env: ManagerBasedRLEnv, env_ids: Sequence[int]):
+    env.box_from_step_dist_curriculum = 1
+
+    return env.box_from_step_dist_curriculum
+
+
+def robot_from_box_dist_curriculum(env: ManagerBasedRLEnv, env_ids: Sequence[int]):
+    env.robot_from_box_dist_curriculum = 2
+
+    return env.robot_from_box_dist_curriculum
