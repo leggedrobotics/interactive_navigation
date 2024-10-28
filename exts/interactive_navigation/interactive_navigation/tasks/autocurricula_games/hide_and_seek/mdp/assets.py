@@ -40,7 +40,7 @@ ROBOT_USD_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.35), joint_pos={"joint_x": 0.0, "joint_y": 0.0, "joint_z": 0.0, "joint_yaw": 0.0}
+        pos=(0.0, 0.0, 0.0), joint_pos={"joint_x": 0.0, "joint_y": 0.0, "joint_z": 0.5, "joint_yaw": 0.0}
     ),
     actuators={
         "x_actuator": ImplicitActuatorCfg(
