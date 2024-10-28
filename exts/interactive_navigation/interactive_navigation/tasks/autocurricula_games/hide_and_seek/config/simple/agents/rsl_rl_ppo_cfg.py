@@ -78,12 +78,13 @@ class AntGoalCondPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     seed = 123
     num_steps_per_env = 64
     max_iterations = 100_000
-    save_interval = 1000
+    save_interval = 500
     experiment_name = "ant_goal_cond_ppo"
     run_name = "ant_goal_cond_ppo"
     wandb_project = "ant_goal_cond_ppo"
     empirical_normalization = False
     policy = RslRlPpoRelationalActorCriticCfg(
+        class_name="GoalConditionedPPOActorCritic",
         init_noise_std=1.0,
         activation="elu",
     )
