@@ -253,7 +253,7 @@ def reset_box_near_step_and_robot_near_box(
     robot_pos = _sample_pos_near_box(
         dist=dist_robot_to_box, box_positions=box_pos, terrain=env.scene.terrain, env_ids=env_ids
     )
-    orientations = torch.tensor([0.0, 0.0, 0.0, 1.0], device=robot.device).repeat(len(env_ids), 1)
+    orientations = torch.tensor([1.0, 0.0, 0.0, 0.0], device=robot.device).repeat(len(env_ids), 1)
     robot.write_root_pose_to_sim(torch.cat([robot_pos, orientations], dim=-1).float(), env_ids=env_ids)
 
 
