@@ -83,7 +83,7 @@ class CommandsCfg:
 
     robot_goal = mdp.GoalCommandCfg(
         asset_name="robot",
-        goal_radius_range=(2.5, 2.5),
+        goal_radius_range=(2.5, 15.0),
         resampling_time_range=(1e9, 1e9),
         only_heading=False,
         only_position=True,
@@ -114,7 +114,7 @@ class ObservationsCfg:
         """Observations for the policy."""
 
         my_pose = ObsTerm(
-            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+            func=mdp.POSE_CLASS().pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
             params={"entity_cfg": SceneEntityCfg("robot")},
         )
 
@@ -159,7 +159,7 @@ class ObservationsCfg:
 
         # self
         my_pose = ObsTerm(
-            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+            func=mdp.POSE_CLASS().pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
             params={"entity_cfg": SceneEntityCfg("robot")},
         )
         my_velocity = ObsTerm(
@@ -288,14 +288,11 @@ class TerminationsCfg:
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
-    too_far_away = DoneTerm(func=mdp.too_far_away, params={"max_dist": 15.0})
+    # too_far_away = DoneTerm(func=mdp.too_far_away, params={"max_dist": 15.0})
 
     upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": 1.5})
 
-    # base_contact = DoneTerm(
-    #     func=mdp.illegal_contact,
-    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
-    # )
+    # goal_reached = DoneTerm(func=mdp.goal_reached, params={"threshold_dist": 0.5})
 
 
 @configclass
