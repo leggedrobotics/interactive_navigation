@@ -179,3 +179,77 @@ def reset_id_joints_by_offset(
 
     # set into the physics simulation
     asset.write_joint_state_to_sim(joint_pos, joint_vel, joint_ids=joint_ids, env_ids=env_ids)
+
+
+def reset_near_step(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor,
+    pose_range: dict[str, tuple[float, float]],
+    dist=0.5,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+):
+    """Reset the robot to a position near the step."""
+    # extract the used quantities (to enable type-hinting)
+    asset: RigidObject | Articulation = env.scene[asset_cfg.name]
+
+    # sample random positions around the step
+    positions = _sample_pos_near_step(dist=0.0, min_offset=0.5, terrain=env.scene.terrain, env_ids=env_ids)
+
+    # z offset:
+    positions[:, 2] += 0.5
+
+    # sample random orientations
+    range_list = [pose_range.get(key, (0.0, 0.0)) for key in ["roll", "pitch", "yaw"]]
+    ranges = torch.tensor(range_list, device=asset.device)
+    rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 3), device=asset.device)
+
+    # convert to quaternions
+    orientations = math_utils.quat_from_euler_xyz(rand_samples[:, 0], rand_samples[:, 1], rand_samples[:, 2])
+
+    # set into the physics simulation
+    asset.write_root_pose_to_sim(torch.cat([positions, orientations], dim=-1).float(), env_ids=env_ids)
+
+
+def _sample_pos_near_step(
+    dist: float, min_offset: float, terrain: TerrainImporter, env_ids: torch.Tensor
+) -> torch.Tensor:
+    """This function samples the a point near the step.
+    Assumes the pyramid is skewed to the -x, -y direction."""
+
+    # wp_terrain_mesh = terrain.warp_meshes["terrain"]
+    size = terrain.cfg.terrain_generator.size  # (width, height)
+    wall_height = terrain.cfg.terrain_generator.border_height
+    # we sample a point for each env_origin
+    env_origins = terrain.env_origins[env_ids]
+    mesh_points = torch.tensor(terrain.meshes["terrain"].vertices).to(terrain.device)
+    random_points = []
+
+    for env_id in range(env_ids.shape[0]):
+        env_origin = env_origins[env_id]
+        diff = torch.abs(env_origin - mesh_points)
+        valid_points = (
+            (diff[:, 0] < size[0] / 2 - 0.05)
+            & (diff[:, 1] < size[1] / 2 - 0.05)
+            & (mesh_points[:, 2] < wall_height)
+            & (mesh_points[:, 2] > 0)
+        )
+        points = mesh_points[valid_points]
+        min_step_height = points[:, 2].min()
+        min_step_points = points[points[:, 2] == min_step_height]
+
+        lowest_corner = min_step_points.max(dim=0)[0]
+
+        left_right_space = (lowest_corner - env_origin)[0] + size[0] / 2 - min_offset
+
+        random_shift = torch.rand(1).to(terrain.device) * left_right_space
+        in_x = torch.rand(1).to(terrain.device) < 0.5
+
+        corner_offset = torch.zeros(3).to(terrain.device)
+        corner_offset[0] = -random_shift if in_x else min_offset + dist
+        corner_offset[1] = -random_shift if not in_x else min_offset + dist
+
+        random_points.append(lowest_corner + corner_offset)
+
+        print(f"points: {points.shape}")
+
+    return torch.stack(random_points)
