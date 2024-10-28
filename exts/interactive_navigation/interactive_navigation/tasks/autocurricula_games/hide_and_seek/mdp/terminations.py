@@ -48,3 +48,21 @@ def too_far_away(
 
     diff = torch.linalg.norm(robot_pos - goal_pos, dim=-1)
     return diff > max_dist
+
+
+def goal_reached(
+    env: ManagerBasedRLEnv,
+    threshold_dist: float,
+    command_name: str = "robot_goal",
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Terminate if the robot is at the goal."""
+    # extract the used quantities (to enable type-hinting)
+    robot: RigidObject | Articulation = env.scene[asset_cfg.name]
+    goal_cmd_geneator: GoalCommand = env.command_manager._terms[command_name]
+
+    robot_pos = get_robot_pos(robot)
+    goal_pos = goal_cmd_geneator.goal_pos_w
+
+    diff = torch.linalg.norm(robot_pos - goal_pos, dim=-1)
+    return diff < threshold_dist
