@@ -233,8 +233,8 @@ def reset_box_near_step_and_robot_near_box(
     box: RigidObject = env.scene[box_asset_cfg.name]
 
     # get positions
-    dist_box_to_step = env.box_from_step_dist_curriculum
-    dist_robot_to_box = env.robot_from_box_dist_curriculum
+    dist_box_to_step = env.box_from_step_dist
+    dist_robot_to_box = env.robot_from_box_dist
 
     box_pos = _sample_pos_near_step(dist=dist_box_to_step, min_offset=0.5, terrain=env.scene.terrain, env_ids=env_ids)
     robot_pos = _sample_pos_near_box(
@@ -258,7 +258,7 @@ def reset_box_near_step_and_robot_near_box(
 
 
 def _sample_pos_near_step(
-    dist: float, min_offset: float, terrain: TerrainImporter, env_ids: torch.Tensor
+    dist: torch.Tensor, min_offset: float, terrain: TerrainImporter, env_ids: torch.Tensor
 ) -> torch.Tensor:
     """This function samples the a point near the step.
     Assumes the pyramid is skewed to the -x, -y direction."""
@@ -267,13 +267,13 @@ def _sample_pos_near_step(
     size = terrain.cfg.terrain_generator.size  # (width, height)
     wall_height = terrain.cfg.terrain_generator.border_height
     # we sample a point for each env_origin
-    env_origins = terrain.env_origins[env_ids]
     mesh_points = torch.tensor(terrain.meshes["terrain"].vertices).to(terrain.device)
     random_points = []
 
-    for env_id in range(env_ids.shape[0]):
+    for env_id in env_ids:
         # find points in terrain
-        env_origin = env_origins[env_id]
+        env_origin = terrain.env_origins[env_id]
+        env_dist = dist[env_id]
         diff = torch.abs(env_origin - mesh_points)
         valid_points = (
             (diff[:, 0] < size[0] / 2 - 0.05)
@@ -293,8 +293,8 @@ def _sample_pos_near_step(
         in_x = torch.rand(1).to(terrain.device) < 0.5
 
         corner_offset = torch.zeros(3).to(terrain.device)
-        corner_offset[0] = -random_shift if in_x else min_offset + dist
-        corner_offset[1] = -random_shift if not in_x else min_offset + dist
+        corner_offset[0] = -random_shift if in_x else min_offset + env_dist
+        corner_offset[1] = -random_shift if not in_x else min_offset + env_dist
 
         random_points.append(lowest_corner + corner_offset)
 
@@ -302,7 +302,7 @@ def _sample_pos_near_step(
 
 
 def _sample_pos_near_box(
-    dist: float, box_positions: torch.Tensor, terrain: TerrainImporter, env_ids: torch.Tensor
+    dist: torch.Tensor, box_positions: torch.Tensor, terrain: TerrainImporter, env_ids: torch.Tensor
 ) -> torch.Tensor:
     """Sample a point near the box, such that its on the same terrain level as the box.
     We use raycasting."""
@@ -312,7 +312,7 @@ def _sample_pos_near_box(
     # create a circular ray pattern:
     N_rays = 100
     angles = torch.linspace(0, 2 * torch.pi, N_rays + 1)[:-1].to(terrain.device)
-    ray_starts = torch.stack([torch.cos(angles) * dist, torch.sin(angles) * dist, torch.ones_like(angles) + 100]).T
+    ray_starts = torch.stack([torch.cos(angles), torch.sin(angles), torch.ones_like(angles) + 100]).T
 
     # ray_starts_envs = box_positions.unsqueeze(1) + ray_starts.unsqueeze(0)
 
@@ -321,8 +321,12 @@ def _sample_pos_near_box(
     )  # .repeat(env_ids.shape[0], 1, 1)
 
     robot_positions = []
-    for env_id in range(env_ids.shape[0]):
-        sub_ray_starts = ray_starts + box_positions[env_id]
+    for i, env_id in enumerate(env_ids):
+        # scale radius
+        sub_ray_starts = ray_starts.clone()
+        sub_ray_starts[:, :2] *= dist[env_id]
+        # shift to box position
+        sub_ray_starts += box_positions[i]
         ray_hits = raycast_mesh(
             sub_ray_starts.unsqueeze(0).float().contiguous(),
             ray_directions.unsqueeze(0).float().contiguous(),
@@ -335,7 +339,7 @@ def _sample_pos_near_box(
         # we do this by trimming left and right from sequences of valid points
         # we remove as many points as the width of the box
         robot_width = 0.5
-        width_per_point = torch.pi * dist / N_rays
+        width_per_point = torch.pi * dist[env_id] / N_rays
         N_trim = int(robot_width / width_per_point)
         valid = _trim_sequences(valid, N_trim)
 
