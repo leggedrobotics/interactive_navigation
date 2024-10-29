@@ -85,7 +85,9 @@ class GoalCommand(CommandTerm):
         Future samples of this are used to train the actor and critic.
         This is also used for observations."""
         # position (3d) and heading (2d)
-        return torch.cat([self.goal_pos_b, self.heading_error], dim=1)
+        if self.cfg.heading:
+            return torch.cat([self.goal_pos_b, self.heading_error], dim=1)
+        return self.goal_pos_b
 
     @property
     def goal(self) -> torch.Tensor:
@@ -94,6 +96,7 @@ class GoalCommand(CommandTerm):
         # this is zero because the desired goal pos in the robot frame is always 0 = at the goal
         # the goal heading error is 0 --> cos sin of 0 = 1, 0
 
+        raise NotImplementedError("This function is not implemented.")
         return torch.cat([torch.zeros_like(self.goal_pos_b), self.goal_heading_error], dim=1)
 
     """
@@ -103,7 +106,8 @@ class GoalCommand(CommandTerm):
     def _update_metrics(self) -> None:
         """Update the metrics for the goal command."""
         self.metrics["goal_height_w"] = self.goal_pos_w[:, 2].clone()
-        self.metrics["goal_height_b"] = self.goal_pos_b[:, 2].clone()
+        if self.cfg.heading:
+            self.metrics["goal_height_b"] = self.goal_pos_b[:, 2].clone()
 
     def _resample_command(self, env_ids: Sequence[int]):
         """The goal is to reach the max height of the current terrain."""
@@ -122,7 +126,8 @@ class GoalCommand(CommandTerm):
         self.goal_pos_w[env_ids] = new_goals
 
         # - goal heading
-        self.goal_heading[env_ids] = torch.rand(len(env_ids), device=self.device) * 2 * math.pi
+        if self.cfg.heading:
+            self.goal_heading[env_ids] = torch.rand(len(env_ids), device=self.device) * 2 * math.pi
 
     def _update_command(self):
         """The goal pose has to be updated to be in the robots frame"""
@@ -134,9 +139,10 @@ class GoalCommand(CommandTerm):
         self.goal_pos_b, _ = math_utils.subtract_frame_transforms(robot_pos_w, robot_quat, self.goal_pos_w)
 
         # get heading
-        yaw_angle = math_utils.euler_xyz_from_quat(robot_quat)[2]
-        heading_error = self.goal_heading - yaw_angle
-        self.heading_error = torch.stack([torch.cos(heading_error), torch.sin(heading_error)], dim=1)
+        if self.cfg.heading:
+            yaw_angle = math_utils.euler_xyz_from_quat(robot_quat)[2]
+            heading_error = self.goal_heading - yaw_angle
+            self.heading_error = torch.stack([torch.cos(heading_error), torch.sin(heading_error)], dim=1)
 
     """
     Debug Visualizations
@@ -163,7 +169,7 @@ class GoalCommand(CommandTerm):
                 marker_cfg.markers["cylinder"].radius = 0.05
                 marker_cfg.markers["cylinder"].visual_material.diffuse_color = (0.0, 0.0, 1.0)
                 self.line_to_goal_visualiser = VisualizationMarkers(marker_cfg)
-            if not hasattr(self, "goal_heading_visualizer"):
+            if not hasattr(self, "goal_heading_visualizer") and self.cfg.heading:
                 marker_cfg = BLUE_ARROW_X_MARKER_CFG.copy()
                 marker_cfg.prim_path = "/Visuals/Command/goal_heading"
                 marker_cfg.markers["arrow"].scale = ((0.4, 0.4, 1.0),)
@@ -177,7 +183,7 @@ class GoalCommand(CommandTerm):
             self.box_goal_visualizer.set_visibility(True)
             if self.cfg.show_line_to_goal:
                 self.line_to_goal_visualiser.set_visibility(True)
-            if self.cfg.show_goal_heading:
+            if self.cfg.show_goal_heading and self.cfg.heading:
                 self.goal_heading_visualizer.set_visibility(True)
         else:
             if hasattr(self, "box_goal_visualizer"):
@@ -212,8 +218,11 @@ class GoalCommand(CommandTerm):
         self.line_to_goal_visualiser.visualize(translations=translations, scales=scales, orientations=quat)
 
         # update the goal heading marker
-        goal_quat = math_utils.quat_from_angle_axis(self.goal_heading, torch.tensor([0.0, 0.0, 1.0]).to(self.device))
-        self.goal_heading_visualizer.visualize(translations=line_goal_pos, orientations=goal_quat)
+        if self.cfg.heading and self.cfg.show_goal_heading:
+            goal_quat = math_utils.quat_from_angle_axis(
+                self.goal_heading, torch.tensor([0.0, 0.0, 1.0]).to(self.device)
+            )
+            self.goal_heading_visualizer.visualize(translations=line_goal_pos, orientations=goal_quat)
 
     ##
     #  Utility functions
@@ -234,8 +243,9 @@ class GoalCommand(CommandTerm):
         highest_positions = torch.zeros((rows, cols, N_points_per_terrain, 3), device=self.device)
 
         # create rays:
+        sizex, sizey = terrain.cfg.terrain_generator.size
         pattern = patterns.GridPatternCfg(
-            size=terrain.cfg.terrain_generator.size,
+            size=(sizex - 0.25, sizey - 0.25),
             resolution=0.25,
         )
         ray_starts, ray_directions = pattern.func(pattern, self.device)
