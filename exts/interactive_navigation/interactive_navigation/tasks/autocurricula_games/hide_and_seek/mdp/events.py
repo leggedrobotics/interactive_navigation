@@ -197,7 +197,8 @@ def reset_near_step(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor,
     pose_range: dict[str, tuple[float, float]],
-    dist=0.5,
+    dist: float = 0.5,
+    level: int = 0,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
 ):
     """Reset the robot to a position near the step."""
@@ -205,7 +206,10 @@ def reset_near_step(
     asset: RigidObject | Articulation = env.scene[asset_cfg.name]
 
     # sample random positions around the step
-    positions = _sample_pos_near_step(dist=0.0, min_offset=0.5, terrain=env.scene.terrain, env_ids=env_ids)
+    dist_tensor = torch.ones(env.num_envs, device=env.device) * dist
+    positions = _sample_pos_near_step(
+        dist=dist_tensor, min_offset=0.5, terrain=env.scene.terrain, env_ids=env_ids, level=level
+    )
 
     # z offset:
     positions[:, 2] += 0.5
@@ -258,7 +262,7 @@ def reset_box_near_step_and_robot_near_box(
 
 
 def _sample_pos_near_step(
-    dist: torch.Tensor, min_offset: float, terrain: TerrainImporter, env_ids: torch.Tensor
+    dist: torch.Tensor, min_offset: float, terrain: TerrainImporter, env_ids: torch.Tensor, level: int = 0
 ) -> torch.Tensor:
     """This function samples the a point near the step.
     Assumes the pyramid is skewed to the -x, -y direction."""
@@ -282,10 +286,18 @@ def _sample_pos_near_step(
             & (mesh_points[:, 2] > 0)
         )
         points = mesh_points[valid_points]
-        min_step_height = points[:, 2].min()
-        min_step_points = points[points[:, 2] == min_step_height]
+        # we find the height of the desired level
+        # if level is bigger than the number of unique heights, we choose a random one
+        unique_heights = points[:, 2].unique().sort()[0]
+        if level >= len(unique_heights):
+            _level = int(torch.randint(0, len(unique_heights), (1,)).item())
+        else:
+            _level = level
+
+        level_height = unique_heights[_level]
+        min_step_points = points[points[:, 2] == level_height]
         lowest_corner = min_step_points.max(dim=0)[0]
-        lowest_corner[2] = 0
+        lowest_corner[2] -= unique_heights[0]
 
         # random shift
         left_right_space = (lowest_corner - env_origin)[0] + size[0] / 2 - min_offset
