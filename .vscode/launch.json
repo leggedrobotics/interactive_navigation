@@ -39,15 +39,21 @@
         },
         // custom env debuggers
         {
-            "name": "Python: TRAIN Articulation",
+            "name": "Python: TRAIN Jump Up",
             "type": "debugpy",
             "request": "launch",
             "args": [
                 "--task",
-                "Isaac-Games-Articulation-D-v0",
+                "Isaac-Jump-BoxPyramid-v0",
                 "--num_envs",
-                "16",
+                "64",
+                "--run_name",
+                "jump_debug",
                 // "--headless"
+                "--resume",
+                "RESUME",
+                "--load_run",
+                "one_box_one_step_curr"
             ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
             "console": "integratedTerminal",
