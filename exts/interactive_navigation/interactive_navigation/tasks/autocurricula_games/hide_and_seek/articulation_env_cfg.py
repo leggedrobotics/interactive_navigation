@@ -201,6 +201,7 @@ class CommandsCfg:
         asset_name="robot",
         resampling_time_range=(1e9, 1e9),
         debug_vis=True,
+        randomize_goal=True,
     )
 
 
@@ -242,6 +243,8 @@ class ObservationsCfg:
         #     clip=(0.0, 100.0),
         # )
 
+        goal_pos = ObsTerm(func=mdp.generated_commands, params={"command_name": "robot_goal"})
+
         height_scan = ObsTerm(
             func=mdp.lidar_height_scan,
             params={"sensor_cfg": SceneEntityCfg("height_scan")},
@@ -277,14 +280,24 @@ class EventCfg:
 
     # reset_all = EventTerm(func=mdp.reset_scene_to_default)
 
-    reset_robot = EventTerm(
-        func=mdp.reset_root_state_uniform_on_terrain_aware,
+    # reset_robot = EventTerm(
+    #     func=mdp.reset_root_state_uniform_on_terrain_aware,
+    #     mode="reset",
+    #     params={
+    #         "pose_range": {"yaw": (0, 0)},
+    #         "lowest_level": True,
+    #         "offset": [0.0, 0.0, Z_ROBOT],
+    #         "reset_used_patches_ids": True,
+    #     },
+    # )
+
+    reset_box_n_robot = EventTerm(
+        func=mdp.reset_box_near_step_and_robot_near_box,
         mode="reset",
         params={
             "pose_range": {"yaw": (0, 0)},
-            "lowest_level": True,
-            "offset": [0.0, 0.0, Z_ROBOT],
-            "reset_used_patches_ids": True,
+            "box_asset_cfg": SceneEntityCfg("box_1"),
+            "robot_asset_cfg": SceneEntityCfg("robot"),
         },
     )
 
@@ -329,26 +342,16 @@ class EventCfg:
     #     },
     # )
 
-    reset_box_n_robot = EventTerm(
-        func=mdp.reset_box_near_step_and_robot_near_box,
-        mode="reset",
-        params={
-            "pose_range": {"yaw": (0, 0)},
-            "box_asset_cfg": SceneEntityCfg("box_1"),
-            "robot_asset_cfg": SceneEntityCfg("robot"),
-        },
-    )
-
 
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    # rewards
-    # box_moving = RewTerm(
-    #     func=mdp.BoxMovingReward().box_interaction,
-    #     weight=0.1,
-    # )
+    # Box interaction
+    box_moving = RewTerm(
+        func=mdp.BoxMovingReward().box_interaction,
+        weight=0.1,
+    )
 
     # any_box_close_to_step = RewTerm(
     #     func=mdp.any_box_close_to_step_reward,
@@ -382,15 +385,17 @@ class RewardsCfg:
         params={"threshold": 1.0},
     )
 
+    # Jumping
     successful_jump = RewTerm(
         func=mdp.JumpReward().successful_jump_reward,
-        weight=50,
+        weight=10,
         params={},
     )
 
+    # Moving up
     new_height = RewTerm(
         func=mdp.JumpReward().new_height_reached_reward,
-        weight=1000,
+        weight=200,
         params={},
     )
 
@@ -399,13 +404,20 @@ class RewardsCfg:
         weight=0.01,
         params={"height_range": (0.0, 3.0)},
     )
+    # Moving towards goal
+    moving_towards_goal = RewTerm(
+        func=mdp.moving_towards_goal,
+        weight=0.1,
+        params={"command_name": "robot_goal"},
+    )
+
+    at_goal = RewTerm(
+        func=mdp.at_goal,
+        weight=1000,
+        params={"command_name": "robot_goal", "threshold": 0.5},
+    )
 
     # penalty
-    # outside = RewTerm(
-    #     func=mdp.outside_env,
-    #     weight=-1,
-    #     params={"threshold": 12.5 * 2**0.5},
-    # )
 
     action_penalty = RewTerm(
         func=mdp.action_penalty,
@@ -424,6 +436,24 @@ class TerminationsCfg:
     #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
     # )
 
+    goal_reached = DoneTerm(
+        func=mdp.goal_reached,
+        params={
+            "goal_cmd_name": "robot_goal",
+            "distance_threshold": 0.5,
+        },
+    )
+
+
+DIST_CURR = mdp.DistanceCurriculum(
+    min_box_step_dist=0.2,
+    min_robot_box_dist=2.0,
+    max_box_step_dist=5.0,
+    max_robot_box_dist=10.0,
+    box_step_dist_increment=0.1,
+    robot_box_dist_increment=0.1,
+)
+
 
 @configclass
 class CurriculumCfg:
@@ -431,8 +461,8 @@ class CurriculumCfg:
 
     num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
-    box_from_step_dist_curriculum = CurrTerm(func=mdp.box_from_step_dist_curriculum)
-    robot_from_box_dist_curriculum = CurrTerm(func=mdp.robot_from_box_dist_curriculum)
+    box_from_step_dist_curriculum = CurrTerm(func=DIST_CURR.box_from_step_dist_curriculum, params={"randomize": True})
+    robot_from_box_dist_curriculum = CurrTerm(func=DIST_CURR.robot_from_box_dist_curriculum, params={"randomize": True})
 
     # terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
 
@@ -488,7 +518,7 @@ class MoveUpBoxesEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 10  # 10 Hz
-        self.episode_length_s = 60.0
+        self.episode_length_s = 30.0
         # simulation settings
         # self.sim.dt = 0.005  # 200 Hz
         self.sim.dt = 0.01  # 100 Hz
