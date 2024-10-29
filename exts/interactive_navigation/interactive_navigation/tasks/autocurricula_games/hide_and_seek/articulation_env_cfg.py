@@ -44,7 +44,7 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 # Scene definition
 ##
-N_BOXES = 1
+N_BOXES = 4
 
 
 @configclass
@@ -333,14 +333,33 @@ class EventCfg:
     #         "asset_configs": [SceneEntityCfg(f"box_{i}") for i in range(1, N_BOXES + 1)],
     #     },
     # )
-    # reset_box_near_step = EventTerm(
-    #     func=mdp.reset_near_step,
-    #     mode="reset",
-    #     params={
-    #         "pose_range": {"yaw": (0, 0)},
-    #         "asset_cfg": SceneEntityCfg("box_1"),
-    #     },
-    # )
+    reset_box2_near_step = EventTerm(
+        func=mdp.reset_near_step,
+        mode="reset",
+        params={
+            "pose_range": {"yaw": (0, 0)},
+            "asset_cfg": SceneEntityCfg("box_2"),
+            "level": 1,
+        },
+    )
+    reset_box3_near_step = EventTerm(
+        func=mdp.reset_near_step,
+        mode="reset",
+        params={
+            "pose_range": {"yaw": (0, 0)},
+            "asset_cfg": SceneEntityCfg("box_3"),
+            "level": 2,
+        },
+    )
+    reset_box4_near_step = EventTerm(
+        func=mdp.reset_near_step,
+        mode="reset",
+        params={
+            "pose_range": {"yaw": (0, 0)},
+            "asset_cfg": SceneEntityCfg("box_4"),
+            "level": 3,
+        },
+    )
 
 
 @configclass
@@ -454,6 +473,12 @@ DIST_CURR = mdp.DistanceCurriculum(
     robot_box_dist_increment=0.1,
 )
 
+TERRAIN_CURR = mdp.TerrainCurriculum(
+    num_successes=5,
+    num_failures=3,
+    goal_termination_name="goal_reached",
+)
+
 
 @configclass
 class CurriculumCfg:
@@ -464,7 +489,7 @@ class CurriculumCfg:
     box_from_step_dist_curriculum = CurrTerm(func=DIST_CURR.box_from_step_dist_curriculum, params={"randomize": True})
     robot_from_box_dist_curriculum = CurrTerm(func=DIST_CURR.robot_from_box_dist_curriculum, params={"randomize": True})
 
-    # terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
+    terrain_levels = CurrTerm(func=TERRAIN_CURR.terrain_levels)
 
 
 @configclass

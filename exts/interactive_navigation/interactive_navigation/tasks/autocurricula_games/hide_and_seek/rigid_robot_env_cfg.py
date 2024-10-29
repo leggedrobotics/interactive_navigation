@@ -328,7 +328,7 @@ class CurriculumCfg:
 
     num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
-    terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
+    # terrain_levels = CurrTerm(func=mdp.TerrainCurriculum().terrain_levels)
 
 
 @configclass
