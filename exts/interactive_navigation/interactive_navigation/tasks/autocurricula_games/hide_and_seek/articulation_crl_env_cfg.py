@@ -92,7 +92,8 @@ class MySceneCfg(InteractiveSceneCfg):
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
         mesh_prim_paths=[
             "/World/ground",
-            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
+            # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
+            RayCasterCfg.RaycastTargetCfg(target_prim_expr="{ENV_REGEX_NS}/Box_.*", is_global=False),
             # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
         ],
         track_mesh_transforms=True,

@@ -18,32 +18,52 @@ if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
 
 
-def terrain_levels_vel(
-    env: ManagerBasedRLEnv, env_ids: Sequence[int], asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
-) -> float:
-    """Curriculum based on the distance the robot walked when commanded to move at a desired velocity.
+class TerrainCurriculum:
 
-    This term is used to increase the difficulty of the terrain when the robot walks far enough and decrease the
-    difficulty when the robot walks less than half of the distance required by the commanded velocity.
+    def __init__(
+        self,
+        num_successes: int = 5,
+        num_failures: int = 5,
+        goal_termination_name: str = "goal_reached",
+        random_move_prob: float = 0.2,
+    ):
+        """Move up or down the terrain based on the number of successes and failures."""
+        self.num_successes = num_successes
+        self.num_failures = num_failures
+        self.successes: torch.Tensor = None
+        self.goal_termination_name = goal_termination_name
+        self.random_move_prob = random_move_prob
 
-    .. note::
-        It is only possible to use this term with the terrain type ``generator``. For further information
-        on different terrain types, check the :class:`omni.isaac.lab.terrains.TerrainImporter` class.
+    def terrain_levels(
+        self, env: ManagerBasedRLEnv, env_ids: Sequence[int], asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    ) -> float:
+        """Curriculum based on goal reached"""
+        if self.successes is None:
+            self.successes = torch.zeros(env.num_envs, device=env.device)
 
-    Returns:
-        The mean terrain level for the given environment ids.
-    """
-    # extract the used quantities (to enable type-hinting)
-    asset: Articulation = env.scene[asset_cfg.name]
-    terrain: TerrainImporter = env.scene.terrain
+        terminated_at_goal = env.termination_manager._term_dones[self.goal_termination_name]
+        terminated = env.termination_manager.dones
+        terminated_not_at_goal = terminated & ~terminated_at_goal
 
-    move_down = torch.zeros(len(env_ids), device=env.device, dtype=torch.bool)
-    move_up = torch.zeros(len(env_ids), device=env.device, dtype=torch.bool)
+        self.successes[env_ids] += terminated_at_goal[env_ids].float()
+        self.successes[env_ids] -= terminated_not_at_goal[env_ids].float()
 
-    # update terrain levels
-    terrain.update_env_origins(env_ids, move_up, move_down)
-    # return the mean terrain level
-    return torch.mean(terrain.terrain_levels.float()).item()
+        move_up = self.successes >= self.num_successes
+        move_down = self.successes <= -self.num_failures
+        # reset the successes and failures to zero
+        self.successes[move_up | move_down] = 0
+
+        # randomly move up or down
+        random_move = torch.rand_like(move_up.float()) < self.random_move_prob
+        random_move_up = torch.rand_like(move_up.float()) < 0.5
+        move_up |= random_move & random_move_up
+        move_down |= random_move & ~random_move_up
+
+        # update terrain levels
+        terrain: TerrainImporter = env.scene.terrain
+        terrain.update_env_origins(env_ids, move_up[env_ids], move_down[env_ids])
+        # return the mean terrain level
+        return torch.mean(terrain.terrain_levels.float()).item()
 
 
 def num_boxes_curriculum(
