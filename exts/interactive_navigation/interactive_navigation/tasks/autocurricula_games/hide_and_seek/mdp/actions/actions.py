@@ -295,22 +295,22 @@ class ArticulatedWrench2DAction(ActionTerm):
             action_r_z = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[2] * 4
 
         else:
-            ## scale action to max vel:
-            ## ie scale [0, 1] to [-max_vel, max_vel]
-            action_x = self.scale_tensor(actions[:, 0], (0, 0.5, 1), (-self.max_lin_vel, 0, self.max_lin_vel))
-            action_y = self.scale_tensor(actions[:, 1], (0, 0.5, 1), (-self.max_vel_sideways, 0, self.max_vel_sideways))
-            action_r_z = self.scale_tensor(actions[:, 2], (0, 0.5, 1), (-self.max_rot_vel, 0, self.max_rot_vel))
+            # ## scale action to max vel:
+            # ## ie scale [0, 1] to [-max_vel, max_vel]
+            # action_x = self.scale_tensor(actions[:, 0], (0, 0.5, 1), (-self.max_lin_vel, 0, self.max_lin_vel))
+            # action_y = self.scale_tensor(actions[:, 1], (0, 0.5, 1), (-self.max_vel_sideways, 0, self.max_vel_sideways))
+            # action_r_z = self.scale_tensor(actions[:, 2], (0, 0.5, 1), (-self.max_rot_vel, 0, self.max_rot_vel))
 
-            ## limit action to max vel:
-            # vel_norm = torch.linalg.norm(actions[:, :2], dim=1)
-            # above_max_vel = vel_norm > self.max_lin_vel
-            # actions[above_max_vel, :2] = (
-            #     actions[above_max_vel, :2] / vel_norm[above_max_vel].unsqueeze(1) * self.max_lin_vel
-            # )
+            # limit action to max vel:
+            vel_norm = torch.linalg.norm(actions[:, :2], dim=1)
+            above_max_vel = vel_norm > self.max_lin_vel
+            actions[above_max_vel, :2] = (
+                actions[above_max_vel, :2] / vel_norm[above_max_vel].unsqueeze(1) * self.max_lin_vel
+            )
 
-            # action_x = actions[:, 0]
-            # action_y = actions[:, 1]
-            # action_r_z = torch.clamp(actions[:, 2], -self.max_rot_vel, self.max_rot_vel)
+            action_x = actions[:, 0]
+            action_y = actions[:, 1]
+            action_r_z = torch.clamp(actions[:, 2], -self.max_rot_vel, self.max_rot_vel)
 
         vel_b = torch.zeros(self.num_envs, 3, device=self.device)
         vel_b[:, 0] = action_x.squeeze()
