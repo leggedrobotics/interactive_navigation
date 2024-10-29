@@ -73,6 +73,36 @@ class HideSeekRelationalPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
 
 
+@configclass
+class JumpeOnBoxesPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+    seed = 123
+    num_steps_per_env = 64
+    max_iterations = 100_000
+    save_interval = 250
+    experiment_name = "jump_on_boxes_ppo"
+    run_name = "one_box_one_step"
+    wandb_project = "jump_on_boxes_ppo"
+    empirical_normalization = False
+    policy = RslRlPpoRelationalActorCriticCfg(
+        init_noise_std=1.0,
+        activation="elu",
+    )
+    algorithm = RslRlPpoAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.005,
+        num_learning_epochs=5,
+        num_mini_batches=4,  # mini batch size = num_envs * num_steps_per_env // num_mini_batches
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.995,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+    )
+
+
 """Recurrent actor-critic"""
 
 
