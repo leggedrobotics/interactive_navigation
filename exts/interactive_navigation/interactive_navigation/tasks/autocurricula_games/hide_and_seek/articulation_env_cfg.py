@@ -44,7 +44,7 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 # Scene definition
 ##
-N_BOXES = 4
+N_BOXES = 5
 
 
 @configclass
@@ -56,7 +56,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/ground",
         terrain_type="generator",
         terrain_generator=mdp.terrain.MESH_PYRAMID_TERRAIN_CFG,
-        max_init_terrain_level=1000,
+        max_init_terrain_level=12,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -258,6 +258,7 @@ class ObservationsCfg:
             params={
                 "entity_str": "box",
                 "pov_entity": SceneEntityCfg("robot"),
+                "return_mask": True,
             },
         )
 
@@ -298,6 +299,7 @@ class EventCfg:
             "pose_range": {"yaw": (0, 0)},
             "box_asset_cfg": SceneEntityCfg("box_1"),
             "robot_asset_cfg": SceneEntityCfg("robot"),
+            "random_dist": True,
         },
     )
 
@@ -333,33 +335,24 @@ class EventCfg:
     #         "asset_configs": [SceneEntityCfg(f"box_{i}") for i in range(1, N_BOXES + 1)],
     #     },
     # )
-    reset_box2_near_step = EventTerm(
-        func=mdp.reset_near_step,
-        mode="reset",
-        params={
-            "pose_range": {"yaw": (0, 0)},
-            "asset_cfg": SceneEntityCfg("box_2"),
-            "level": 1,
-        },
-    )
-    reset_box3_near_step = EventTerm(
-        func=mdp.reset_near_step,
-        mode="reset",
-        params={
-            "pose_range": {"yaw": (0, 0)},
-            "asset_cfg": SceneEntityCfg("box_3"),
-            "level": 2,
-        },
-    )
-    reset_box4_near_step = EventTerm(
-        func=mdp.reset_near_step,
-        mode="reset",
-        params={
-            "pose_range": {"yaw": (0, 0)},
-            "asset_cfg": SceneEntityCfg("box_4"),
-            "level": 3,
-        },
-    )
+
+    def __post_init__(self):
+        for i in range(2, N_BOXES + 1):
+            # add reset box events, each box one level higher than the previous one
+            setattr(
+                self,
+                f"reset_box_{i}_near_step",
+                EventTerm(
+                    func=mdp.reset_near_step,
+                    mode="reset",
+                    params={
+                        "pose_range": {"yaw": (0, 0)},
+                        "asset_cfg": SceneEntityCfg(f"box_{i}"),
+                        "level": i - 1,
+                        "random_dist": True,
+                    },
+                ),
+            )
 
 
 @configclass
@@ -469,14 +462,12 @@ DIST_CURR = mdp.DistanceCurriculum(
     min_robot_box_dist=2.0,
     max_box_step_dist=5.0,
     max_robot_box_dist=10.0,
-    box_step_dist_increment=0.1,
+    box_step_dist_increment=1.0,
     robot_box_dist_increment=0.1,
 )
 
 TERRAIN_CURR = mdp.TerrainCurriculum(
-    num_successes=5,
-    num_failures=3,
-    goal_termination_name="goal_reached",
+    num_successes=10, num_failures=10, goal_termination_name="goal_reached", random_move_prob=1 / 3
 )
 
 
@@ -486,8 +477,8 @@ class CurriculumCfg:
 
     num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
-    box_from_step_dist_curriculum = CurrTerm(func=DIST_CURR.box_from_step_dist_curriculum, params={"randomize": True})
-    robot_from_box_dist_curriculum = CurrTerm(func=DIST_CURR.robot_from_box_dist_curriculum, params={"randomize": True})
+    box_from_step_dist_curriculum = CurrTerm(func=DIST_CURR.box_from_step_dist_curriculum)
+    robot_from_box_dist_curriculum = CurrTerm(func=DIST_CURR.robot_from_box_dist_curriculum)
 
     terrain_levels = CurrTerm(func=TERRAIN_CURR.terrain_levels)
 
