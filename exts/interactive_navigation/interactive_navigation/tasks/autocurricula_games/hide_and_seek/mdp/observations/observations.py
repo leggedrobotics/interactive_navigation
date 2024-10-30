@@ -79,9 +79,13 @@ def pose_2d_to(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor
     return pose_2d
 
 
-def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) -> torch.Tensor:
+def box_pose(
+    env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg, return_mask: bool = False
+) -> torch.Tensor:
     """Returns the pose of all entities relative to the terrain origin.
-    x,y position and heading in the form of cos(theta), sin(theta)."""
+    x,y position and heading in the form of cos(theta), sin(theta).
+    If return_mask is True, an extra binary channel is added to indicate if the box is on the same level as the robot.
+    """
 
     # - box poses
     box_ids = [asset for asset in list(env.scene.rigid_objects.keys()) if entity_str in asset]
@@ -125,9 +129,13 @@ def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) 
 
     # yaw = torch.atan2(sin_yaw, cos_yaw)
     # Stack the results into a single tensor
-    pose = torch.stack([x, y, cos_yaw, sin_yaw], dim=-1)
 
-    return pose
+    if return_mask:
+        z = t_box_robot[..., 2]
+        same_level = torch.abs(z) < 0.5
+        return torch.stack([x, y, cos_yaw, sin_yaw, same_level], dim=-1)
+
+    return torch.stack([x, y, cos_yaw, sin_yaw], dim=-1)
 
 
 def velocity_2d_b(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, pov_entity_cfg: SceneEntityCfg) -> torch.Tensor:
