@@ -197,8 +197,10 @@ def reset_near_step(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor,
     pose_range: dict[str, tuple[float, float]],
-    dist: float = 0.5,
+    max_dist: float = 4.0,
     level: int = 0,
+    min_offset: float = 0.5,
+    random_dist: bool = True,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
 ):
     """Reset the robot to a position near the step."""
@@ -206,7 +208,14 @@ def reset_near_step(
     asset: RigidObject | Articulation = env.scene[asset_cfg.name]
 
     # sample random positions around the step
-    dist_tensor = torch.ones(env.num_envs, device=env.device) * dist
+    if random_dist:
+        # box_from_step_dist and box_from_step_dist are hacked in to the env in the curriculum
+        dist_tensor = (
+            torch.rand_like(env.box_from_step_dist) * torch.clip(env.box_from_step_dist - min_offset, min=0)
+            + min_offset
+        )
+    else:
+        dist_tensor = torch.clip(env.box_from_step_dist, 0.2, max_dist)
     positions = _sample_pos_near_step(
         dist=dist_tensor, min_offset=0.5, terrain=env.scene.terrain, env_ids=env_ids, level=level
     )
@@ -232,13 +241,28 @@ def reset_box_near_step_and_robot_near_box(
     pose_range: dict[str, tuple[float, float]],
     box_asset_cfg: SceneEntityCfg,
     robot_asset_cfg: SceneEntityCfg,
+    min_robot_dist=2.0,
+    min_box_dist=0.5,
+    random_dist: bool = True,
 ):
     robot: RigidObject | Articulation = env.scene[robot_asset_cfg.name]
     box: RigidObject = env.scene[box_asset_cfg.name]
 
     # get positions
-    dist_box_to_step = env.box_from_step_dist
-    dist_robot_to_box = env.robot_from_box_dist
+    if random_dist:
+        # env.box_from_step_dist and env.robot_from_box_dist are upper bounds
+        dist_box_to_step = (
+            torch.rand_like(env.box_from_step_dist) * torch.clip(env.box_from_step_dist - min_box_dist, min=0)
+            + min_box_dist
+        )
+        dist_robot_to_box = (
+            torch.rand_like(env.robot_from_box_dist) * torch.clip(env.robot_from_box_dist - min_robot_dist, min=0)
+            + min_robot_dist
+        )
+    else:
+        # always use the upper bounds
+        dist_box_to_step = env.box_from_step_dist
+        dist_robot_to_box = env.robot_from_box_dist
 
     box_pos = _sample_pos_near_step(dist=dist_box_to_step, min_offset=0.5, terrain=env.scene.terrain, env_ids=env_ids)
     robot_pos = _sample_pos_near_box(
@@ -357,7 +381,10 @@ def _sample_pos_near_box(
 
         # random sample
         valid_points = ray_hits[valid]
-        random_point = valid_points[torch.randint(0, valid_points.shape[0], (1,))].squeeze()
+        if len(valid_points) != 0:
+            random_point = valid_points[torch.randint(0, valid_points.shape[0], (1,))].squeeze()
+        else:
+            random_point = box_positions[i] + torch.tensor([0.0, 0.0, 0.5]).to(terrain.device)
         robot_positions.append(random_point)
     return torch.stack(robot_positions)
 

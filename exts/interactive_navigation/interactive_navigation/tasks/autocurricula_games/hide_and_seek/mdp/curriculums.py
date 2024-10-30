@@ -138,32 +138,19 @@ class DistanceCurriculum:
             self.robot_from_box_dist[env_ids], self.init_robot_box_dist, self.max_robot_box_dist
         )
 
-    def box_from_step_dist_curriculum(self, env: ManagerBasedRLEnv, env_ids: Sequence[int], randomize: bool = False):
+    def box_from_step_dist_curriculum(self, env: ManagerBasedRLEnv, env_ids: Sequence[int]):
         if self.box_from_step_dist is None:
             env.box_from_step_dist = torch.ones(env.num_envs, device=env.device) * self.min_box_step_dist
-
         self._update(env, env_ids)
-        if randomize:
-            env.box_from_step_dist[env_ids] = self.min_box_step_dist + torch.rand(len(env_ids), device=env.device) * (
-                self.box_from_step_dist[env_ids] - self.min_box_step_dist
-            )
-        else:
-            env.box_from_step_dist = self.box_from_step_dist
-
+        env.box_from_step_dist = self.box_from_step_dist
         return self.box_from_step_dist.mean().item()
 
-    def robot_from_box_dist_curriculum(self, env: ManagerBasedRLEnv, env_ids: Sequence[int], randomize: bool = False):
+    def robot_from_box_dist_curriculum(self, env: ManagerBasedRLEnv, env_ids: Sequence[int]):
         if self.robot_from_box_dist is None:
             env.robot_from_box_dist = torch.ones(env.num_envs, device=env.device) * self.init_robot_box_dist
 
         self._update(env, env_ids)
         # we need to call update in each method, since the class instance is not shared between the methods
-
-        if randomize:
-            env.robot_from_box_dist[env_ids] = self.init_robot_box_dist + torch.rand(
-                len(env_ids), device=env.device
-            ) * (self.robot_from_box_dist[env_ids] - self.init_robot_box_dist)
-        else:
-            env.robot_from_box_dist = self.robot_from_box_dist
+        env.robot_from_box_dist = self.robot_from_box_dist
 
         return self.robot_from_box_dist.mean().item()
