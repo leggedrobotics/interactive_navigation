@@ -76,7 +76,7 @@ class HideSeekRelationalPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 @configclass
 class JumpeOnBoxesPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     seed = 123
-    num_steps_per_env = 64
+    num_steps_per_env = 24
     max_iterations = 100_000
     save_interval = 250
     experiment_name = "jump_on_boxes_ppo"
