@@ -82,13 +82,13 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
     vertical_scale=0.05,
     slope_threshold=0.75,
     use_cache=False,
-    curriculum=False,
+    curriculum=True,
     difficulty_range=(0.0, 1.0),
     sub_terrains={
         "pyramid_stairs": MeshPyramidTerrainCfg(
             proportion=1.0,
             step_height=1.0,
-            step_width=(5, 5),
+            step_width=(5, 2.5),
             platform_width=3.0,
             border_width=0.0,
             holes=False,

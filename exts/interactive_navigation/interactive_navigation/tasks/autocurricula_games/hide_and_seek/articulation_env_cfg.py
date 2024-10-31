@@ -44,7 +44,7 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 # Scene definition
 ##
-N_BOXES = 1
+N_BOXES = 4
 
 
 @configclass
@@ -56,7 +56,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/ground",
         terrain_type="generator",
         terrain_generator=mdp.terrain.MESH_PYRAMID_TERRAIN_CFG,
-        max_init_terrain_level=200,
+        max_init_terrain_level=1,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -416,7 +416,7 @@ class CurriculumCfg:
     #     params={"action_term_name": "wrench", "num_steps": 25_000, "start_multiplier": 2.0},
     # )
 
-    # terrain_levels = CurrTerm(func=TERRAIN_CURR.terrain_levels)
+    terrain_levels = CurrTerm(func=TERRAIN_CURR.terrain_levels)
 
 
 @configclass
@@ -450,7 +450,7 @@ class MoveUpBoxesEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Data container
-    data_container: mdp.DataContainer = mdp.DataContainer()
+    # data_container: mdp.DataContainer = mdp.DataContainer()
 
     # Scene settings
     scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=10.0)
@@ -468,6 +468,7 @@ class MoveUpBoxesEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         """Post initialization."""
+
         # general settings
         self.decimation = 10  # 10 Hz
         self.episode_length_s = 30.0

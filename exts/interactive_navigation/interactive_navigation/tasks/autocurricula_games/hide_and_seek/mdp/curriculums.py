@@ -65,6 +65,11 @@ class TerrainCurriculum:
         terrain: TerrainImporter = env.scene.terrain
         terrain.update_env_origins(env_ids, move_up[env_ids], move_down[env_ids])
         # return the mean terrain level
+
+        if "log" in env.extras:
+            env.extras["log"]["Curriculum/successes"] = self.successes.mean().item()  # a bit hacky, but it works
+            # env.extras["log"].update({"Curriculum/successes": self.successes.mean().item()})
+
         return torch.mean(terrain.terrain_levels.float()).item()
 
 
@@ -145,12 +150,14 @@ class DistanceCurriculum:
         terminated_not_at_goal = terminated & ~terminated_at_goal
         if terminated_at_goal.any():
             # increase distance if goal was reached
-            self.box_from_step_dist[env_ids] += self.box_step_dist_increment
-            self.robot_from_box_dist[env_ids] += self.robot_box_dist_increment
-        elif terminated_not_at_goal.any():
+            goal_reached_ids = env_ids[terminated_at_goal[env_ids]]
+            self.box_from_step_dist[goal_reached_ids] += self.box_step_dist_increment
+            self.robot_from_box_dist[goal_reached_ids] += self.robot_box_dist_increment
+        if terminated_not_at_goal.any():
             # decrease distance if goal was not reached
-            self.box_from_step_dist[env_ids] -= self.box_step_dist_increment
-            self.robot_from_box_dist[env_ids] -= self.robot_box_dist_increment
+            goal_not_reached_ids = env_ids[terminated_not_at_goal[env_ids]]
+            self.box_from_step_dist[goal_not_reached_ids] -= self.box_step_dist_increment
+            self.robot_from_box_dist[goal_not_reached_ids] -= self.robot_box_dist_increment
 
         # clamp the values
         self.box_from_step_dist[env_ids] = torch.clamp(
