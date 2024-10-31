@@ -14,6 +14,8 @@ from omni.isaac.lab.assets import Articulation
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.terrains import TerrainImporter
 
+import interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.actions as nav_actions
+
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
 
@@ -64,6 +66,26 @@ class TerrainCurriculum:
         terrain.update_env_origins(env_ids, move_up[env_ids], move_down[env_ids])
         # return the mean terrain level
         return torch.mean(terrain.terrain_levels.float()).item()
+
+
+def robot_speed_curriculum(
+    env: ManagerBasedRLEnv,
+    env_ids: Sequence[int],
+    action_term_name: str,
+    num_steps: int,
+    start_multiplier: float = 2,
+) -> float:
+    """Curriculum to make the robot move slower. Slower is harder since the robot cannot jump very far.
+    Only compatible with the ArticulatedWrench2DAction."""
+    scaling_factor = start_multiplier - (start_multiplier - 1) * min(env.common_step_counter / num_steps, 1)
+
+    action_term: nav_actions.ArticulatedWrench2DAction = env.action_manager._terms[action_term_name]  # type: ignore
+    action_term.action_scale = scaling_factor
+    action_term.max_lin_vel = action_term.cfg.max_velocity * scaling_factor
+    action_term.max_vel_sideways = action_term.cfg.max_vel_sideways * scaling_factor
+    action_term.max_rot_vel = action_term.cfg.max_rotvel * scaling_factor
+
+    return scaling_factor
 
 
 def num_boxes_curriculum(
