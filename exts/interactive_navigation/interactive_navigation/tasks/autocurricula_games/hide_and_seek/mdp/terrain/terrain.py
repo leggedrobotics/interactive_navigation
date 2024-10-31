@@ -73,7 +73,7 @@ GAME_ARENA_RANDOM_FLOORS_CFG = TerrainGeneratorCfg(
 
 
 MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
-    size=(20.0, 20.0),
+    size=(25.0, 25.0),
     border_width=10.0,
     border_height=10.0,
     num_rows=16,  # difficulty levels
@@ -88,7 +88,7 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
         "pyramid_stairs": MeshPyramidTerrainCfg(
             proportion=0.9,
             step_height=1.0,
-            step_width=(5.0, 2.0),
+            step_width=(6.5, 2.5),
             platform_width=3.0,
             border_width=0.0,
             holes=False,
