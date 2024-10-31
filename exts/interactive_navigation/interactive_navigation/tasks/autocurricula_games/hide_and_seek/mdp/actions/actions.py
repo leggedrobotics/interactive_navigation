@@ -237,6 +237,7 @@ class ArticulatedWrench2DAction(ActionTerm):
         self.max_lin_vel = cfg.max_velocity
         self.max_vel_sideways = cfg.max_vel_sideways
         self.max_rot_vel = cfg.max_rotvel
+        self.action_scale = 1.0  # adjusted by curriculum
 
         self.vel_b = torch.zeros(self.num_envs, 3, device=self.device)
 
@@ -286,7 +287,7 @@ class ArticulatedWrench2DAction(ActionTerm):
     def process_actions(self, actions: torch.Tensor):
         """called each env step, i.e., once per {decimation} sim steps
         Actions from beta distribution are in the range [0, 1]"""
-        # set joint effort targets
+        actions *= self.action_scale
 
         if TELEOP:
             delta_pose, gripper_command = self.teleop_interface.advance()
