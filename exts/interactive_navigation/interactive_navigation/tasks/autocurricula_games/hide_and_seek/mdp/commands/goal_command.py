@@ -106,6 +106,7 @@ class GoalCommand(CommandTerm):
     def _update_metrics(self) -> None:
         """Update the metrics for the goal command."""
         self.metrics["goal_height_w"] = self.goal_pos_w[:, 2].clone()
+        self.metrics["goal_distance"] = torch.linalg.vector_norm(self.goal_pos_b, dim=1)
         if self.cfg.heading:
             self.metrics["goal_height_b"] = self.goal_pos_b[:, 2].clone()
 
