@@ -313,6 +313,12 @@ def _sample_pos_near_step(
         # we find the height of the desired level
         # if level is bigger than the number of unique heights, we choose a random one
         unique_heights = points[:, 2].unique().sort()[0]
+        if len(unique_heights) == 0:
+            # sample random point
+            random_offset = ((torch.rand(3) - 0.5) * torch.tensor([size[0], size[1], 0])).to(terrain.device)
+            random_points.append(env_origin + random_offset)
+            continue
+
         if level >= len(unique_heights):
             _level = int(torch.randint(0, len(unique_heights), (1,)).item())
         else:

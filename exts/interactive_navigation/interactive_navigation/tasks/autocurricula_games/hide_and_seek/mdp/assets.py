@@ -89,7 +89,7 @@ CUBOID_CFG = RigidObjectCfg(
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             max_depenetration_velocity=1.0, disable_gravity=False, max_angular_velocity=3.14, kinematic_enabled=False
         ),
-        mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
+        mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
         physics_material=sim_utils.RigidBodyMaterialCfg(
             static_friction=0.75, dynamic_friction=0.75, friction_combine_mode="max"
         ),

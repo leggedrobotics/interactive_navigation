@@ -1,5 +1,6 @@
 # train command:
 # python scripts/rsl_rl/train.py --task Isaac-Games-HideAndSeek-Simple-D-v0 --num_envs 128 --headless --video --video_length 200 --video_interval 5000 --logger wandb --experiment_name move_boxes_to_center --log_project_name move_boxes_to_center
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.articulation_env_cfg import N_BOXES
 
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
@@ -80,7 +81,7 @@ class JumpeOnBoxesPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     max_iterations = 100_000
     save_interval = 250
     experiment_name = "jump_on_boxes_ppo"
-    run_name = "N_box_N_step"
+    run_name = "jump_{N_BOXES}_box_N_step"
     wandb_project = "jump_on_boxes_ppo"
     empirical_normalization = False
     policy = RslRlPpoRelationalActorCriticCfg(

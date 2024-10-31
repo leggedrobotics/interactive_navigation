@@ -38,6 +38,9 @@ class ArticulatedJumpActionCfg(ActionTermCfg):
 
     class_type: type[ActionTerm] = actions.ArticulatedJumpAction
 
+    jump_height: float = 0.75
+    """Height of the jump in meters. Defaults to 0.75."""
+
     jump_cooldown_secs: float = 1.0
     """Cooldown time in seconds between jumps. Defaults to 1.0."""
 

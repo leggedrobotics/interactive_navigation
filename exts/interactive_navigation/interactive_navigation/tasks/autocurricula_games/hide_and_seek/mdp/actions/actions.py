@@ -152,7 +152,7 @@ class ArticulatedJumpAction(ActionTerm):
 
         # jump config
         self.jump_cooldown_steps = int(math.ceil(cfg.jump_cooldown_secs / self.env.step_dt))
-        jump_height = 0.85  # meters
+        jump_height = cfg.jump_height  # meters
         g = 9.81  # m/s^2
         self.jump_velocity = math.sqrt(2 * g * jump_height)
 
@@ -291,9 +291,9 @@ class ArticulatedWrench2DAction(ActionTerm):
 
         if TELEOP:
             delta_pose, gripper_command = self.teleop_interface.advance()
-            action_x = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[0] * 4
-            action_y = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[1] * 4
-            action_r_z = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[2] * 4
+            action_x = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[0] * self.max_lin_vel
+            action_y = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[1] * self.max_vel_sideways
+            action_r_z = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[2] * self.max_rot_vel
 
         else:
             # ## scale action to max vel:
@@ -302,16 +302,24 @@ class ArticulatedWrench2DAction(ActionTerm):
             # action_y = self.scale_tensor(actions[:, 1], (0, 0.5, 1), (-self.max_vel_sideways, 0, self.max_vel_sideways))
             # action_r_z = self.scale_tensor(actions[:, 2], (0, 0.5, 1), (-self.max_rot_vel, 0, self.max_rot_vel))
 
-            # limit action to max vel:
-            vel_norm = torch.linalg.norm(actions[:, :2], dim=1)
-            above_max_vel = vel_norm > self.max_lin_vel
-            actions[above_max_vel, :2] = (
-                actions[above_max_vel, :2] / vel_norm[above_max_vel].unsqueeze(1) * self.max_lin_vel
-            )
+            ## scale action to max vel:
+            ## ie scale [0, 1] to [-max_vel, max_vel]
+            actions = torch.tanh(actions)
+            action_x = actions[:, 0] * self.max_lin_vel
+            action_y = actions[:, 1] * self.max_vel_sideways
+            action_r_z = actions[:, 2] * self.max_rot_vel
 
-            action_x = actions[:, 0]
-            action_y = actions[:, 1]
-            action_r_z = torch.clamp(actions[:, 2], -self.max_rot_vel, self.max_rot_vel)
+            # limit action to max vel:
+
+            # vel_norm = torch.linalg.norm(actions[:, :2], dim=1)
+            # above_max_vel = vel_norm > self.max_lin_vel
+            # actions[above_max_vel, :2] = (
+            #     actions[above_max_vel, :2] / vel_norm[above_max_vel].unsqueeze(1) * self.max_lin_vel
+            # )
+
+            # action_x = actions[:, 0]
+            # action_y = actions[:, 1]
+            # action_r_z = torch.clamp(actions[:, 2], -self.max_rot_vel, self.max_rot_vel)
 
         vel_b = torch.zeros(self.num_envs, 3, device=self.device)
         vel_b[:, 0] = action_x.squeeze()

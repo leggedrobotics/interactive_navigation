@@ -27,7 +27,7 @@ def goal_reached(
     # check for termination
     distance_goal = torch.linalg.vector_norm(goal_cmd_geneator.goal_pos_b, dim=1)
     # Check conditions
-    at_goal = distance_goal < distance_threshold
+    at_goal = (distance_goal < distance_threshold) & (torch.abs(goal_cmd_geneator.goal_pos_b[:, 2]) < 0.1)
     return at_goal
 
 

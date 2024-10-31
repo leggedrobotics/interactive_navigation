@@ -42,10 +42,13 @@ def pyramid_terrain(
     step_height = cfg.step_height  # + difficulty * (cfg.step_height_range[1] - cfg.step_height_range[0])
 
     # Compute number of steps
-    log_skew = 10
-    step_width = cfg.step_width[0] + (math.log(difficulty * log_skew + 1) / math.log(log_skew + 1)) * (
-        cfg.step_width[1] - cfg.step_width[0]
-    )
+    log_skew = abs(cfg.step_width[1] - cfg.step_width[0]) * 2
+    if log_skew != 0:
+        step_width = cfg.step_width[0] + (math.log(difficulty * log_skew + 1) / math.log(log_skew + 1)) * (
+            cfg.step_width[1] - cfg.step_width[0]
+        )
+    else:
+        step_width = cfg.step_width[0] + difficulty * (cfg.step_width[1] - cfg.step_width[0])
 
     max_steps_x = (cfg.size[0] - 2 * cfg.border_width) // (2 * step_width)
     max_steps_y = (cfg.size[1] - 2 * cfg.border_width) // (2 * step_width)

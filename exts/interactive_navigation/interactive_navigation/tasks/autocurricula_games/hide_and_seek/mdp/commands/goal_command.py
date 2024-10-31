@@ -85,9 +85,13 @@ class GoalCommand(CommandTerm):
         Future samples of this are used to train the actor and critic.
         This is also used for observations."""
         # position (3d) and heading (2d)
+
+        dist = torch.linalg.vector_norm(self.goal_pos_b, dim=1).unsqueeze(1) + 1e-6
+        rescaled_goal_pos_b = self.goal_pos_b / dist * torch.log(dist + 1)
+
         if self.cfg.heading:
-            return torch.cat([self.goal_pos_b, self.heading_error], dim=1)
-        return self.goal_pos_b
+            return torch.cat([rescaled_goal_pos_b, self.heading_error], dim=1)
+        return rescaled_goal_pos_b
 
     @property
     def goal(self) -> torch.Tensor:

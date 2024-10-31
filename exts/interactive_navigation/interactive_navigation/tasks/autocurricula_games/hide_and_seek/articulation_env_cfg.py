@@ -44,7 +44,7 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 # Scene definition
 ##
-N_BOXES = 5
+N_BOXES = 1
 
 
 @configclass
@@ -56,7 +56,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/ground",
         terrain_type="generator",
         terrain_generator=mdp.terrain.MESH_PYRAMID_TERRAIN_CFG,
-        max_init_terrain_level=12,
+        max_init_terrain_level=200,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -73,31 +73,6 @@ class MySceneCfg(InteractiveSceneCfg):
     # robots
 
     robot: ArticulationCfg = ROBOT_USD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
-
-    # sensors
-    # lidar = RayCasterCfg(
-    #     prim_path="{ENV_REGEX_NS}/Robot/yaw_link",
-    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
-    #     attach_yaw_only=True,
-    #     pattern_cfg=patterns.LidarPatternCfg(
-    #         channels=1,
-    #         vertical_fov_range=(-0.0, 0.0),
-    #         horizontal_fov_range=(0, 360),
-    #         horizontal_res=10,
-    #     ),
-    #     max_distance=100.0,
-    #     drift_range=(-0.0, 0.0),
-    #     debug_vis=False,
-    #     history_length=0,
-    #     # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
-    #     mesh_prim_paths=[
-    #         "/World/ground",
-    #         RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
-    #         # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
-    #     ],
-    #     track_mesh_transforms=True,
-    #     visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
-    # )
 
     height_scan = RayCasterCfg(
         prim_path="{ENV_REGEX_NS}/Robot/yaw_link",
@@ -120,32 +95,6 @@ class MySceneCfg(InteractiveSceneCfg):
         track_mesh_transforms=True,
         visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
     )
-
-    # lidar_top = RayCasterCfg(
-    #     prim_path="{ENV_REGEX_NS}/Robot/yaw_link",
-    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 1)),
-    #     attach_yaw_only=True,
-    #     pattern_cfg=patterns.LidarPatternCfg(
-    #         channels=1,
-    #         vertical_fov_range=(-0.0, 0.0),
-    #         horizontal_fov_range=(0, 360),
-    #         horizontal_res=10,
-    #     ),
-    #     max_distance=100.0,
-    #     drift_range=(-0.0, 0.0),
-    #     debug_vis=False,
-    #     history_length=0,
-    #     # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
-    #     mesh_prim_paths=[
-    #         "/World/ground",
-    #         RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
-    #         # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
-    #     ],
-    #     track_mesh_transforms=True,
-    #     visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCasterTop"),
-    # )
-
-    # boxes_contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Box_.*", history_length=1, track_air_time=False)
 
     # lights
     light = AssetBaseCfg(
@@ -210,7 +159,13 @@ class ActionsCfg:
     """Action specifications for the MDP."""
 
     # usd robot
-    wrench = mdp.ArticulatedWrench2DActionCfg(asset_name="robot", debug_vis=True)
+    wrench = mdp.ArticulatedWrench2DActionCfg(
+        asset_name="robot",
+        debug_vis=True,
+        max_velocity=2.5,
+        max_vel_sideways=1.0,
+        max_rotvel=2.0,
+    )
 
     jump = mdp.ArticulatedJumpActionCfg(asset_name="robot")
 
@@ -228,20 +183,6 @@ class ObservationsCfg:
             func=mdp.velocity_2d_b,
             params={"entity_cfg": SceneEntityCfg("robot"), "pov_entity_cfg": SceneEntityCfg("robot")},
         )
-
-        # lidar_scan = ObsTerm(
-        #     func=mdp.lidar_obs_dist_2d,
-        #     params={"sensor_cfg": SceneEntityCfg("lidar")},
-        #     noise=Unoise(n_min=-0.1, n_max=0.1),
-        #     clip=(0.0, 100.0),
-        # )
-
-        # lidar_scan_top = ObsTerm(
-        #     func=mdp.lidar_obs_dist_2d,
-        #     params={"sensor_cfg": SceneEntityCfg("lidar_top")},
-        #     noise=Unoise(n_min=-0.1, n_max=0.1),
-        #     clip=(0.0, 100.0),
-        # )
 
         goal_pos = ObsTerm(func=mdp.generated_commands, params={"command_name": "robot_goal"})
 
@@ -279,19 +220,6 @@ Z_WALL = 0.5 + 0.05
 class EventCfg:
     """Configuration for events."""
 
-    # reset_all = EventTerm(func=mdp.reset_scene_to_default)
-
-    # reset_robot = EventTerm(
-    #     func=mdp.reset_root_state_uniform_on_terrain_aware,
-    #     mode="reset",
-    #     params={
-    #         "pose_range": {"yaw": (0, 0)},
-    #         "lowest_level": True,
-    #         "offset": [0.0, 0.0, Z_ROBOT],
-    #         "reset_used_patches_ids": True,
-    #     },
-    # )
-
     reset_box_n_robot = EventTerm(
         func=mdp.reset_box_near_step_and_robot_near_box,
         mode="reset",
@@ -322,20 +250,6 @@ class EventCfg:
         },
     )
 
-    # reset_boxes = EventTerm(
-    #     func=mdp.reset_root_state_uniform_on_terrain_aware,
-    #     mode="reset",
-    #     params={
-    #         "pose_range": {
-    #             "yaw": (-3.14, 3.14),
-    #         },
-    #         "lowest_level": True,
-    #         "offset": [0.0, 0.0, Z_BOX],
-    #         # "asset_cfg": SceneEntityCfg("box_1"),
-    #         "asset_configs": [SceneEntityCfg(f"box_{i}") for i in range(1, N_BOXES + 1)],
-    #     },
-    # )
-
     def __post_init__(self):
         for i in range(2, N_BOXES + 1):
             # add reset box events, each box one level higher than the previous one
@@ -362,21 +276,21 @@ class RewardsCfg:
     # Box interaction
     box_moving = RewTerm(
         func=mdp.BoxMovingReward().box_interaction,
-        weight=0.1,
+        weight=0.01,
     )
 
-    # any_box_close_to_step = RewTerm(
-    #     func=mdp.any_box_close_to_step_reward,
-    #     weight=0.1,
-    #     params={
-    #         "robot_str": "robot",
-    #         "dist_sensor_1_str": "box_lidar_bot",
-    #         "dist_sensor_2_str": "box_lidar_top",
-    #         "proximity_threshold": 0.5,
-    #         "proximity_std": 0.3,
-    #         "step_size_threshold": 0.75,
-    #     },
-    # )
+    any_box_close_to_step = RewTerm(
+        func=mdp.any_box_close_to_step_reward,
+        weight=0.1,
+        params={
+            "robot_str": "robot",
+            "dist_sensor_1_str": "box_lidar_bot",
+            "dist_sensor_2_str": "box_lidar_top",
+            "proximity_threshold": 0.5,
+            "proximity_std": 0.3,
+            "step_size_threshold": 0.75,
+        },
+    )
 
     closest_box_close_to_step = RewTerm(
         func=mdp.closest_box_close_to_step_reward,
@@ -411,30 +325,42 @@ class RewardsCfg:
         params={},
     )
 
-    high_up = RewTerm(
-        func=mdp.high_up,
-        weight=0.01,
-        params={"height_range": (0.0, 3.0)},
-    )
+    # high_up = RewTerm(
+    #     func=mdp.high_up,
+    #     weight=0.01,
+    #     params={"height_range": (0.0, 3.0)},
+    # )
     # Moving towards goal
     moving_towards_goal = RewTerm(
         func=mdp.moving_towards_goal,
-        weight=0.1,
+        weight=1.0,
         params={"command_name": "robot_goal"},
     )
 
-    at_goal = RewTerm(
-        func=mdp.at_goal,
-        weight=1000,
-        params={"command_name": "robot_goal", "threshold": 0.5},
+    goal_reached = RewTerm(
+        func=mdp.is_terminated_term,  # returns 1 if the goal is reached and env has NOT timed out # type: ignore
+        params={"term_keys": "goal_reached"},
+        weight=2500.0,
     )
 
-    # penalty
-
+    # penalty terms
     action_penalty = RewTerm(
         func=mdp.action_penalty,
         weight=-0.01,
         params={},
+    )
+
+    too_far = RewTerm(
+        func=mdp.is_terminated_term,  # returns 1 if the goal is reached and env has NOT timed out # type: ignore
+        params={"term_keys": "too_far_from_goal"},
+        weight=-250.0,
+    )
+
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
+
+    wasting_time = RewTerm(
+        func=mdp.is_alive,
+        weight=-0.005,
     )
 
 
@@ -442,17 +368,21 @@ class RewardsCfg:
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    # base_contact = DoneTerm(
-    #     func=mdp.illegal_contact,
-    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
-    # )
+    time_out = DoneTerm(func=mdp.time_out_perturbed, params={"perturbation": 5}, time_out=True)  # type: ignore
 
     goal_reached = DoneTerm(
         func=mdp.goal_reached,
         params={
             "goal_cmd_name": "robot_goal",
-            "distance_threshold": 0.5,
+            "distance_threshold": 1.5,
+        },
+    )
+
+    too_far_from_goal = DoneTerm(
+        func=mdp.too_far_from_goal,
+        params={
+            "goal_cmd_name": "robot_goal",
+            "distance_threshold": 30,
         },
     )
 
@@ -461,13 +391,13 @@ DIST_CURR = mdp.DistanceCurriculum(
     min_box_step_dist=0.2,
     min_robot_box_dist=2.0,
     max_box_step_dist=5.0,
-    max_robot_box_dist=10.0,
-    box_step_dist_increment=1.0,
+    max_robot_box_dist=15.0,
+    box_step_dist_increment=0.1,
     robot_box_dist_increment=0.1,
 )
 
 TERRAIN_CURR = mdp.TerrainCurriculum(
-    num_successes=10, num_failures=10, goal_termination_name="goal_reached", random_move_prob=1 / 3
+    num_successes=10, num_failures=10, goal_termination_name="goal_reached", random_move_prob=0.05
 )
 
 
@@ -475,12 +405,18 @@ TERRAIN_CURR = mdp.TerrainCurriculum(
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
-    num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
+    # num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
     box_from_step_dist_curriculum = CurrTerm(func=DIST_CURR.box_from_step_dist_curriculum)
+
     robot_from_box_dist_curriculum = CurrTerm(func=DIST_CURR.robot_from_box_dist_curriculum)
 
-    terrain_levels = CurrTerm(func=TERRAIN_CURR.terrain_levels)
+    # robot_speed = CurrTerm(
+    #     func=mdp.robot_speed_curriculum,
+    #     params={"action_term_name": "wrench", "num_steps": 25_000, "start_multiplier": 2.0},
+    # )
+
+    # terrain_levels = CurrTerm(func=TERRAIN_CURR.terrain_levels)
 
 
 @configclass
