@@ -346,7 +346,7 @@ def _sample_pos_near_box(
     wp_terrain_mesh = terrain.warp_meshes["terrain"]
 
     # create a circular ray pattern:
-    N_rays = 100
+    N_rays = 200
     angles = torch.linspace(0, 2 * torch.pi, N_rays + 1)[:-1].to(terrain.device)
     ray_starts = torch.stack([torch.cos(angles), torch.sin(angles), torch.ones_like(angles) + 100]).T
 
