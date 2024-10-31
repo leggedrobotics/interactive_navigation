@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.sensors import ContactSensor, RayCaster
 from omni.isaac.lab.assets import Articulation, RigidObject
+from omni.isaac.lab.managers.manager_base import ManagerTermBase
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.commands import GoalCommand
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
@@ -347,7 +348,7 @@ def action_penalty(env: ManagerBasedRLEnv, jump_penalty_factor: float = 2.0) -> 
     max_rotvel = env.cfg.actions.wrench.max_rotvel
     force_action = torch.clamp(torch.linalg.vector_norm(action[:, :2], dim=1), -max_vel, max_vel) / max_vel
     torque_action = torch.clamp(action[:, 2], -max_rotvel, max_rotvel) / max_rotvel
-    jump_action = (action[:, 3] > 0).float()
+    jump_action = (action[:, 3] > 0).float() * jump_penalty_factor
 
     penalty = torch.abs(force_action) + torch.abs(torque_action) + jump_action
 
@@ -362,7 +363,7 @@ def action_penalty_rigidbody(env: ManagerBasedRLEnv, jump_penalty_factor: float 
     max_torque = env.cfg.actions.simple_wrench.max_torque
     force_action = torch.clamp(torch.linalg.vector_norm(action[:, :2], dim=1), -max_force, max_force) / max_force
     torque_action = torch.clamp(action[:, 2], -max_torque, max_torque) / max_torque
-    jump_action = (action[:, 3] > 0).float()
+    jump_action = (action[:, 3] > 0).float() * jump_penalty_factor
 
     penalty = torch.abs(force_action) + torch.abs(torque_action) + jump_action
 
