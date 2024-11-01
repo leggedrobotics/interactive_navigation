@@ -86,7 +86,7 @@ def pose_2d_to(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor
     return pose_2d
 
 
-def pose_3d_env(self, env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, something_bla: int = 2) -> torch.Tensor:
+def pose_3d_env(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
     """Position and Quaternion in environment frame"""
     entity: RigidObject | Articulation = env.scene[entity_cfg.name]
 
@@ -98,7 +98,6 @@ def pose_3d_env(self, env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, somethin
 
     # - quaternion
     quat = get_robot_quat(entity).squeeze(1)
-    self.state = quat
 
     return torch.cat([rel_pos, quat], dim=-1)
 
