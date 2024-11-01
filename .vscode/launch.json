@@ -85,10 +85,10 @@
                 "--run_name",
                 "crl_ant_debug",
                 // "--headless"
-                "--resume",
-                "RESUME",
-                "--load_run",
-                "ant_goal_cond_nav_ppo_2"
+                // "--resume",
+                // "RESUME",
+                // "--load_run",
+                // "ant_goal_cond_nav_ppo_2"
             ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
             "console": "integratedTerminal",

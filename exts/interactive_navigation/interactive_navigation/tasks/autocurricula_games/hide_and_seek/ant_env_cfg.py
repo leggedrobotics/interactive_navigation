@@ -114,7 +114,7 @@ class ObservationsCfg:
         """Observations for the policy."""
 
         my_pose = ObsTerm(
-            func=mdp.POSE_CLASS().pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
             params={"entity_cfg": SceneEntityCfg("robot")},
         )
 
@@ -159,7 +159,7 @@ class ObservationsCfg:
 
         # self
         my_pose = ObsTerm(
-            func=mdp.POSE_CLASS().pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
             params={"entity_cfg": SceneEntityCfg("robot")},
         )
         my_velocity = ObsTerm(

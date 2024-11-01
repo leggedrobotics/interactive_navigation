@@ -86,25 +86,21 @@ def pose_2d_to(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor
     return pose_2d
 
 
-class POSE_CLASS:
-    def __init__(self):
-        self.state = None
+def pose_3d_env(self, env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, something_bla: int = 2) -> torch.Tensor:
+    """Position and Quaternion in environment frame"""
+    entity: RigidObject | Articulation = env.scene[entity_cfg.name]
 
-    def pose_3d_env(self, env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, something_bla: int = 2) -> torch.Tensor:
-        """Position and Quaternion in environment frame"""
-        entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+    # - position
+    pos = get_robot_pos(entity)
+    terrain = env.scene.terrain
+    terrain_origins = terrain.env_origins
+    rel_pos = pos.squeeze(1) - terrain_origins
 
-        # - position
-        pos = get_robot_pos(entity)
-        terrain = env.scene.terrain
-        terrain_origins = terrain.env_origins
-        rel_pos = pos.squeeze(1) - terrain_origins
+    # - quaternion
+    quat = get_robot_quat(entity).squeeze(1)
+    self.state = quat
 
-        # - quaternion
-        quat = get_robot_quat(entity).squeeze(1)
-        self.state = quat
-
-        return torch.cat([rel_pos, quat], dim=-1)
+    return torch.cat([rel_pos, quat], dim=-1)
 
 
 def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) -> torch.Tensor:
