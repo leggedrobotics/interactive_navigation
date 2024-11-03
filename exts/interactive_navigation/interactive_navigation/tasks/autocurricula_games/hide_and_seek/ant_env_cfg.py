@@ -100,7 +100,7 @@ class ActionsCfg:
     joint_pos = mdp.JointEffortActionCfg(
         asset_name="robot",
         joint_names=[".*(leg|foot).*"],
-        scale=4.0,
+        scale=10.0,
         # offset=-2,
     )
 
@@ -205,7 +205,7 @@ class ObservationsCfg:
 
 
 reset_value = 0.0
-reset_value_pos = 0.0
+reset_value_pos = 0.01
 
 
 @configclass
@@ -290,7 +290,7 @@ class TerminationsCfg:
 
     # too_far_away = DoneTerm(func=mdp.too_far_away, params={"max_dist": 15.0})
 
-    upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": 1.5})
+    # upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": 1.5})
 
     # goal_reached = DoneTerm(func=mdp.goal_reached, params={"threshold_dist": 0.5})
 

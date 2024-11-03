@@ -81,10 +81,10 @@
                 "--task",
                 "Isaac-CRL-ANT-v0",
                 "--num_envs",
-                "512",
+                "4096",
                 "--run_name",
                 "crl_ant_debug",
-                // "--headless"
+                "--headless"
                 // "--resume",
                 // "RESUME",
                 // "--load_run",
