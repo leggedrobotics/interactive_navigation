@@ -85,15 +85,15 @@
                 "--run_name",
                 "crl_ant_debug",
                 // "--headless",
-                // "--resume",
-                // "RESUME",
-                // "--load_run",
-                // "crl_ant_v1",
-                // "--video",
-                // "--video_length",
-                // "1000",
-                // "--video_interval",
-                // "1000"
+                "--resume",
+                "RESUME",
+                "--load_run",
+                "crl_ant_at_v1",
+                "--video",
+                "--video_length",
+                "1000",
+                "--video_interval",
+                "1000"
             ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
             "console": "integratedTerminal",
@@ -113,6 +113,8 @@
                 // "--headless"
                 "--resume",
                 "RESUME",
+                "--checkpoint",
+                "model_200.pt",
                 "--load_run",
                 "ant_goal_cond_nav_ppo"
             ],
