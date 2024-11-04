@@ -71,6 +71,9 @@ class GoalCommand(CommandTerm):
         # heading of the robot (cos(yaw), sin(yaw)).
         self.heading_error = torch.zeros((self.num_envs, 2), device=self.device)
 
+        # - attitude
+        self.attitude = torch.zeros((self.num_envs,), device=self.device)
+
         assert not (
             self.cfg.only_heading and self.cfg.only_position
         ), "Cannot have both only_heading and only_position set to True"
@@ -90,15 +93,21 @@ class GoalCommand(CommandTerm):
         Future samples of this are used to train the actor and critic.
         This is also used for observations."""
         # Current position (3d) and heading (2d)
+
         if self.cfg.only_heading:
             return self.heading_error
-        if self.cfg.only_position:
+        elif self.cfg.only_position:
             if self.cfg.env_frame:
                 # current robot pos in env frame
-                return self.robot_pos_env[..., :2]
-            return self.goal_pos_b[..., :2]
+                current_goal = self.robot_pos_env[..., :2]
+            else:
+                current_goal = self.goal_pos_b[..., :2]
+        else:
+            current_goal = torch.cat([self.goal_pos_b[..., :2], self.heading_error], dim=1)
 
-        return torch.cat([self.goal_pos_b[..., :2], self.heading_error], dim=1)
+        if self.cfg.attitude:
+            current_goal = torch.cat([current_goal, self.attitude.unsqueeze(1)], dim=1)
+        return current_goal
 
     @property
     def goal(self) -> torch.Tensor:
@@ -110,15 +119,21 @@ class GoalCommand(CommandTerm):
 
         if self.cfg.only_heading:
             return self.goal_heading_error
-        if self.cfg.only_position:
+        elif self.cfg.only_position:
             if self.cfg.env_frame:
-                return self.goal_pos_env[..., :2]
-            return torch.zeros_like(self.goal_pos_b[..., :2])
+                des_goal = self.goal_pos_env[..., :2]
+            else:
+                des_goal = torch.zeros_like(self.goal_pos_b[..., :2])
 
-        if self.cfg.env_frame:
-            return torch.cat([self.goal_pos_env[..., :2], self.goal_heading_error], dim=1)
+        elif self.cfg.env_frame:
+            des_goal = torch.cat([self.goal_pos_env[..., :2], self.goal_heading_error], dim=1)
+        else:
+            des_goal = torch.cat([torch.zeros_like(self.goal_pos_b[..., :2]), self.goal_heading_error], dim=1)
 
-        return torch.cat([torch.zeros_like(self.goal_pos_b[..., :2]), self.goal_heading_error], dim=1)
+        if self.cfg.attitude:
+            des_goal = torch.cat([des_goal, torch.zeros_like(self.attitude).unsqueeze(1)], dim=1)
+
+        return des_goal
 
     """
     Implementation specific functions.
@@ -130,6 +145,8 @@ class GoalCommand(CommandTerm):
             self.metrics["dist_to_goal"] = torch.linalg.norm(self.goal_pos_b[:, :2], dim=1)
         if not self.cfg.only_position:
             self.metrics["heading_error"] = torch.acos(self.heading_error[:, 0])
+        if self.cfg.attitude:
+            self.metrics["attitude"] = self.attitude
 
     def _resample_command(self, env_ids: Sequence[int]):
         """The goal is to reach the max height of the current terrain."""
@@ -172,6 +189,10 @@ class GoalCommand(CommandTerm):
         yaw_angle = math_utils.euler_xyz_from_quat(robot_quat)[2]
         heading_error = self.goal_heading - yaw_angle
         self.heading_error = torch.stack([torch.cos(heading_error), torch.sin(heading_error)], dim=1)
+
+        # get attitude
+        if self.cfg.attitude:
+            self.attitude = torch.acos(-torch.clamp(self.robot.data.projected_gravity_b[:, 2], -1, 1))
 
     """
     Debug Visualizations

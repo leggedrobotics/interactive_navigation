@@ -22,6 +22,9 @@ class GoalCommandCfg(CommandTermCfg):
     only_position: bool = False
     """If true, the goal is only the position."""
 
+    attitude: bool = False
+    """If true, the attitude is included in the goal."""
+
     show_line_to_goal: bool = True
     """If true, a line is drawn from the robot to the goal if debug vis is true."""
 

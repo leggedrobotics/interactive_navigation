@@ -87,6 +87,7 @@ class CommandsCfg:
         resampling_time_range=(1e9, 1e9),
         only_heading=False,
         only_position=True,
+        attitude=True,
         debug_vis=True,
         env_frame=True,
     )
@@ -364,7 +365,9 @@ class CrlAntEnvCfg(ManagerBasedRLEnvCfg):
 
         # GPU settings
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**28
-        self.sim.physx.gpu_collision_stack_size = 2**30
+        self.sim.physx.gpu_total_aggregate_pairs_capacity = 2**24
+        # self.sim.physx.gpu_collision_stack_size = 2**28
+        # self.sim.physx.gpu_found_lost_pairs_capacity = 2**28
 
         # update sensor update periods
         # we tick all the sensors based on the smallest update period (physics update period)

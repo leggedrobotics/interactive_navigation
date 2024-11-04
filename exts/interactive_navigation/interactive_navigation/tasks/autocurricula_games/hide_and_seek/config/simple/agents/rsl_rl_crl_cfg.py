@@ -48,11 +48,11 @@ one epoch = one iteration of the main loop
 @configclass
 class TestCrlRunnerCfg(RslCRlOnPolicyRunnerCfg):
     num_steps_per_env = 1000
-    buffer_fill_steps = 100
+    buffer_fill_steps = 1000
     num_learning_steps = 1
     update_actor_critic_simultaneously = True
     max_iterations = 1_220_000
-    save_interval = 100
+    save_interval = 50
     experiment_name = "contrastive_RL_ant"
     run_name = "crl_ant"
     wandb_project = "crl_RB_test"

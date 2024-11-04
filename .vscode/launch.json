@@ -81,14 +81,19 @@
                 "--task",
                 "Isaac-CRL-ANT-v0",
                 "--num_envs",
-                "4096",
+                "512",
                 "--run_name",
                 "crl_ant_debug",
-                "--headless"
+                // "--headless",
                 // "--resume",
                 // "RESUME",
                 // "--load_run",
-                // "ant_goal_cond_nav_ppo_2"
+                // "crl_ant_v1",
+                // "--video",
+                // "--video_length",
+                // "1000",
+                // "--video_interval",
+                // "1000"
             ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
             "console": "integratedTerminal",
