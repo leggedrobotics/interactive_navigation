@@ -118,32 +118,23 @@ class DistanceCurriculum:
 
     def __init__(
         self,
-        min_box_step_dist: float = 0.2,
-        min_robot_box_dist: float = 2.0,
-        max_box_step_dist: float = 4.0,
-        max_robot_box_dist: float = 10.0,
-        box_step_dist_increment: float = 0.1,
-        robot_box_dist_increment: float = 0.1,
+        min_dist: float = 2.0,
+        max_dist: float = 4.0,
+        dist_increment: float = 0.1,
         goal_termination_name: str = "goal_reached",
     ):
 
         self.goal_termination_name = goal_termination_name
-        self.min_box_step_dist = min_box_step_dist
-        self.init_robot_box_dist = min_robot_box_dist
-        self.max_box_step_dist = max_box_step_dist
-        self.max_robot_box_dist = max_robot_box_dist
-        self.box_step_dist_increment = box_step_dist_increment
-        self.robot_box_dist_increment = robot_box_dist_increment
+        self.min_dist = min_dist
+        self.max_dist = max_dist
+        self.dist_increment = dist_increment
         # buffers
-        self.box_from_step_dist: torch.Tensor = None
-        self.robot_from_box_dist: torch.Tensor = None
+        self.dist: torch.Tensor = None
 
     def _update(self, env: ManagerBasedRLEnv, env_ids: Sequence[int]):
 
-        if self.box_from_step_dist is None:
-            self.box_from_step_dist = torch.ones(env.num_envs, device=env.device) * self.min_box_step_dist
-        if self.robot_from_box_dist is None:
-            self.robot_from_box_dist = torch.ones(env.num_envs, device=env.device) * self.init_robot_box_dist
+        if self.dist is None:
+            self.dist = torch.ones(env.num_envs, device=env.device) * self.min_dist
 
         terminated_at_goal = env.termination_manager._term_dones[self.goal_termination_name]
         terminated = env.termination_manager.dones
@@ -151,35 +142,18 @@ class DistanceCurriculum:
         if terminated_at_goal.any():
             # increase distance if goal was reached
             goal_reached_ids = env_ids[terminated_at_goal[env_ids]]
-            self.box_from_step_dist[goal_reached_ids] += self.box_step_dist_increment
-            self.robot_from_box_dist[goal_reached_ids] += self.robot_box_dist_increment
+            self.dist[goal_reached_ids] += self.dist_increment
         if terminated_not_at_goal.any():
             # decrease distance if goal was not reached
             goal_not_reached_ids = env_ids[terminated_not_at_goal[env_ids]]
-            self.box_from_step_dist[goal_not_reached_ids] -= self.box_step_dist_increment
-            self.robot_from_box_dist[goal_not_reached_ids] -= self.robot_box_dist_increment
+            self.dist[goal_not_reached_ids] -= self.dist_increment
 
         # clamp the values
-        self.box_from_step_dist[env_ids] = torch.clamp(
-            self.box_from_step_dist[env_ids], self.min_box_step_dist, self.max_box_step_dist
-        )
-        self.robot_from_box_dist[env_ids] = torch.clamp(
-            self.robot_from_box_dist[env_ids], self.init_robot_box_dist, self.max_robot_box_dist
-        )
+        self.dist[env_ids] = torch.clamp(self.dist[env_ids], self.min_dist, self.max_dist)
 
-    def box_from_step_dist_curriculum(self, env: ManagerBasedRLEnv, env_ids: Sequence[int]):
-        if self.box_from_step_dist is None:
-            env.box_from_step_dist = torch.ones(env.num_envs, device=env.device) * self.min_box_step_dist
+    def entity_entity_dist_curriculum(self, env: ManagerBasedRLEnv, env_ids: Sequence[int]):
+        if self.dist is None:
+            env.dist = torch.ones(env.num_envs, device=env.device) * self.min_dist
         self._update(env, env_ids)
-        env.box_from_step_dist = self.box_from_step_dist
-        return self.box_from_step_dist.mean().item()
-
-    def robot_from_box_dist_curriculum(self, env: ManagerBasedRLEnv, env_ids: Sequence[int]):
-        if self.robot_from_box_dist is None:
-            env.robot_from_box_dist = torch.ones(env.num_envs, device=env.device) * self.init_robot_box_dist
-
-        self._update(env, env_ids)
-        # we need to call update in each method, since the class instance is not shared between the methods
-        env.robot_from_box_dist = self.robot_from_box_dist
-
-        return self.robot_from_box_dist.mean().item()
+        env.dist = self.dist
+        return self.dist.mean().item()
