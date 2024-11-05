@@ -36,7 +36,8 @@ from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: sk
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets import (
     ROBOT_CFG,
     ROBOT_USD_CFG,
-    CUBOID_CFG,
+    BOX_CFG,
+    TALL_BOX_CFG,
     WALL_CFG,
     SEGMENT_RAY_CASTER_MARKER_CFG,
 )
@@ -44,7 +45,9 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 # Scene definition
 ##
-N_BOXES = 4
+N_BOXES = 1
+
+BOXES_DICT = {"short": BOX_CFG, "tall": TALL_BOX_CFG}
 
 
 @configclass
@@ -55,7 +58,7 @@ class MySceneCfg(InteractiveSceneCfg):
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
         terrain_type="generator",
-        terrain_generator=mdp.terrain.MESH_PYRAMID_TERRAIN_CFG,
+        terrain_generator=mdp.terrain.MESH_STEP_TERRAIN_CFG,
         max_init_terrain_level=1,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -84,7 +87,7 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
-        debug_vis=False,
+        debug_vis=True,
         history_length=0,
         # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
         mesh_prim_paths=[
@@ -108,33 +111,41 @@ class MySceneCfg(InteractiveSceneCfg):
 
     def __post_init__(self):
         for i in range(1, N_BOXES + 1):
-            # add boxes with lidar sensors (only used for reward computation)
-            setattr(self, f"box_{i}", CUBOID_CFG.replace(prim_path=f"{{ENV_REGEX_NS}}/Box_{i}"))
-            setattr(
-                self,
-                f"box_lidar_bot_{i}",
-                RayCasterCfg(
-                    prim_path=f"{{ENV_REGEX_NS}}/Box_{i}",
-                    offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
-                    attach_yaw_only=True,
-                    pattern_cfg=patterns.LidarPatternCfg(
-                        channels=1,
-                        vertical_fov_range=(-0.0, 0.0),
-                        horizontal_fov_range=(0, 360),
-                        horizontal_res=45,
+            for box_name, box_cfg in BOXES_DICT.items():
+                box_strs = [
+                    f"box_{box_name}_{i}",  # entity name
+                    f"Box_{box_name}_{i}",  # prim path for the box
+                    f"box_{box_name}_lidar_bot_{i}",  # entity name for the lower lidar sensor
+                    f"box_{box_name}_lidar_top_{i}",  # entity name for the upper lidar sensor
+                ]
+
+                # add boxes with lidar sensors (only used for reward computation)
+                setattr(self, box_strs[0], box_cfg.replace(prim_path=f"{{ENV_REGEX_NS}}/{box_strs[1]}"))
+                setattr(
+                    self,
+                    box_strs[2],
+                    RayCasterCfg(
+                        prim_path=f"{{ENV_REGEX_NS}}/{box_strs[1]}",
+                        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
+                        attach_yaw_only=True,
+                        pattern_cfg=patterns.LidarPatternCfg(
+                            channels=1,
+                            vertical_fov_range=(-0.0, 0.0),
+                            horizontal_fov_range=(0, 360),
+                            horizontal_res=45,
+                        ),
+                        max_distance=100.0,
+                        debug_vis=False,
+                        mesh_prim_paths=["/World/ground"],
+                        track_mesh_transforms=False,
+                        visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCasterBox"),
                     ),
-                    max_distance=100.0,
-                    debug_vis=False,
-                    mesh_prim_paths=["/World/ground"],
-                    track_mesh_transforms=False,
-                    visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCasterBox"),
-                ),
-            )
-            setattr(
-                self,
-                f"box_lidar_top_{i}",
-                getattr(self, f"box_lidar_bot_{i}").replace(offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 1.0))),
-            )
+                )
+                setattr(
+                    self,
+                    box_strs[3],
+                    getattr(self, box_strs[2]).replace(offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 1.0))),
+                )
 
 
 ##
@@ -197,7 +208,7 @@ class ObservationsCfg:
         boxes_poses = ObsTerm(
             func=mdp.box_pose,
             params={
-                "entity_str": "box",
+                "entity_str": "box_short",
                 "pov_entity": SceneEntityCfg("robot"),
                 "return_mask": True,
             },
@@ -221,13 +232,14 @@ class EventCfg:
     """Configuration for events."""
 
     reset_box_n_robot = EventTerm(
-        func=mdp.reset_box_near_step_and_robot_near_box,
+        func=mdp.reset_boxes_and_robot,
         mode="reset",
         params={
+            "robot_cfg": SceneEntityCfg("robot"),
+            "boxes_sorted": [SceneEntityCfg("box_tall_1"), SceneEntityCfg("box_short_1")],
             "pose_range": {"yaw": (0, 0)},
-            "box_asset_cfg": SceneEntityCfg("box_1"),
-            "robot_asset_cfg": SceneEntityCfg("robot"),
             "random_dist": True,
+            "min_dist": 2.0,
         },
     )
 
@@ -250,23 +262,23 @@ class EventCfg:
         },
     )
 
-    def __post_init__(self):
-        for i in range(2, N_BOXES + 1):
-            # add reset box events, each box one level higher than the previous one
-            setattr(
-                self,
-                f"reset_box_{i}_near_step",
-                EventTerm(
-                    func=mdp.reset_near_step,
-                    mode="reset",
-                    params={
-                        "pose_range": {"yaw": (0, 0)},
-                        "asset_cfg": SceneEntityCfg(f"box_{i}"),
-                        "level": i - 1,
-                        "random_dist": True,
-                    },
-                ),
-            )
+    # def __post_init__(self):
+    #     for i in range(2, N_BOXES + 1):
+    #         # add reset box events, each box one level higher than the previous one
+    #         setattr(
+    #             self,
+    #             f"reset_box_{i}_near_step",
+    #             EventTerm(
+    #                 func=mdp.reset_near_step,
+    #                 mode="reset",
+    #                 params={
+    #                     "pose_range": {"yaw": (0, 0)},
+    #                     "asset_cfg": SceneEntityCfg(f"box_short_{i}"),
+    #                     "level": i - 1,
+    #                     "random_dist": True,
+    #                 },
+    #             ),
+    #         )
 
 
 @configclass
@@ -284,8 +296,8 @@ class RewardsCfg:
         weight=0.1,
         params={
             "robot_str": "robot",
-            "dist_sensor_1_str": "box_lidar_bot",
-            "dist_sensor_2_str": "box_lidar_top",
+            "dist_sensor_1_str": "box_short_lidar_bot",
+            "dist_sensor_2_str": "box_short_lidar_top",
             "proximity_threshold": 0.5,
             "proximity_std": 0.3,
             "step_size_threshold": 0.75,
@@ -297,8 +309,8 @@ class RewardsCfg:
         weight=0.5,
         params={
             "robot_str": "robot",
-            "dist_sensor_1_str": "box_lidar_bot",
-            "dist_sensor_2_str": "box_lidar_top",
+            "dist_sensor_1_str": "box_short_lidar_bot",
+            "dist_sensor_2_str": "box_short_lidar_top",
             "proximity_threshold": 0.5,
             "proximity_std": 1.0,
             "step_size_threshold": 0.75,
@@ -388,12 +400,10 @@ class TerminationsCfg:
 
 
 DIST_CURR = mdp.DistanceCurriculum(
-    min_box_step_dist=0.2,
-    min_robot_box_dist=2.0,
-    max_box_step_dist=5.0,
-    max_robot_box_dist=15.0,
-    box_step_dist_increment=0.1,
-    robot_box_dist_increment=0.1,
+    min_dist=2.5,
+    max_dist=4.0,
+    dist_increment=0.1,
+    goal_termination_name="goal_reached",
 )
 
 TERRAIN_CURR = mdp.TerrainCurriculum(
@@ -407,9 +417,7 @@ class CurriculumCfg:
 
     # num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
-    box_from_step_dist_curriculum = CurrTerm(func=DIST_CURR.box_from_step_dist_curriculum)
-
-    robot_from_box_dist_curriculum = CurrTerm(func=DIST_CURR.robot_from_box_dist_curriculum)
+    distance_curriculum = CurrTerm(func=DIST_CURR.entity_entity_dist_curriculum)
 
     # robot_speed = CurrTerm(
     #     func=mdp.robot_speed_curriculum,

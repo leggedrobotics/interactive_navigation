@@ -36,7 +36,7 @@ from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: sk
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets import (
     ROBOT_CFG,
     ROBOT_USD_CFG,
-    CUBOID_CFG,
+    BOX_CFG,
     WALL_CFG,
     SEGMENT_RAY_CASTER_MARKER_CFG,
 )
@@ -137,7 +137,7 @@ class MySceneCfg(InteractiveSceneCfg):
 
     def __post_init__(self):
         for i in range(1, N_BOXES + 1):
-            setattr(self, f"box_{i}", CUBOID_CFG.replace(prim_path=f"{{ENV_REGEX_NS}}/Box_{i}"))
+            setattr(self, f"box_{i}", BOX_CFG.replace(prim_path=f"{{ENV_REGEX_NS}}/Box_{i}"))
 
 
 ##
