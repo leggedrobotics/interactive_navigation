@@ -291,7 +291,7 @@ class TerminationsCfg:
 
     # too_far_away = DoneTerm(func=mdp.too_far_away, params={"max_dist": 15.0})
 
-    upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": 1.5})
+    # upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": 1.5})
 
     # goal_reached = DoneTerm(func=mdp.goal_reached, params={"threshold_dist": 0.5})
 

@@ -69,9 +69,9 @@ class TestCrlRunnerCfg(RslCRlOnPolicyRunnerCfg):
 
     algorithm = RslRlCrlAlgorithmCfg(
         mini_batch_size_and_num_inserts_per_sample=256,
-        stack_N_critic_batches=8,
+        stack_N_critic_batches=4,
         actor_batch_size=256,
-        replay_buffer_size_per_env=1000,
+        replay_buffer_size_per_env=5000,
         num_critic_learning_steps_per_update=1,
         num_actor_learning_steps_per_update=1,
         log_sum_exp_regularization_coef=0.05,
