@@ -146,3 +146,66 @@ def pyramid_terrain(
     origin = np.array([terrain_center[0], terrain_center[1], 0])
 
     return meshes_list, origin
+
+
+def step_terrain(
+    difficulty: float, cfg: mesh_terrains_cfg.MeshPyramidTerrainCfg
+) -> tuple[list[trimesh.Trimesh], np.ndarray]:
+    """Generate a terrain with a  single step at the -x,-y corner.
+
+    Args:
+        difficulty: The difficulty of the terrain. This is a value between 0 and 1.
+        cfg: The configuration for the terrain.
+
+    Returns:
+        A tuple containing the tri-mesh of the terrain and the origin of the terrain (in m).
+    """
+    # Resolve the terrain configuration
+
+    # Initialize list of meshes
+    meshes_list = []
+
+    if cfg.walls:
+        wall_height = cfg.wall_height
+        wall_thickness = cfg.wall_thickness
+        # south wall
+        center_south = [wall_thickness / 2, cfg.size[1] / 2, wall_height / 2]
+        dims = [wall_thickness, cfg.size[1], wall_height]
+        wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_south))
+        meshes_list.append(wall_box)
+        # north wall
+        center_east = [cfg.size[1] / 2, wall_thickness / 2, wall_height / 2]
+        dims = [cfg.size[0], wall_thickness, wall_height]
+        wall_box = trimesh.creation.box(dims, trimesh.transformations.translation_matrix(center_east))
+        meshes_list.append(wall_box)
+
+    # Generate the border if needed
+    if cfg.border_width > 0.0:
+        border_center = (0.5 * cfg.size[0], 0.5 * cfg.size[1], -cfg.step_height / 2)
+        border_inner_size = (cfg.size[0] - 2 * cfg.border_width, cfg.size[1] - 2 * cfg.border_width)
+        make_borders = make_border(cfg.size, border_inner_size, cfg.step_height, border_center)
+        meshes_list += make_borders
+
+    # Initialize variables for the base level
+    terrain_center = [0.5 * cfg.size[0], 0.5 * cfg.size[1], 0.0]
+    terrain_size = (cfg.size[0] - 2 * cfg.border_width, cfg.size[1] - 2 * cfg.border_width)
+
+    # Create the base level
+    base_box_dims = (terrain_size[0], terrain_size[1], 0.0)
+    base_box = trimesh.creation.box(base_box_dims, trimesh.transformations.translation_matrix(terrain_center))
+    meshes_list.append(base_box)
+
+    # Create the step
+    step_box_dims = (cfg.step_width[0], cfg.step_width[1], cfg.step_height)
+    step_center = [
+        cfg.step_width[0] / 2,
+        cfg.step_width[1] / 2,
+        cfg.step_height / 2,
+    ]
+    step_box = trimesh.creation.box(step_box_dims, trimesh.transformations.translation_matrix(step_center))
+    meshes_list.append(step_box)
+    # Origin of the terrain
+    # total_height = prev_box_pos[2] + 0.5 * prev_box_height
+    origin = np.array([terrain_center[0], terrain_center[1], 0])
+
+    return meshes_list, origin

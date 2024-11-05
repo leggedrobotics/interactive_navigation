@@ -9,7 +9,7 @@ import omni.isaac.lab.terrains as terrain_gen
 from omni.isaac.lab.terrains.terrain_generator_cfg import TerrainGeneratorCfg, FlatPatchSamplingCfg
 
 from .hf_terrains_cfg import CellBorderCfg, RandomPyramid
-from .mesh_terrains_cfg import MeshPyramidTerrainCfg
+from .mesh_terrains_cfg import MeshPyramidTerrainCfg, StepTerrainCfg
 
 GAME_ARENA_BASE_CFG = TerrainGeneratorCfg(
     size=(16.0, 16.0),
@@ -76,8 +76,8 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
     size=(20.0, 20.0),
     border_width=10.0,
     border_height=10.0,
-    num_rows=16,  # difficulty levels
-    num_cols=16,  # number of terrains per difficulty level
+    num_rows=4,  # difficulty levels
+    num_cols=1,  # number of terrains per difficulty level
     horizontal_scale=0.5,
     vertical_scale=0.05,
     slope_threshold=0.75,
@@ -88,7 +88,7 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
         "pyramid_stairs": MeshPyramidTerrainCfg(
             proportion=1.0,
             step_height=1.0,
-            step_width=(5, 2.5),
+            step_width=(1, 5),
             platform_width=3.0,
             border_width=0.0,
             holes=False,
@@ -113,34 +113,28 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
             #     ),
             # },
         ),
-        "pyramid_stairs_steppable": MeshPyramidTerrainCfg(
-            proportion=0.0,
-            step_height=0.5,
-            step_width=(20.0, 1.0),
-            platform_width=3.0,
-            border_width=0.0,
-            holes=False,
-            walls=False,
-            wall_height=10.0,
-            wall_thickness=1.0,
-            type="pyramid",
-            # flat_patch_sampling={
-            #     "init_pos": FlatPatchSamplingCfg(
-            #         num_patches=128,
-            #         patch_radius=1.5,
-            #         max_height_diff=5.0,
-            #     ),
-            #     "lowest_pos": FlatPatchSamplingCfg(
-            #         num_patches=128, patch_radius=1.0, max_height_diff=0.5, z_range=(0.0, 0.25)
-            #     ),
-            #     "not_lowest_pos": FlatPatchSamplingCfg(
-            #         num_patches=128,
-            #         patch_radius=0.3,
-            #         max_height_diff=50.0,
-            #         z_range=(0.75, 50.0),
-            #     ),
-            # },
-        ),
+    },
+)
+
+
+MESH_STEP_TERRAIN_CFG = TerrainGeneratorCfg(
+    size=(25.0, 25.0),
+    border_width=10.0,
+    border_height=7.5,
+    num_rows=2,  # difficulty levels
+    num_cols=2,  # number of terrains per difficulty level
+    horizontal_scale=0.5,
+    vertical_scale=0.05,
+    slope_threshold=0.75,
+    use_cache=False,
+    curriculum=False,
+    difficulty_range=(1.0, 1.0),
+    sub_terrains={
+        "step": StepTerrainCfg(
+            proportion=1.0,
+            step_height=3.0,
+            step_width=(3.0, 3.0),
+        )
     },
 )
 

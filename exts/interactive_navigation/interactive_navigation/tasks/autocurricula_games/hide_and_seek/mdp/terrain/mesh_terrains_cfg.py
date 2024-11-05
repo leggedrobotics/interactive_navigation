@@ -48,3 +48,25 @@ class MeshPyramidTerrainCfg(SubTerrainBaseCfg):
     :obj:`platform_width` (depending on the direction) with no steps in the remaining area. Additionally,
     no border will be added.
     """
+
+
+@configclass
+class StepTerrainCfg(SubTerrainBaseCfg):
+    """Configuration for a pyramid stair mesh terrain."""
+
+    function = mesh_terrains.step_terrain
+
+    border_width: float = 0.0
+    """The width of the border around the terrain (in m). Defaults to 0.0.
+
+    The border is a flat terrain with the same height as the terrain.
+    """
+    step_height: float = MISSING
+    """The height of the steps (in m)."""
+    step_width: tuple[float, float] = MISSING
+    """The width of the steps (in m)."""
+    walls: bool = False
+    """If True, each terrain is surrounded by walls. Defaults to False."""
+    wall_height: float = 2.0
+    """The height of the walls (in m). Defaults to 2.0."""
+    wall_thickness: float = 0.1
