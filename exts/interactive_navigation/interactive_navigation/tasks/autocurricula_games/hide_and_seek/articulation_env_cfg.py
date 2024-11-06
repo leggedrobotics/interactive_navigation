@@ -528,7 +528,7 @@ class MoveUpBoxesEnvCfg(ManagerBasedRLEnvCfg):
 
         # general settings
         self.decimation = 10  # 10 Hz
-        self.episode_length_s = 3099.0
+        self.episode_length_s = 20.0
         # simulation settings
         # self.sim.dt = 0.005  # 200 Hz
         self.sim.dt = 0.01  # 100 Hz
