@@ -244,6 +244,7 @@ def reset_boxes_and_robot(
     env_ids: torch.Tensor,
     robot_cfg: SceneEntityCfg,
     boxes_sorted: list[SceneEntityCfg],
+    other_boxes: list[SceneEntityCfg],
     pose_range: dict[str, tuple[float, float]],
     random_dist: bool = False,
     min_dist: float = 2.0,
@@ -253,6 +254,8 @@ def reset_boxes_and_robot(
     given the "dist" param in the env, set in the curriculum, the boxes will
     be spawned ordered from the step, such that the first box is the closest to the step,
     the second is close to the first, etc, until the last is close to the robot.
+
+    Other boxes are spawned randomly in the terrain.
 
     Note: the distance is from origin to origin, so the size of the boxes is not considered here.
     Note: the terrain for this function should contain one step.The step is in the -x,-y corner of the terrain.
@@ -278,10 +281,10 @@ def reset_boxes_and_robot(
     step_terrain: StepTerrainCfg = list(terrain.sub_terrains.values())[0]
 
     terrain_size = terrain.size
-    step_size = step_terrain.step_width
+    step_width = step_terrain.step_width
 
-    min_x = -terrain_size[0] / 2 + step_size[0]
-    min_y = -terrain_size[1] / 2 + step_size[1]
+    min_x = -terrain_size[0] / 2 + step_width[0]
+    min_y = -terrain_size[1] / 2 + step_width[1]
 
     # terrain origins positions
     terrain_origins = env.scene.terrain.env_origins[env_ids]
@@ -338,6 +341,46 @@ def reset_boxes_and_robot(
     robot_pose = torch.cat([chain_positions[:, -1], z_offset.unsqueeze(1), orientations], dim=-1).float()
     robot.write_root_pose_to_sim(robot_pose, env_ids=env_ids)
 
+    # set other boxes randomly but collision free
+    used_positions = chain_positions[:, 1:]
+    terrain_size = torch.tensor(terrain_size, device=env.device) - min_dist
+    for i, box_cfg in enumerate(other_boxes):
+        box = env.scene[box_cfg.name]
+
+        # sample collision free position
+        to_find_position = torch.ones_like(env_ids).bool()
+        positions = torch.zeros((len(env_ids), 2), device=env.device)
+
+        while to_find_position.any():
+            # sample position
+            candidate_positions = (
+                torch.rand((int(to_find_position.sum()), 2), device=env.device) * terrain_size - terrain_size / 2
+            )
+            # check step
+            on_step = (candidate_positions[:, 0] < min_x + step_width[0]) & (
+                candidate_positions[:, 1] < min_y + step_width[1]
+            )
+            # check collision
+            candidate_positions += terrain_origins[:, :2][to_find_position]
+            diffs = used_positions[to_find_position] - candidate_positions[:, None, :]
+            valid_samples = torch.all(torch.linalg.vector_norm(diffs, dim=-1) > min_dist, dim=1)
+
+            valid_samples &= ~on_step
+
+            found_new_sample = torch.zeros_like(to_find_position, dtype=torch.bool)
+            found_new_sample[to_find_position] = valid_samples
+            positions[found_new_sample] = candidate_positions[valid_samples].clone()
+            to_find_position[to_find_position.clone()] = ~valid_samples
+
+        # sample orientation
+        rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 3), device=env.device)
+        orientations = math_utils.quat_from_euler_xyz(rand_samples[:, 0], rand_samples[:, 1], rand_samples[:, 2])
+
+        # write to sim
+        z_offset = torch.zeros_like(env_ids) + box.cfg.spawn.size[2] / 2 + 0.01
+        box_poses = torch.cat([positions, z_offset.unsqueeze(1), orientations], dim=-1).float()
+        box.write_root_pose_to_sim(box_poses.float(), env_ids=env_ids)
+
 
 """ 
 
@@ -360,9 +403,9 @@ def reset_boxes_and_robot(
         # drwa step
         ax.add_patch(
             Rectangle(
-                (min_x - step_size[0], min_y - step_size[1]),
-                step_size[0],
-                step_size[1],
+                (min_x - step_width[0], min_y - step_width[1]),
+                step_width[0],
+                step_width[1],
                 edgecolor="black",
                 linewidth=2,
             )

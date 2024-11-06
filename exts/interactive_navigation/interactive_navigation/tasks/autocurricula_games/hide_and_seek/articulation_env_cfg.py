@@ -272,8 +272,10 @@ Z_ROBOT = 0.3 + 0.05
 Z_BOX = 0.25 + 0.05
 Z_WALL = 0.5 + 0.05
 
-all_box_entities = [SceneEntityCfg(box_name + f"_{i}") for box_name in BOXES_DICT.keys() for i in range(1, N_BOXES + 1)]
 first_box_entities = [SceneEntityCfg(box_name + "_1") for box_name in BOXES_DICT.keys()]
+other_box_entities = [
+    SceneEntityCfg(box_name + f"_{i}") for box_name in BOXES_DICT.keys() for i in range(2, N_BOXES + 1)
+]
 first_box_entities.reverse()
 
 
@@ -287,6 +289,7 @@ class EventCfg:
         params={
             "robot_cfg": SceneEntityCfg("robot"),
             "boxes_sorted": first_box_entities,
+            "other_boxes": other_box_entities,
             "pose_range": {"yaw": (0, 6.283)},
             "random_dist": True,
             "min_dist": 1.25,
@@ -311,24 +314,6 @@ class EventCfg:
             "joint_names": ["joint_yaw"],
         },
     )
-
-    def __post_init__(self):
-        for i in range(2, N_BOXES + 1):
-            # add reset box events, each box one level higher than the previous one
-            setattr(
-                self,
-                f"reset_box_{i}_near_step",
-                EventTerm(
-                    func=mdp.reset_near_step,
-                    mode="reset",
-                    params={
-                        "pose_range": {"yaw": (0, 0)},
-                        "asset_cfg": SceneEntityCfg(f"box_short_{i}"),
-                        "level": i - 1,
-                        "random_dist": True,
-                    },
-                ),
-            )
 
 
 @configclass
