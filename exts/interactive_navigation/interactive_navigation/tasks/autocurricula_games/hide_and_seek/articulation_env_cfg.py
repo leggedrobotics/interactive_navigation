@@ -48,9 +48,9 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 # Scene definition
 ##
-N_BOXES = 2
+N_BOXES = 1  # number of same boxes
 
-N_STEP_BOXES = 2
+N_STEP_BOXES = 2  # number of different boxes
 STEP_HEIGHT = 0.5
 
 
@@ -79,7 +79,7 @@ for i in range(N_STEP_BOXES):
             ),
             mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=0.5, dynamic_friction=0.5, friction_combine_mode="max"
+                static_friction=0.75, dynamic_friction=0.75, friction_combine_mode="multiply"
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=color),
@@ -104,13 +104,13 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/ground",
         terrain_type="generator",
         terrain_generator=terrain_gen_cfg,
-        max_init_terrain_level=1,
+        max_init_terrain_level=None,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
             restitution_combine_mode="multiply",
-            static_friction=0.0,
-            dynamic_friction=0.0,
+            static_friction=1.0,
+            dynamic_friction=1.0,
         ),
         visual_material=sim_utils.MdlFileCfg(
             mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
@@ -283,6 +283,18 @@ first_box_entities.reverse()
 class EventCfg:
     """Configuration for events."""
 
+    physics_material = EventTerm(
+        func=mdp.randomize_rigid_body_material,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "static_friction_range": (0.0, 0.0),
+            "dynamic_friction_range": (0.0, 0.0),
+            "restitution_range": (0.0, 0.0),
+            "num_buckets": 4,
+        },
+    )
+
     reset_box_n_robot = EventTerm(
         func=mdp.reset_boxes_and_robot,
         mode="reset",
@@ -351,6 +363,8 @@ class RewardsCfg:
     #         "step_size_threshold": 0.75,
     #     },
     # )
+
+    # TODO: reward for valid stair ie, if first is close to step, second closes to first, etc
 
     close_to_box = RewTerm(
         func=mdp.CloseToBoxReward().close_to_box_reward,
@@ -436,8 +450,8 @@ class TerminationsCfg:
 
 DIST_CURR = mdp.DistanceCurriculum(
     min_dist=1.25,
-    max_dist=4.0,
-    dist_increment=0.1,
+    max_dist=6.0,
+    dist_increment=0.5,
     goal_termination_name="goal_reached",
 )
 
@@ -459,7 +473,7 @@ class CurriculumCfg:
     #     params={"action_term_name": "wrench", "num_steps": 25_000, "start_multiplier": 2.0},
     # )
 
-    terrain_levels = CurrTerm(func=TERRAIN_CURR.terrain_levels)
+    # terrain_levels = CurrTerm(func=TERRAIN_CURR.terrain_levels)
 
 
 @configclass
