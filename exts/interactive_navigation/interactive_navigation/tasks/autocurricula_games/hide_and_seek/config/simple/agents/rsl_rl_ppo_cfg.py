@@ -80,9 +80,9 @@ class JumpeOnBoxesPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 100_000
     save_interval = 250
-    experiment_name = "jump_on_boxes_ppo"
+    experiment_name = "make_stair_ppo"
     run_name = f"jump_{N_BOXES}_box_N_step"
-    wandb_project = "jump_on_boxes_ppo"
+    wandb_project = "make_stair_ppo"
     empirical_normalization = False
     policy = RslRlPpoRelationalActorCriticCfg(
         init_noise_std=1.0,

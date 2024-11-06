@@ -21,7 +21,7 @@ ROBOT_CFG = RigidObjectCfg(
 
 ROBOT_USD_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path="/home/rafael/Projects/MT/interactive_navigation/exts/interactive_navigation/interactive_navigation/tasks/autocurricula_games/hide_and_seek/mdp/urdfs/output_3.usd",
+        usd_path="/home/rafael/Projects/MT/interactive_navigation/exts/interactive_navigation/interactive_navigation/tasks/autocurricula_games/hide_and_seek/mdp/urdfs/output_2.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
             max_linear_velocity=30.0,

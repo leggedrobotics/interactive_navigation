@@ -44,11 +44,11 @@
             "request": "launch",
             "args": [
                 "--task",
-                "Isaac-Jump-BoxPyramid-v0",
+                "Isaac-Jump-Boxes-v0",
                 "--num_envs",
-                "16",
+                "512",
                 "--run_name",
-                "jump_debug",
+                "stair_debug",
                 // "--headless"
                 // "--resume",
                 // "RESUME",

@@ -9,7 +9,7 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.rigid_robot_
 ##
 
 gym.register(
-    id="Isaac-Jump-BoxPyramid-v0",
+    id="Isaac-Jump-Boxes-v0",
     entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
