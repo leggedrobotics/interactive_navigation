@@ -80,7 +80,11 @@ def pose_2d_to(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor
 
 
 def box_pose(
-    env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg, return_mask: bool = False
+    env: ManagerBasedEnv,
+    entity_str: str,
+    pov_entity: SceneEntityCfg,
+    return_mask: bool = False,
+    return_box_height: bool = False,
 ) -> torch.Tensor:
     """Returns the pose of all entities relative to the terrain origin.
     x,y position and heading in the form of cos(theta), sin(theta).
@@ -91,10 +95,14 @@ def box_pose(
     box_ids = [asset for asset in list(env.scene.rigid_objects.keys()) if entity_str in asset]
     box_poses = []
     box_quats = []
+    if return_box_height:
+        box_heights = []
 
     for box_id in box_ids:
         box_poses.append(env.scene.rigid_objects[box_id].data.root_pos_w)
         box_quats.append(env.scene.rigid_objects[box_id].data.root_quat_w)
+        if return_box_height:
+            box_heights.append(env.scene.rigid_objects[box_id].cfg.spawn.size[2])
 
     boxes_positions_w = torch.stack(box_poses, dim=1)
     boxes_quats_w = torch.stack(box_quats, dim=1)
@@ -130,12 +138,16 @@ def box_pose(
     # yaw = torch.atan2(sin_yaw, cos_yaw)
     # Stack the results into a single tensor
 
+    pos = torch.stack([x, y, cos_yaw, sin_yaw], dim=-1)
     if return_mask:
         z = t_box_robot[..., 2]
         same_level = torch.abs(z) < 0.5
-        return torch.stack([x, y, cos_yaw, sin_yaw, same_level], dim=-1)
+        pos = torch.cat([pos, same_level.unsqueeze(-1).float()], dim=-1)
+    if return_box_height:
+        box_heights = torch.tensor(box_heights, device=boxes_positions_w.device).unsqueeze(0).expand_as(x)
+        pos = torch.cat([pos, box_heights.unsqueeze(-1)], dim=-1)
 
-    return torch.stack([x, y, cos_yaw, sin_yaw], dim=-1)
+    return pos
 
 
 def velocity_2d_b(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg, pov_entity_cfg: SceneEntityCfg) -> torch.Tensor:

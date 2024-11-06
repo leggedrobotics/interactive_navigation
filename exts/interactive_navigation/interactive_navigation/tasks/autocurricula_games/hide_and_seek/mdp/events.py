@@ -247,6 +247,7 @@ def reset_boxes_and_robot(
     pose_range: dict[str, tuple[float, float]],
     random_dist: bool = False,
     min_dist: float = 2.0,
+    robot_z_offset: float = 0.5,
 ):
     """Reset function for env with one big step and multiple boxes.
     given the "dist" param in the env, set in the curriculum, the boxes will
@@ -286,7 +287,7 @@ def reset_boxes_and_robot(
     terrain_origins = env.scene.terrain.env_origins[env_ids]
 
     # sample distances if random dist
-    max_dist_per_env: torch.Tensor = env.dist
+    max_dist_per_env: torch.Tensor = env.dist[env_ids]
     if random_dist:
         # random distances within the bounds
         distances = (
@@ -310,10 +311,36 @@ def reset_boxes_and_robot(
 
     assert not chain_positions.isnan().any(), "NaN values in chain_positions"
 
-    pass
+    terrain_origins_2d = terrain_origins[:, :2].unsqueeze(1)
+    chain_positions += terrain_origins_2d
+
+    # set boxes
+    range_list = [pose_range.get(key, (0.0, 0.0)) for key in ["roll", "pitch", "yaw"]]
+    ranges = torch.tensor(range_list, device=env.device)
+    for i, box_cfg in enumerate(boxes_sorted):
+        box = env.scene[box_cfg.name]
+
+        # sample orientation
+        rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 3), device=env.device)
+        orientations = math_utils.quat_from_euler_xyz(rand_samples[:, 0], rand_samples[:, 1], rand_samples[:, 2])
+
+        # get z offset
+        z_offset = torch.zeros_like(env_ids) + box.cfg.spawn.size[2] / 2 + 0.01
+
+        # set box pose
+        box_poses = torch.cat([chain_positions[:, i + 1], z_offset.unsqueeze(1), orientations], dim=-1).float()
+        box.write_root_pose_to_sim(box_poses.float(), env_ids=env_ids)
+
+    # set robot
+    robot = env.scene[robot_cfg.name]
+    orientations = torch.tensor([1.0, 0.0, 0.0, 0.0], device=robot.device).repeat(len(env_ids), 1)
+    z_offset = torch.zeros_like(env_ids) + robot_z_offset
+    robot_pose = torch.cat([chain_positions[:, -1], z_offset.unsqueeze(1), orientations], dim=-1).float()
+    robot.write_root_pose_to_sim(robot_pose, env_ids=env_ids)
 
 
 """ 
+
     import matplotlib.pyplot as plt
     import matplotlib
     from matplotlib.patches import Rectangle
@@ -383,8 +410,8 @@ def sample_chain_positions(
     y_max_valid = y_max - r_min
 
     # Adjusted step area considering r_min
-    x_step_edge = x_step + r_min
-    y_step_edge = y_step + r_min
+    x_step_edge = x_step
+    y_step_edge = y_step
 
     # Initialize positions tensor
     positions = torch.zeros(num_envs, N + 1, 2, device=device, dtype=dtype)
