@@ -39,6 +39,29 @@
         },
         // custom env debuggers
         {
+            "name": "Python: TRAIN Anymal Box",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--task",
+                "Isaac-Jump-Boxes-Anymal-D-v0",
+                "--num_envs",
+                "4",
+                "--run_name",
+                "anymal_box_debug",
+                // "--headless"
+                // "--resume",
+                // "RESUME",
+                // "--load_run",
+                // "jump_4_box_N_step",
+                // "--checkpoint",
+                // "model_3000.pt",
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        {
             "name": "Python: TRAIN Jump Up",
             "type": "debugpy",
             "request": "launch",

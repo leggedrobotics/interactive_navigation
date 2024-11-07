@@ -28,6 +28,7 @@ def lidar_obs_dist_2d(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch
 
 def lidar_height_scan(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     """lidar scan from the given sensor w.r.t. the sensor's frame."""
+    # TODO: repalce this with the default height scanner
     sensor: SensorBase = env.scene.sensors[sensor_cfg.name]
 
     height_diffs = sensor.data.ray_hits_w[..., 2] - sensor.data.pos_w[..., 2].unsqueeze(1)
@@ -175,3 +176,27 @@ def velocity_2d_w(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Ten
     entity_vel_w = entity.data.body_lin_vel_w.squeeze(1)
     entity_ang_vel_z = entity.data.body_ang_vel_w.squeeze(1)[..., 2]
     return torch.cat([entity_vel_w[..., :2], entity_ang_vel_z.unsqueeze(1)], dim=-1)
+
+
+##
+# High level actions as observations
+##
+
+
+def action_command(env: ManagerBasedEnv, action_name: str) -> torch.Tensor:
+    """Returns the action command as an observation."""
+    return env.action_manager._terms[action_name].processed_actions
+
+
+##
+##Actions.
+#
+
+
+def last_low_level_action(env: ManagerBasedEnv, action_name: str | None = None) -> torch.Tensor:
+    """The last input action to the environment.
+
+    The name of the action term for which the action is required. If None, the
+    entire action tensor is returned.
+    """
+    return env.action_manager._terms[action_name].prev_low_level_actions

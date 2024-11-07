@@ -1,8 +1,11 @@
 from omni.isaac.lab.utils import configclass
+
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
     RslRlOnPolicyRunnerCfg,
     RslRlPpoActorCriticCfg,
     RslRlPpoAlgorithmCfg,
+    RslRlPpoRelationalActorCriticCfg,
+    RslRlPpoRecurrentActorCriticCfg,
 )
 
 
@@ -44,3 +47,36 @@ class AnymalDFlatPPORunnerCfg(AnymalDRoughPPORunnerCfg):
         self.experiment_name = "anymal_d_flat"
         self.policy.actor_hidden_dims = [128, 128, 128]
         self.policy.critic_hidden_dims = [128, 128, 128]
+
+
+## Custom
+
+
+@configclass
+class AnymalJumpOnBoxesPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+    seed = 123
+    num_steps_per_env = 24
+    max_iterations = 100_000
+    save_interval = 250
+    experiment_name = "make_stair_ppo"
+    run_name = "anymal_boxes_step"
+    wandb_project = "make_stair_ppo"
+    empirical_normalization = False
+    policy = RslRlPpoRelationalActorCriticCfg(
+        init_noise_std=1.0,
+        activation="elu",
+    )
+    algorithm = RslRlPpoAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.005,
+        num_learning_epochs=5,
+        num_mini_batches=4,  # mini batch size = num_envs * num_steps_per_env // num_mini_batches
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.995,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+    )
