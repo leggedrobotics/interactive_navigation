@@ -335,22 +335,7 @@ class EventCfg:
             "pose_range": {"yaw": (0, 6.283)},
             "random_dist": True,
             "min_dist": 1.25,
-        },
-    )
-
-    reset_base = EventTerm(
-        func=mdp.reset_root_state_uniform,
-        mode="reset",
-        params={
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-            "velocity_range": {
-                "x": (-0.5, 0.5),
-                "y": (-0.5, 0.5),
-                "z": (-0.5, 0.5),
-                "roll": (-0.5, 0.5),
-                "pitch": (-0.5, 0.5),
-                "yaw": (-0.5, 0.5),
-            },
+            "robot_z_offset": 0.75,
         },
     )
 

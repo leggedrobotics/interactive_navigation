@@ -14,6 +14,11 @@ if TYPE_CHECKING:
     from .interactive_navigation_action_cfg import InteractiveNavigationActionCfg
 
 
+TELEOP = True
+if TELEOP:
+    from omni.isaac.lab.devices import Se3Keyboard, Se3SpaceMouse, Se3Gamepad
+
+
 class InteractiveNavigationAction(ActionTerm):
 
     cfg: InteractiveNavigationActionCfg
@@ -43,6 +48,13 @@ class InteractiveNavigationAction(ActionTerm):
 
         # set up buffers
         self._init_buffers()
+
+        # teleop:
+        self.use_teleop = TELEOP
+        if self.use_teleop:
+            self.teleop_interface = Se3Keyboard(pos_sensitivity=1, rot_sensitivity=1)
+            self.teleop_interface.add_callback("L", env.reset)
+            print(self.teleop_interface)
 
     """
     Properties.
@@ -89,6 +101,13 @@ class InteractiveNavigationAction(ActionTerm):
 
         # Apply the affine transformations
         self._processed_navigation_velocity_actions.copy_(squashed_actions * self._scale + self._offset)
+
+        if self.use_teleop:
+            delta_pose, gripper_command = self.teleop_interface.advance()
+            actions[:, 0] = delta_pose[0]
+            actions[:, 1] = delta_pose[1]
+            actions[:, 2] = delta_pose[2]
+            self._processed_navigation_velocity_actions.copy_(actions * self._scale)
 
     def apply_actions(self):
         """Apply low-level actions for the simulator to the physics engine. This functions is called with the
