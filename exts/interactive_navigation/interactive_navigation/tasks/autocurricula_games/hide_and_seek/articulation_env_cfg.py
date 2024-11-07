@@ -50,7 +50,7 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 N_BOXES = 1  # number of same boxes
 
-N_STEP_BOXES = 2  # number of different boxes
+N_STEP_BOXES = 4  # number of different boxes
 STEP_HEIGHT = 0.5
 
 
@@ -450,10 +450,10 @@ class TerminationsCfg:
 
 DIST_CURR = mdp.DistanceCurriculum(
     min_dist=1.25,
-    max_dist=6.0,
-    dist_increment=0.5,
+    max_dist=12.0,
+    dist_increment=0.1,
     goal_termination_name="goal_reached",
-)
+)  # TODO: curriculum where only one random box is moved away from the stair
 
 TERRAIN_CURR = mdp.TerrainCurriculum(
     num_successes=10, num_failures=10, goal_termination_name="goal_reached", random_move_prob=0.05
