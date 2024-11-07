@@ -8,7 +8,7 @@ from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg, RayCasterCfg, pa
 from omni.isaac.lab.utils import math as math_utils
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
 
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
+from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.utils import (
     get_robot_pos,
     get_robot_quat,
     get_robot_lin_vel_w,

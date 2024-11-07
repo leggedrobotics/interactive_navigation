@@ -24,7 +24,7 @@ from omni.isaac.lab.terrains.terrain_generator_cfg import FlatPatchSamplingCfg
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv
-    from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.terrain.mesh_terrains_cfg import (
+    from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.terrain.mesh_terrains_cfg import (
         StepTerrainCfg,
     )
 

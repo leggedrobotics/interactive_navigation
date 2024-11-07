@@ -22,7 +22,7 @@ from omni.isaac.lab.assets import Articulation, RigidObject
 from omni.isaac.lab.managers import CommandTerm
 from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.utils import math as math_utils
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
+from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.utils import (
     get_robot_pos,
     get_robot_quat,
     get_robot_lin_vel_w,

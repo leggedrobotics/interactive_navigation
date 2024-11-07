@@ -6,7 +6,7 @@ from omni.isaac.lab.envs import ManagerBasedRLEnv
 from omni.isaac.lab.managers.manager_base import ManagerTermBase
 from omni.isaac.lab.managers.manager_term_cfg import TerminationTermCfg
 
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.commands import GoalCommand
+from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.commands import GoalCommand
 
 
 def goal_reached(

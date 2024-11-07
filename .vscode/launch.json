@@ -46,7 +46,7 @@
                 "--task",
                 "Isaac-Jump-Boxes-v0",
                 "--num_envs",
-                "512",
+                "4",
                 "--run_name",
                 "stair_debug",
                 // "--headless"

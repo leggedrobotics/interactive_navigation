@@ -8,8 +8,8 @@ from omni.isaac.lab.sensors import ContactSensor, RayCaster
 from omni.isaac.lab.assets import Articulation, RigidObject
 from omni.isaac.lab.managers.manager_base import ManagerTermBase
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.commands import GoalCommand
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
+from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.commands import GoalCommand
+from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.utils import (
     get_robot_pos,
     get_robot_quat,
     get_robot_lin_vel_w,
