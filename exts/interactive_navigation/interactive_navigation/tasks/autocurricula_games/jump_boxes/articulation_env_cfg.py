@@ -7,7 +7,7 @@ from typing import Literal
 import matplotlib.pyplot as plt
 
 
-import interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp as mdp
+import interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp as mdp
 
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg, RigidObjectCfg
@@ -36,7 +36,7 @@ from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: sk
 # Task-specific configurations
 ##
 
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets import (
+from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.assets import (
     ROBOT_CFG,
     ROBOT_USD_CFG,
     BOX_CFG,

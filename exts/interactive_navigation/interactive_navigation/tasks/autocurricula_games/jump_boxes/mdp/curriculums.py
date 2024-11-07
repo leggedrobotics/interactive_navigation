@@ -14,7 +14,7 @@ from omni.isaac.lab.assets import Articulation
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.terrains import TerrainImporter
 
-import interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.actions as nav_actions
+import interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.actions as nav_actions
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv

@@ -1,6 +1,6 @@
 # train command:
 # python scripts/rsl_rl/train.py --task Isaac-Games-HideAndSeek-Simple-D-v0 --num_envs 128 --headless --video --video_length 200 --video_interval 5000 --logger wandb --experiment_name move_boxes_to_center --log_project_name move_boxes_to_center
-from interactive_navigation.tasks.autocurricula_games.hide_and_seek.articulation_env_cfg import N_BOXES
+from interactive_navigation.tasks.autocurricula_games.jump_boxes.articulation_env_cfg import N_BOXES
 
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
@@ -17,7 +17,7 @@ class HideSeekPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 32
     max_iterations = 100_000
     save_interval = 1000
-    experiment_name = "hide_and_seek_ppo"
+    experiment_name = "jump_boxes_ppo"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
