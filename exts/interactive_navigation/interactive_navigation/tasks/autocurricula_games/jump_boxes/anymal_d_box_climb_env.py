@@ -399,7 +399,7 @@ class RewardsCfg:
     successful_jump = RewTerm(
         func=mdp.JumpReward().successful_jump_reward,
         weight=10,
-        params={},
+        params={},  # TODO, this might not work for the anymal robot, since its height may not be constant
     )
 
     # Moving up
