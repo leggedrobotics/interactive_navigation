@@ -51,7 +51,7 @@ from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.assets impo
 ##
 N_BOXES = 1  # number of same boxes
 
-N_STEP_BOXES = 2  # number of different boxes
+N_STEP_BOXES = 4  # number of different boxes
 STEP_HEIGHT = 0.5
 
 
@@ -71,7 +71,7 @@ for i in range(N_STEP_BOXES):
     BOXES_DICT[box_prefix] = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/" + f"{box_prim_path_name}",
         spawn=sim_utils.CuboidCfg(
-            size=(0.95, 0.95, height),
+            size=(height, height, height),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 max_depenetration_velocity=1.0,
                 disable_gravity=False,
@@ -128,31 +128,32 @@ class MySceneCfg(InteractiveSceneCfg):
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
         attach_yaw_only=True,
         pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
-        debug_vis=False,
+        debug_vis=True,
         mesh_prim_paths=[
             "/World/ground",
             RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
         ],
+        track_mesh_transforms=True,
     )
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
 
     # High level policy sensor
-    # height_scan = RayCasterCfg(
-    #     prim_path="{ENV_REGEX_NS}/Robot/base",
-    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 30.0)),
-    #     attach_yaw_only=True,
-    #     pattern_cfg=patterns.GridPatternCfg(resolution=0.5, size=(5, 5)),
-    #     max_distance=100.0,
-    #     drift_range=(-0.0, 0.0),
-    #     debug_vis=False,
-    #     history_length=0,
-    #     mesh_prim_paths=[
-    #         "/World/ground",
-    #         RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
-    #     ],
-    #     track_mesh_transforms=True,
-    #     visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
-    # )
+    height_scan_high_level = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 30.0)),
+        attach_yaw_only=True,
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.5, size=(5, 5)),
+        max_distance=100.0,
+        drift_range=(-0.0, 0.0),
+        debug_vis=True,
+        history_length=0,
+        mesh_prim_paths=[
+            "/World/ground",
+            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
+        ],
+        track_mesh_transforms=True,
+        visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
+    )
 
     # lights
     light = AssetBaseCfg(
@@ -229,7 +230,7 @@ class ActionsCfg:
         low_level_action=mdp.JointPositionActionCfg(  # copied from velocity_env
             asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True
         ),
-        locomotion_policy_file="/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_rough/locomotion_anymal_d/exported/policy.pt",
+        locomotion_policy_file="/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_rough/locomotion_anymal_d_faster/exported/policy.pt",
         observation_group="locomotion_policy",
         locomotion_policy_freq=50.0,
         scale=[0.5, 0.25, 1.0],  # actions = raw_actions * scale + offset, raw_actions squashed to [-1, 1]
@@ -334,8 +335,9 @@ class EventCfg:
             "other_boxes": other_box_entities,
             "pose_range": {"yaw": (0, 6.283)},
             "random_dist": True,
-            "min_dist": 1.25,
+            "min_dist": 0.1,
             "robot_z_offset": 0.75,
+            "robot_radius": 1.5,
         },
     )
 
@@ -478,7 +480,7 @@ class TerminationsCfg:
 
 
 DIST_CURR = mdp.DistanceCurriculum(
-    min_dist=1.25,
+    start_dist=1.25,
     max_dist=12.0,
     dist_increment=0.1,
     goal_termination_name="goal_reached",
@@ -510,20 +512,20 @@ class ViewerCfg:
     """Configuration of the scene viewport camera."""
 
     # eye: tuple[float, float, float] = (-60.0, 0.5, 70.0)
-    eye: tuple[float, float, float] = (9.7, 9.7, 8.0)
+    eye: tuple[float, float, float] = (2.5, 2.5, 4.0)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
     lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
     cam_prim_path: str = "/OmniverseKit_Persp"
     resolution: tuple[int, int] = (1280, 720)
-    origin_type: Literal["world", "env", "asset_root"] = "env"
+    origin_type: Literal["world", "env", "asset_root"] = "asset_root"
     """
     * ``"world"``: The origin of the world.
     * ``"env"``: The origin of the environment defined by :attr:`env_index`.
     * ``"asset_root"``: The center of the asset defined by :attr:`asset_name` in environment :attr:`env_index`.
     """
     env_index: int = 0
-    asset_name: str | None = None  # "robot"
+    asset_name: str | None = "robot"
 
 
 ##

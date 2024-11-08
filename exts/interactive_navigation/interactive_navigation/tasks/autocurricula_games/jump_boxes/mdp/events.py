@@ -312,7 +312,7 @@ def reset_boxes_and_robot(
         prev_radius = box_radius
 
     r_min.append(robot_radius)
-    distances[:, -1] += robot_radius + prev_radius + min_dist + 0.5
+    distances[:, -1] += robot_radius * 2 + prev_radius + min_dist + 0.5  # TODO fix the * 2
 
     chain_positions = sample_chain_positions(
         num_envs=len(env_ids),

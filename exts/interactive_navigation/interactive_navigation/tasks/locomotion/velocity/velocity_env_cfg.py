@@ -89,14 +89,14 @@ class CommandsCfg:
 
     base_velocity = mdp.UniformVelocityCommandCfg(
         asset_name="robot",
-        resampling_time_range=(10.0, 10.0),
+        resampling_time_range=(1.0, 15.0),
         rel_standing_envs=0.02,
         rel_heading_envs=1.0,
         heading_command=True,
         heading_control_stiffness=0.5,
         debug_vis=True,
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(-1.0, 1.0), lin_vel_y=(-1.0, 1.0), ang_vel_z=(-1.0, 1.0), heading=(-math.pi, math.pi)
+            lin_vel_x=(-1.5, 1.5), lin_vel_y=(-1.0, 1.0), ang_vel_z=(-1.0, 1.0), heading=(-math.pi, math.pi)
         ),
     )
 
@@ -152,8 +152,8 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.8, 0.8),
-            "dynamic_friction_range": (0.6, 0.6),
+            "static_friction_range": (0.6, 1.0),
+            "dynamic_friction_range": (0.4, 0.8),
             "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
@@ -209,7 +209,7 @@ class EventCfg:
     push_robot = EventTerm(
         func=mdp.push_by_setting_velocity,
         mode="interval",
-        interval_range_s=(10.0, 15.0),
+        interval_range_s=(5.0, 15.0),
         params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
     )
 
