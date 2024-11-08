@@ -27,8 +27,6 @@ class StepTerrainCfg(SubTerrainBaseCfg):
     """The height of the steps (in m)."""
     step_width: tuple[float, float] = MISSING
     """The width of the steps (in m)."""
-    step_offset: float = 0.0
-    """The offset of the steps (in m). Defaults to 0.0."""
     walls: bool = False
     """If True, each terrain is surrounded by walls. Defaults to False."""
     wall_height: float = 2.0

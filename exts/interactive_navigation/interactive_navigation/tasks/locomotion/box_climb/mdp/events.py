@@ -52,8 +52,11 @@ def reset_robot_around_step(
     rand_x = random_radius * torch.cos(random_angles)
     rand_y = random_radius * torch.sin(random_angles)
     positions = (
-        root_states[:, 0:3]
-        + env.scene.env_origins[env_ids]
+        root_states[:, 0:3]  # env origin xy, z = 0
+        + torch.cat(
+            [env.scene.env_origins[env_ids, :2], torch.zeros_like(env.scene.env_origins[env_ids, 0].unsqueeze(1))],
+            dim=-1,
+        )
         + torch.cat([rand_x.unsqueeze(-1), rand_y.unsqueeze(-1), torch.zeros_like(rand_x.unsqueeze(-1))], dim=-1)
     )
 

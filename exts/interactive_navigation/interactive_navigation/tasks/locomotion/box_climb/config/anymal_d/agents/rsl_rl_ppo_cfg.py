@@ -7,11 +7,13 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 
 
 @configclass
-class AnymalDRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+class AnymalDBoxClimbPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 1500
+    max_iterations = 100_000
     save_interval = 50
-    experiment_name = "anymal_d_rough"
+    experiment_name = "anymal_d_box_climb"
+    wandb_project = "anymal_d_box_climb"
+    run_name = "anymal_d_box_climb_ppo"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
@@ -33,14 +35,3 @@ class AnymalDRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         desired_kl=0.01,
         max_grad_norm=1.0,
     )
-
-
-@configclass
-class AnymalDFlatPPORunnerCfg(AnymalDRoughPPORunnerCfg):
-    def __post_init__(self):
-        super().__post_init__()
-
-        self.max_iterations = 300
-        self.experiment_name = "anymal_d_flat"
-        self.policy.actor_hidden_dims = [128, 128, 128]
-        self.policy.critic_hidden_dims = [128, 128, 128]

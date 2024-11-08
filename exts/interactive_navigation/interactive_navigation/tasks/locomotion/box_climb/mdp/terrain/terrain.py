@@ -16,8 +16,8 @@ MESH_STEP_TERRAIN_CFG = TerrainGeneratorCfg(
     size=(8.0, 8.0),
     border_width=10.0,
     border_height=0.0,
-    num_rows=2,  # difficulty levels
-    num_cols=2,  # number of terrains per difficulty level
+    num_rows=16,  # difficulty levels
+    num_cols=32,  # number of terrains per difficulty level
     horizontal_scale=0.5,
     vertical_scale=0.05,
     slope_threshold=0.75,
@@ -28,25 +28,26 @@ MESH_STEP_TERRAIN_CFG = TerrainGeneratorCfg(
             proportion=1.0,
             step_height_range=height_range,
             step_width=(3.0, 3.0),
-            step_offset=3.0,
         ),
         "step_2": StepTerrainCfg(
             proportion=1.0,
             step_height_range=height_range,
             step_width=(2.0, 2.0),
-            step_offset=2.5,
         ),
         "step_3": StepTerrainCfg(
-            proportion=1.0,
+            proportion=0.5,
             step_height_range=height_range,
             step_width=(1.0, 1.0),
-            step_offset=2.0,
         ),
         "step_4": StepTerrainCfg(
-            proportion=1.0,
+            proportion=0.5,
             step_height_range=height_range,
             step_width=(0.8, 0.6),
-            step_offset=2.0,
+        ),
+        "nostep": StepTerrainCfg(
+            proportion=0.1,
+            step_height_range=(0.0, 0.0),
+            step_width=(8.0, 8.0),
         ),
     },
 )

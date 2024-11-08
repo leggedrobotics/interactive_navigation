@@ -87,16 +87,6 @@ class GoalCommand(CommandTerm):
             return torch.cat([rescaled_goal_pos_b, self.heading_error], dim=1)
         return rescaled_goal_pos_b
 
-    @property
-    def goal(self) -> torch.Tensor:
-        """The desired goal state g(s*).
-        This is used to condition the policy during rollouts."""
-        # this is zero because the desired goal pos in the robot frame is always 0 = at the goal
-        # the goal heading error is 0 --> cos sin of 0 = 1, 0
-
-        raise NotImplementedError("This function is not implemented.")
-        return torch.cat([torch.zeros_like(self.goal_pos_b), self.goal_heading_error], dim=1)
-
     """
     Implementation specific functions.
     """
@@ -112,6 +102,8 @@ class GoalCommand(CommandTerm):
         """The goal is to reach the max height of the current terrain."""
         # - goal position
         self.goal_pos_w[env_ids] = self.env.scene.terrain.env_origins[env_ids]
+        # increase z position by the robot height
+        self.goal_pos_w[env_ids, 2] += self.robot_height
 
         # - goal heading
         if self.cfg.heading:

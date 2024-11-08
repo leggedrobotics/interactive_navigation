@@ -13,6 +13,6 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": step_env_cfg.AnymalDBoxClimbEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:AnymalDRoughPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:AnymalDBoxClimbPPORunnerCfg",
     },
 )

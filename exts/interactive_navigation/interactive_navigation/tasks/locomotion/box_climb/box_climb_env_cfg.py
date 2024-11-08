@@ -41,7 +41,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/ground",
         terrain_type="generator",
         terrain_generator=mdp.terrain.MESH_STEP_TERRAIN_CFG,
-        max_init_terrain_level=5,
+        max_init_terrain_level=1,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -53,7 +53,7 @@ class MySceneCfg(InteractiveSceneCfg):
             mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
             project_uvw=True,
         ),
-        debug_vis=True,
+        debug_vis=False,
     )
     # robots
     robot: ArticulationCfg = MISSING
@@ -103,10 +103,9 @@ class CommandsCfg:
     goal_position_cmd = mdp.GoalCommandCfg(
         asset_name="robot",
         resampling_time_range=(14.0, 15.0),
-        heading=True,
+        heading=False,
         debug_vis=True,
         show_line_to_goal=True,
-        show_goal_heading=True,
     )
 
 
@@ -194,7 +193,7 @@ class EventCfg:
         mode="reset",
         params={
             "radius_range": (2.5, 3.5),
-            "heading_range": (-math.pi / 80, math.pi / 80),
+            "heading_range": (-math.radians(90), math.radians(90)),
             "velocity_range": {
                 "x": (-0.5, 0.5),
                 "y": (-0.5, 0.5),
@@ -237,13 +236,13 @@ class RewardsCfg:
     # )
     moving_towards_goal = RewTerm(
         func=mdp.moving_towards_goal,
-        weight=1.0,
+        weight=5.0,
         params={"command_name": "goal_position_cmd"},
     )
     goal_reached = RewTerm(
         func=mdp.is_terminated_term,  # returns 1 if the goal is reached and env has NOT timed out # type: ignore
         params={"term_keys": "goal_reached"},
-        weight=250.0,
+        weight=1000.0,
     )
 
     # -- penalties
@@ -312,7 +311,7 @@ class TerminationsCfg:
 
 
 TERRAIN_CURR = mdp.TerrainCurriculum(
-    num_successes=10, num_failures=10, goal_termination_name="goal_reached", random_move_prob=0.05
+    num_successes=4, num_failures=2, goal_termination_name="goal_reached", random_move_prob=0.05
 )
 
 
@@ -348,7 +347,7 @@ class LocomotionBoxStepEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 4
-        self.episode_length_s = 5.0
+        self.episode_length_s = 30.0
         # simulation settings
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation
