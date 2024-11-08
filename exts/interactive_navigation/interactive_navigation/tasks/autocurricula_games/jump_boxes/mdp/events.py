@@ -325,41 +325,6 @@ def reset_boxes_and_robot(
         y_step=min_y,
     )
 
-    import matplotlib.pyplot as plt
-    import matplotlib
-    from matplotlib.patches import Rectangle, Circle
-
-    matplotlib.use("TkAgg")
-
-    fig, ax = plt.subplots(figsize=(10, 10))
-
-    for i in range(len(env_ids)):
-        entity_points = chain_positions[i].cpu().numpy()
-
-        ax.plot(entity_points[:, 0], entity_points[:, 1], "o-")
-        ax.set_aspect("equal", adjustable="box")
-        ax.set_xlim(-terrain_size[0] / 2, terrain_size[0] / 2)
-        ax.set_ylim(-terrain_size[1] / 2, terrain_size[1] / 2)
-
-        # drwa step
-        ax.add_patch(
-            Rectangle(
-                (min_x - step_width[0], min_y - step_width[1]),
-                step_width[0],
-                step_width[1],
-                edgecolor="black",
-                linewidth=2,
-            )
-        )
-        # draw circles on each point:
-        for j, point in enumerate(entity_points):
-            if j > 0:
-                ax.add_patch(Circle(point, r_min[j - 1], edgecolor="black", linewidth=2))
-
-        break
-        ##############################################################
-    plt.show()
-
     assert not chain_positions.isnan().any(), "NaN values in chain_positions"
 
     terrain_origins_2d = terrain_origins[:, :2].unsqueeze(1)
@@ -434,7 +399,7 @@ def reset_boxes_and_robot(
 
     import matplotlib.pyplot as plt
     import matplotlib
-    from matplotlib.patches import Rectangle
+    from matplotlib.patches import Rectangle, Circle
 
     matplotlib.use("TkAgg")
 
@@ -458,6 +423,13 @@ def reset_boxes_and_robot(
                 linewidth=2,
             )
         )
+        # draw circles on each point:
+        for j, point in enumerate(entity_points):
+            if j > 0:
+                ax.add_patch(Circle(point, r_min[j - 1], edgecolor="black", linewidth=2))
+
+        break
+        ##############################################################
     plt.show()
 
 
