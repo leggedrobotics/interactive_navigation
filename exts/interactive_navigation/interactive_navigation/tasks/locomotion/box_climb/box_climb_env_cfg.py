@@ -41,7 +41,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/ground",
         terrain_type="generator",
         terrain_generator=mdp.terrain.MESH_STEP_TERRAIN_CFG,
-        max_init_terrain_level=1,
+        max_init_terrain_level=10,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -74,7 +74,7 @@ class MySceneCfg(InteractiveSceneCfg):
     )
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
-        spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=1000.0),
+        spawn=sim_utils.DomeLightCfg(color=(0.13, 0.13, 0.13), intensity=4000.0),
     )
 
 
@@ -103,9 +103,8 @@ class CommandsCfg:
     goal_position_cmd = mdp.GoalCommandCfg(
         asset_name="robot",
         resampling_time_range=(14.0, 15.0),
-        heading=False,
-        debug_vis=True,
-        show_line_to_goal=True,
+        heading=True,
+        debug_vis=False,
     )
 
 
@@ -260,14 +259,14 @@ class RewardsCfg:
             "threshold": 0.5,
         },
     )
-    undesired_contacts = RewTerm(
+    undesired_contacts_thigh = RewTerm(
         func=mdp.undesired_contacts,
-        weight=-0.01,
+        weight=-0.25,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
     )
-    undesired_contacts = RewTerm(
+    undesired_contacts_base = RewTerm(
         func=mdp.undesired_contacts,
-        weight=-0.1,
+        weight=-1.0,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
     )
     flipped = RewTerm(
@@ -348,11 +347,17 @@ class LocomotionBoxStepEnvCfg(ManagerBasedRLEnvCfg):
         # general settings
         self.decimation = 4
         self.episode_length_s = 30.0
+
         # simulation settings
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material
+
+        # GPU settings
+        self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
+        self.sim.physx.gpu_collision_stack_size = 2**30
+
         # update sensor update periods
         # we tick all the sensors based on the smallest update period (physics update period)
         if self.scene.height_scanner is not None:

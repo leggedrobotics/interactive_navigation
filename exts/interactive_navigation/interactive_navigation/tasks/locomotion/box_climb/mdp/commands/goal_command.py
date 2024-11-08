@@ -64,7 +64,7 @@ class GoalCommand(CommandTerm):
         # heading of the robot (cos(yaw), sin(yaw)).
         self.heading_error = torch.zeros((self.num_envs, 2), device=self.device)
 
-        self.show_line_to_goal = True
+        self.show_line_to_goal = cfg.show_line_to_goal
 
     def __str__(self) -> str:
         return f"Height Goal Command for {self.cfg.asset_name}"
@@ -194,7 +194,8 @@ class GoalCommand(CommandTerm):
         axis = torch.linalg.cross(difference, x_vec.expand_as(difference))
         quat = math_utils.quat_from_angle_axis(angle, axis)
         # apply transforms
-        self.line_to_goal_visualiser.visualize(translations=translations, scales=scales, orientations=quat)
+        if self.cfg.show_line_to_goal:
+            self.line_to_goal_visualiser.visualize(translations=translations, scales=scales, orientations=quat)
 
         # update the goal heading marker
         if self.cfg.heading and self.cfg.show_goal_heading:
