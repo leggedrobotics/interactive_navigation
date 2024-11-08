@@ -70,7 +70,7 @@ for i in range(N_STEP_BOXES):
     BOXES_DICT[box_prefix] = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/" + f"{box_prim_path_name}",
         spawn=sim_utils.CuboidCfg(
-            size=(0.95, 0.95, height),
+            size=(height, height, height),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 max_depenetration_velocity=1.0,
                 disable_gravity=False,
@@ -304,7 +304,7 @@ class EventCfg:
             "other_boxes": other_box_entities,
             "pose_range": {"yaw": (0, 6.283)},
             "random_dist": True,
-            "min_dist": 1.25,
+            "min_dist": 0.1,
         },
     )
 
@@ -449,7 +449,7 @@ class TerminationsCfg:
 
 
 DIST_CURR = mdp.DistanceCurriculum(
-    min_dist=1.25,
+    start_dist=0.1,
     max_dist=12.0,
     dist_increment=0.1,
     goal_termination_name="goal_reached",
@@ -528,7 +528,7 @@ class MoveUpBoxesEnvCfg(ManagerBasedRLEnvCfg):
 
         # general settings
         self.decimation = 10  # 10 Hz
-        self.episode_length_s = 20.0
+        self.episode_length_s = 60.0
         # simulation settings
         # self.sim.dt = 0.005  # 200 Hz
         self.sim.dt = 0.01  # 100 Hz

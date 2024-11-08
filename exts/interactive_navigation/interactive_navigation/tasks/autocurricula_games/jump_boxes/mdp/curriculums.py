@@ -118,14 +118,14 @@ class DistanceCurriculum:
 
     def __init__(
         self,
-        min_dist: float = 2.0,
+        start_dist: float = 2.0,
         max_dist: float = 4.0,
         dist_increment: float = 0.1,
         goal_termination_name: str = "goal_reached",
     ):
 
         self.goal_termination_name = goal_termination_name
-        self.min_dist = min_dist
+        self.start_dist = start_dist
         self.max_dist = max_dist
         self.dist_increment = dist_increment
         # buffers
@@ -134,7 +134,7 @@ class DistanceCurriculum:
     def _update(self, env: ManagerBasedRLEnv, env_ids: Sequence[int]):
 
         if self.dist is None:
-            self.dist = torch.ones(env.num_envs, device=env.device) * self.min_dist
+            self.dist = torch.ones(env.num_envs, device=env.device) * self.start_dist
 
         terminated_at_goal = env.termination_manager._term_dones[self.goal_termination_name]
         terminated = env.termination_manager.dones
@@ -149,11 +149,11 @@ class DistanceCurriculum:
             self.dist[goal_not_reached_ids] -= self.dist_increment
 
         # clamp the values
-        self.dist[env_ids] = torch.clamp(self.dist[env_ids], self.min_dist, self.max_dist)
+        self.dist[env_ids] = torch.clamp(self.dist[env_ids], self.start_dist, self.max_dist)
 
     def entity_entity_dist_curriculum(self, env: ManagerBasedRLEnv, env_ids: Sequence[int]):
         if self.dist is None:
-            env.dist = torch.ones(env.num_envs, device=env.device) * self.min_dist
+            env.dist = torch.ones(env.num_envs, device=env.device) * self.start_dist
         self._update(env, env_ids)
         env.dist = self.dist
         return self.dist.mean().item()

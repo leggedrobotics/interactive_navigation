@@ -249,6 +249,7 @@ def reset_boxes_and_robot(
     random_dist: bool = False,
     min_dist: float = 2.0,
     robot_z_offset: float = 0.5,
+    robot_radius: float = 0.5,
 ):
     """Reset function for env with one big step and multiple boxes.
     given the "dist" param in the env, set in the curriculum, the boxes will
@@ -257,7 +258,6 @@ def reset_boxes_and_robot(
 
     Other boxes are spawned randomly in the terrain.
 
-    Note: the distance is from origin to origin, so the size of the boxes is not considered here.
     Note: the terrain for this function should contain one step.The step is in the -x,-y corner of the terrain.
     Additionally, the terrain should be constant, i.e., it should not have randomness or difficulty
 
@@ -290,7 +290,7 @@ def reset_boxes_and_robot(
     terrain_origins = env.scene.terrain.env_origins[env_ids]
 
     # sample distances if random dist
-    max_dist_per_env: torch.Tensor = env.dist[env_ids]
+    max_dist_per_env: torch.Tensor = env.dist[env_ids] * 0
     if random_dist:
         # random distances within the bounds
         distances = (
@@ -301,16 +301,64 @@ def reset_boxes_and_robot(
         # always use the upper bounds
         distances = max_dist_per_env.unsqueeze(1).repeat(1, num_entities)
 
+    # add box width to the distances
+    r_min = []
+    prev_radius = 0.0
+    for i, box_cfg in enumerate(boxes_sorted):
+        box = env.scene[box_cfg.name]
+        box_radius = box.cfg.spawn.size[0] / math.sqrt(2)
+        distances[:, i] += box_radius + prev_radius + min_dist + 0.005
+        r_min.append(box_radius)
+        prev_radius = box_radius
+
+    r_min.append(robot_radius)
+    distances[:, -1] += robot_radius + prev_radius + min_dist + 0.5
+
     chain_positions = sample_chain_positions(
         num_envs=len(env_ids),
         N=num_entities,
-        r_min=min_dist,
+        r_min=torch.tensor(r_min, device=env.device) + min_dist,
         distances=distances,
         terrain_size_x=terrain_size[0],
         terrain_size_y=terrain_size[1],
         x_step=min_x,
         y_step=min_y,
     )
+
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from matplotlib.patches import Rectangle, Circle
+
+    matplotlib.use("TkAgg")
+
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    for i in range(len(env_ids)):
+        entity_points = chain_positions[i].cpu().numpy()
+
+        ax.plot(entity_points[:, 0], entity_points[:, 1], "o-")
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlim(-terrain_size[0] / 2, terrain_size[0] / 2)
+        ax.set_ylim(-terrain_size[1] / 2, terrain_size[1] / 2)
+
+        # drwa step
+        ax.add_patch(
+            Rectangle(
+                (min_x - step_width[0], min_y - step_width[1]),
+                step_width[0],
+                step_width[1],
+                edgecolor="black",
+                linewidth=2,
+            )
+        )
+        # draw circles on each point:
+        for j, point in enumerate(entity_points):
+            if j > 0:
+                ax.add_patch(Circle(point, r_min[j - 1], edgecolor="black", linewidth=2))
+
+        break
+        ##############################################################
+    plt.show()
 
     assert not chain_positions.isnan().any(), "NaN values in chain_positions"
 
@@ -419,13 +467,13 @@ def reset_boxes_and_robot(
 def sample_chain_positions(
     num_envs: int,
     N: int,
-    r_min: float,
+    r_min: float | torch.Tensor,
     distances: torch.Tensor,
     terrain_size_x: float,
     terrain_size_y: float,
     x_step: float,
     y_step: float,
-    max_attempts_per_step: int = 50,
+    max_attempts_per_step: int = 5,
     max_total_attempts: int = 1000,
 ) -> torch.Tensor:
     """
@@ -435,8 +483,12 @@ def sample_chain_positions(
     Adjusted to sample the angle randomly for the first point if the first distance
     is greater than 2 * r_min.
     """
+
     device = distances.device
     dtype = distances.dtype
+
+    if not isinstance(r_min, torch.Tensor):
+        r_min = torch.zeros(distances.shape[1], dtype=torch.float32, device=device) + r_min
 
     pi = math.pi
 
@@ -447,10 +499,10 @@ def sample_chain_positions(
     y_max = terrain_size_y / 2
 
     # Adjusted terrain boundaries considering r_min
-    x_min_valid = x_min + r_min
-    x_max_valid = x_max - r_min
-    y_min_valid = y_min + r_min
-    y_max_valid = y_max - r_min
+    x_min_valid = x_min + r_min[0]
+    x_max_valid = x_max - r_min[0]
+    y_min_valid = y_min + r_min[0]
+    y_max_valid = y_max - r_min[0]
 
     # Adjusted step area considering r_min
     x_step_edge = x_step
@@ -478,7 +530,7 @@ def sample_chain_positions(
         y_start_horizontal = y_step_edge * torch.ones(num_envs_init, device=device, dtype=dtype)
 
         # Combine starting positions based on edge choice
-        x_start = torch.where(edge_choice == 0, x_start_vertical, x_start_horizontal)
+        x_start = torch.where(edge_choice == 0, x_start_vertical, x_start_vertical)
         y_start = torch.where(edge_choice == 0, y_start_vertical, y_start_horizontal)
 
         positions[env_indices, 0, 0] = x_start
@@ -488,7 +540,7 @@ def sample_chain_positions(
         distances_first = distances[env_indices, 0]  # Shape: [num_envs_init]
 
         # Create a mask for distances_first > 2 * r_min
-        mask_random = distances_first > (2 * r_min)
+        mask_random = distances_first > (2 * r_min[0])
 
         # For envs where mask_random is True, sample random angles
         num_random = mask_random.sum().item()
@@ -543,7 +595,7 @@ def sample_chain_positions(
             distance_to_start = torch.norm(
                 positions[env_indices[all_indices], 1, :] - positions[env_indices[all_indices], 0, :], dim=1
             )
-            distance_valid = distance_to_start >= r_min
+            distance_valid = distance_to_start >= r_min[0]
 
             valid = within_terrain & outside_step & distance_valid
 
@@ -553,7 +605,7 @@ def sample_chain_positions(
             while invalid_indices.numel() > 0 and attempts < max_attempts:
                 # Resample for invalid indices
                 # For these invalid indices, determine if they were in random_indices or direct_indices
-                is_random = distances_first[invalid_indices] > (2 * r_min)
+                is_random = distances_first[invalid_indices] > (2 * r_min[0])
                 random_invalid_indices = invalid_indices[is_random]
                 direct_invalid_indices = invalid_indices[~is_random]
 
@@ -576,7 +628,7 @@ def sample_chain_positions(
                 # For direct_invalid_indices, we can keep the same movement along x or y
                 # but since it's invalid, we need to handle it. For simplicity, we can adjust distances to be r_min
                 if direct_invalid_indices.numel() > 0:
-                    direct_distances = torch.full_like(distances_first[direct_invalid_indices], r_min, device=device)
+                    direct_distances = torch.full_like(distances_first[direct_invalid_indices], r_min[0], device=device)
                     edge_choice_invalid = edge_choice[direct_invalid_indices]
 
                     delta_x_direct = torch.where(
@@ -612,7 +664,7 @@ def sample_chain_positions(
                 distance_to_start = torch.norm(
                     positions[env_indices[invalid_indices], 1, :] - positions[env_indices[invalid_indices], 0, :], dim=1
                 )
-                distance_valid = distance_to_start >= r_min
+                distance_valid = distance_to_start >= r_min[0]
 
                 valid = within_terrain & outside_step & distance_valid
 
@@ -652,9 +704,10 @@ def sample_chain_positions(
             continue
 
         # Prepare sampling for current active environments
-        K = 30  # Number of candidate angles per attempt
+        K = 50  # Number of candidate angles per attempt
         prev_positions = positions[active_env_indices, current_steps - 1, :]  # [num_active_envs, 2]
         step_distances = distances[active_env_indices, current_steps - 1]  # [num_active_envs]
+        step_r_min = r_min[current_steps - 1]  # [num_active_envs]
 
         # Sample candidate angles
         angles = torch.rand(num_active_envs * K, device=device, dtype=dtype) * 2 * pi
@@ -703,8 +756,9 @@ def sample_chain_positions(
                 prev_positions_env = positions[env_idx, :current_step, :]  # [current_step, 2]
                 deltas = candidate_positions_env.unsqueeze(1) - prev_positions_env.unsqueeze(0)
                 distances_to_prev = torch.norm(deltas, dim=2)
-                min_distances = distances_to_prev.min(dim=1)[0]
-                distance_valid = min_distances >= r_min
+                distance_to_prev_edge = distances_to_prev - r_min[:current_step].unsqueeze(0)
+                min_distances = distance_to_prev_edge.min(dim=1)[0]
+                distance_valid = min_distances >= step_r_min[idx]
                 if distance_valid.any():
                     # Select first valid candidate
                     first_valid_idx = distance_valid.nonzero(as_tuple=False)[0].item()
@@ -735,8 +789,10 @@ def sample_chain_positions(
             over_attempt_limit = attempt_counters[env_indices] >= max_attempts_per_step
             if over_attempt_limit.any():
                 over_limit_env_indices = env_indices[over_attempt_limit.nonzero(as_tuple=False).squeeze(-1)]
-                # Backtrack
-                step_indices[over_limit_env_indices] -= 1
+                # Backtrack (not exactly)
+                step_indices[over_limit_env_indices] -= (
+                    total_attempt_counters[over_limit_env_indices] // max_attempts_per_step
+                )
                 attempt_counters[over_limit_env_indices] = 0
                 # If step_indices <= 1, restart sampling
                 need_restart = step_indices[over_limit_env_indices] <= 1
