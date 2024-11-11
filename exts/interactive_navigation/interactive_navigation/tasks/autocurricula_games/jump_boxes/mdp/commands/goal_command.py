@@ -145,9 +145,11 @@ class GoalCommand(CommandTerm):
 
         # get heading
         if self.cfg.heading:
-            yaw_angle = math_utils.euler_xyz_from_quat(robot_quat)[2]
-            heading_error = self.goal_heading - yaw_angle
-            self.heading_error = torch.stack([torch.cos(heading_error), torch.sin(heading_error)], dim=1)
+            yaw_angle = math_utils.wrap_to_pi(math_utils.euler_xyz_from_quat(robot_quat)[2])
+            self.heading_error_angle = self.goal_heading - yaw_angle
+            self.heading_error = torch.stack(
+                [torch.cos(self.heading_error_angle), torch.sin(self.heading_error_angle)], dim=1
+            )
 
     """
     Debug Visualizations
