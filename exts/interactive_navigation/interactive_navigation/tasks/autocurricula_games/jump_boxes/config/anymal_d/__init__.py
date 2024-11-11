@@ -13,7 +13,7 @@ from . import agents, flat_env_cfg, rough_env_cfg
 import gymnasium as gym
 
 from . import agents, rough_env_cfg
-from interactive_navigation.tasks.autocurricula_games.jump_boxes.anymal_d_box_climb_env import AnymalMoveUpBoxesEnvCfg
+from interactive_navigation.tasks.autocurricula_games.jump_boxes.anymal_d_box_stair_env import AnymalBoxeStairEnvCfg
 from interactive_navigation.tasks.autocurricula_games.jump_boxes.rigid_robot_env_cfg import RigidRobotEnvCfg
 
 ##
@@ -21,12 +21,12 @@ from interactive_navigation.tasks.autocurricula_games.jump_boxes.rigid_robot_env
 ##
 
 gym.register(
-    id="Isaac-Jump-Boxes-Anymal-D-v0",
+    id="Isaac-BoxStairs-Anymal-D-v0",
     entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": AnymalMoveUpBoxesEnvCfg,
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:AnymalJumpOnBoxesPPORunnerCfg",
+        "env_cfg_entry_point": AnymalBoxeStairEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:AnymalBoxeStairPPORunnerCfg",
     },
 )
 

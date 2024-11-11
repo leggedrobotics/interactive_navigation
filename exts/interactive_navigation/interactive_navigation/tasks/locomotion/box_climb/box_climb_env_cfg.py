@@ -41,7 +41,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/ground",
         terrain_type="generator",
         terrain_generator=mdp.terrain.MESH_STEP_TERRAIN_CFG,
-        max_init_terrain_level=10,
+        max_init_terrain_level=1,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -103,8 +103,8 @@ class CommandsCfg:
     goal_position_cmd = mdp.GoalCommandCfg(
         asset_name="robot",
         resampling_time_range=(14.0, 15.0),
-        heading=True,
-        debug_vis=False,
+        heading=False,
+        debug_vis=True,
     )
 
 
@@ -238,6 +238,12 @@ class RewardsCfg:
         weight=5.0,
         params={"command_name": "goal_position_cmd"},
     )
+    # rotating_towards_goal_if_at_goal = RewTerm(
+    #     func=mdp.rotating_towards_goal_if_at_goal,
+    #     weight=5.0,
+    #     params={"command_name": "goal_position_cmd", "dist_threshold": 0.3},
+    # )
+
     goal_reached = RewTerm(
         func=mdp.is_terminated_term,  # returns 1 if the goal is reached and env has NOT timed out # type: ignore
         params={"term_keys": "goal_reached"},
@@ -266,7 +272,7 @@ class RewardsCfg:
     )
     undesired_contacts_base = RewTerm(
         func=mdp.undesired_contacts,
-        weight=-1.0,
+        weight=-10.0,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
     )
     flipped = RewTerm(
@@ -296,7 +302,7 @@ class TerminationsCfg:
     # )
 
     goal_reached = DoneTerm(
-        func=mdp.goal_reached,
+        func=mdp.goal_reached_pos_only,
         params={
             "goal_cmd_name": "goal_position_cmd",
             "distance_threshold": 0.1,
@@ -356,6 +362,7 @@ class LocomotionBoxStepEnvCfg(ManagerBasedRLEnvCfg):
 
         # GPU settings
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
+        self.sim.physx.gpu_total_aggregate_pairs_capacity = 2**26
         self.sim.physx.gpu_collision_stack_size = 2**30
 
         # update sensor update periods
