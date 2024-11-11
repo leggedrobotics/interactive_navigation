@@ -61,7 +61,8 @@ def feet_air_time_positive_biped(
 def moving_towards_goal(
     env: ManagerBasedRLEnv, command_name: str, robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")
 ) -> torch.Tensor:
-    """Reward for moving towards the goal"""
+    """Reward for moving towards the goal. This reward is computed as the dot product of the velocity of the robot
+    and the unit vector pointing towards the goal."""
     robot = env.scene[robot_cfg.name]
     robot_vel_w = robot.data.root_lin_vel_w
     robot_pos = robot.data.root_pos_w
@@ -70,8 +71,33 @@ def moving_towards_goal(
     goal_pos_w = goal_command.goal_pos_w
 
     to_goal_vec = goal_pos_w - robot_pos
-    to_goal_vec = to_goal_vec / torch.linalg.norm(to_goal_vec, dim=-1, keepdim=True)
+    to_goal_vec = to_goal_vec / (torch.linalg.norm(to_goal_vec, dim=-1, keepdim=True) + 1e-6)
 
     vel_to_goal = torch.linalg.vecdot(robot_vel_w, to_goal_vec, dim=-1)
     reward = torch.clamp(vel_to_goal, -1, 1)
     return reward
+
+
+def rotating_towards_goal_if_at_goal(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    dist_threshold: float = 0.5,
+) -> torch.Tensor:
+    """Reward for rotating towards the goal heading if the robot is within a distance threshold of the goal.
+    The reward is computed as yaw velocity of the robot towards the goal."""
+    robot = env.scene[robot_cfg.name]
+    robot_yaw_vel_w = robot.data.root_ang_vel_w[:, 2]
+
+    goal_command_generator: GoalCommand = env.command_manager._terms[command_name]
+    heading_error_angle = goal_command_generator.heading_error_angle
+
+    at_goal = torch.linalg.vector_norm(goal_command_generator.goal_pos_b, dim=1) < dist_threshold
+
+    # If the angular error is small, we set it to zero
+    heading_error_angle = torch.where(
+        heading_error_angle.abs() < 0.1, torch.zeros_like(heading_error_angle), heading_error_angle
+    )
+    angvel_towards_goal = -heading_error_angle.sign() * robot_yaw_vel_w * at_goal.float()
+
+    return angvel_towards_goal

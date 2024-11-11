@@ -6,7 +6,7 @@ from omni.isaac.lab.envs import ManagerBasedRLEnv
 from omni.isaac.lab.managers.manager_base import ManagerTermBase
 from omni.isaac.lab.managers.manager_term_cfg import TerminationTermCfg
 
-from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.commands import GoalCommand
+from interactive_navigation.tasks.locomotion.box_climb.mdp.commands import GoalCommand
 
 
 def goal_reached_pos_only(
@@ -47,13 +47,10 @@ def goal_reached(
         Boolean tensor indicating whether the goal is reached.
     """
     # extract the used quantities (to enable type-hinting)
-    goal_cmd_geneator: GoalCommand = env.command_manager._terms[goal_cmd_name]
+    goal_cmd_generator: GoalCommand = env.command_manager._terms[goal_cmd_name]
     # check for termination
-    goal_command = goal_cmd_geneator.command
-
-    dist = goal_command[:, :3]
-
-    heading = torch.atan2(goal_command[:, 4], goal_command[:, 3])
+    dist = goal_cmd_generator.command[:, :3]
+    heading = goal_cmd_generator.heading_error_angle
 
     goal_reached = torch.linalg.vector_norm(dist, dim=1) < distance_threshold
     heading_reached = torch.abs(heading) < heading_threshold
