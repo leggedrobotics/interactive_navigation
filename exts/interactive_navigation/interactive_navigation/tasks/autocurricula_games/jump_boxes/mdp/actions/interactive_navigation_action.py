@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from .interactive_navigation_action_cfg import InteractiveNavigationActionCfg
 
 
-TELEOP = False
+TELEOP = True
 if TELEOP:
     from omni.isaac.lab.devices import Se3Keyboard, Se3SpaceMouse, Se3Gamepad
 
@@ -32,19 +32,28 @@ class InteractiveNavigationAction(ActionTerm):
         # -- load low level policies
         if not check_file_path(cfg.locomotion_policy_file):
             raise FileNotFoundError(f"Policy file '{cfg.locomotion_policy_file}' does not exist.")
+        if not check_file_path(cfg.climbing_policy_file):
+            raise FileNotFoundError(f"Policy file '{cfg.climbing_policy_file}' does not exist.")
         # load policies
         file_bytes = read_file(self.cfg.locomotion_policy_file)
         self.locomotion_policy = torch.jit.load(file_bytes, map_location=self.device)
         self.locomotion_policy = torch.jit.freeze(self.locomotion_policy.eval())
+        file_bytes = read_file(self.cfg.climbing_policy_file)
+        self.climbing_policy = torch.jit.load(file_bytes, map_location=self.device)
+        self.climbing_policy = torch.jit.freeze(self.climbing_policy.eval())
+
+        self.low_level_policies = [self.locomotion_policy, self.climbing_policy]
+
+        self.num_skills = len(self.low_level_policies)
 
         # calculate decimation
-        self.locomotion_policy_decimation = int(1 / (cfg.locomotion_policy_freq * env.physics_dt))
+        self.low_level_policy_decimation = int(1 / (cfg.locomotion_policy_freq * env.physics_dt))
 
         # prepare joint position actions
         self.low_level_action_term: ActionTerm = self.cfg.low_level_action.class_type(cfg.low_level_action, env)
 
         # prepare buffers
-        self._action_dim = 3  # [vx, vy, omega] # TODO: policy selection with categorical action space
+        self._action_dim = 3 + 1  # [vx, vy, omega] + selection: [action_1, action_2]
 
         # set up buffers
         self._init_buffers()
@@ -66,12 +75,12 @@ class InteractiveNavigationAction(ActionTerm):
 
     @property
     def raw_actions(self) -> torch.Tensor:
-        return self._raw_navigation_velocity_actions
+        return self._raw_velocity_command_actions
 
     @property
     def processed_actions(self) -> torch.Tensor:
         """This returns the command for the low-level policies, predicted by the high-level policy."""
-        return self._processed_navigation_velocity_actions
+        return self._processed_velocity_command_actions
 
     @property
     def low_level_actions(self) -> torch.Tensor:
@@ -93,38 +102,59 @@ class InteractiveNavigationAction(ActionTerm):
         """
 
         # Depending on the action distribution, the actions need to be processed differently
+        action_command = actions[:, :3]
+        action_selection = actions[:, 3:].squeeze(1)
 
         # Store the raw low-level navigation actions
-        self._raw_navigation_velocity_actions.copy_(actions)
+        self._raw_velocity_command_actions.copy_(action_command)
+        # Create a mask for the skills
+        for skill_id in range(self.num_skills):
+            self._skill_mask[:, skill_id] = action_selection == skill_id
 
-        squashed_actions = torch.tanh(actions)
-
+        squashed_actions = torch.tanh(action_command)
         # Apply the affine transformations
-        self._processed_navigation_velocity_actions.copy_(squashed_actions * self._scale + self._offset)
+        self._processed_velocity_command_actions.copy_(squashed_actions * self._scale + self._offset)
+
+        # For some skills (climbing), the command is a position and not a velocity
+        # To account for this, we multiply the velocity command by N time steps (carrot on a stick)
+        self._processed_velocity_command_actions[self._skill_mask[:, 1]] *= self.low_level_policy_decimation
 
         if self.use_teleop:
             delta_pose, gripper_command = self.teleop_interface.advance()
-            actions[:, 0] = delta_pose[0]
-            actions[:, 1] = delta_pose[1]
-            actions[:, 2] = delta_pose[2]
-            self._processed_navigation_velocity_actions.copy_(actions * self._scale)
+            action_command[:, 0] = delta_pose[0]
+            action_command[:, 1] = delta_pose[1]
+            action_command[:, 2] = delta_pose[2]
+            self._processed_velocity_command_actions.copy_(action_command * self._scale)
+            self._skill_mask[:, 0] = not gripper_command
+            self._skill_mask[:, 1] = gripper_command
 
     def apply_actions(self):
         """Apply low-level actions for the simulator to the physics engine. This functions is called with the
         simulation frequency of 200Hz. Since low-level locomotion runs at 50Hz, we need to decimate the actions."""
 
-        if self._counter % self.locomotion_policy_decimation == 0:
+        if self._counter % self.low_level_policy_decimation == 0:
             # update low-level action at 50Hz
             self._counter = 0
             self._prev_low_level_actions.copy_(self._low_level_actions.clone())
             # Get low level actions from low level policy
-            self._low_level_actions.copy_(
-                self.locomotion_policy(
-                    self._env.observation_manager.compute_group(group_name=self.cfg.observation_group)
+
+            for skill_id in range(self.num_skills):
+                self.low_level_actions[self._skill_mask[:, skill_id]] = self.low_level_policies[skill_id](
+                    self._env.observation_manager.compute_group(group_name=self.cfg.observation_group)[
+                        self._skill_mask[:, skill_id]  # type: ignore
+                    ]
                 )
-            )
+
+            # self._low_level_actions.copy_(
+            #     self.locomotion_policy(
+            #         self._env.observation_manager.compute_group(group_name=self.cfg.observation_group)
+            #     )
+            # )
+
             # Process low level actions
-            self.low_level_action_term.process_actions(self._low_level_actions)
+            self.low_level_action_term.process_actions(
+                self._low_level_actions
+            )  # assuming all low level skills have the same action
 
         # Apply low level actions
         self.low_level_action_term.apply_actions()
@@ -136,8 +166,11 @@ class InteractiveNavigationAction(ActionTerm):
 
     def _init_buffers(self):
         # Prepare buffers
-        self._raw_navigation_velocity_actions = torch.zeros(self.num_envs, self._action_dim, device=self.device)
-        self._processed_navigation_velocity_actions = torch.zeros((self.num_envs, self._action_dim), device=self.device)
+        self._raw_velocity_command_actions = torch.zeros(self.num_envs, self._action_dim - 1, device=self.device)
+        self._processed_velocity_command_actions = torch.zeros(
+            (self.num_envs, self._action_dim - 1), device=self.device
+        )
+        self._skill_mask = torch.zeros(self.num_envs, self.num_skills, device=self.device).bool()
         self._low_level_actions = torch.zeros(self.num_envs, self.low_level_action_term.action_dim, device=self.device)
         self._prev_low_level_actions = torch.zeros_like(self._low_level_actions)
         self._counter = 0

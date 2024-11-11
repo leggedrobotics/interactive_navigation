@@ -65,6 +65,7 @@ class AnymalBoxeStairPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     policy = RslRlPpoRelationalActorCriticCfg(
         init_noise_std=1.0,
         activation="elu",
+        num_skills=2,  # locomotion and climbing
     )
     algorithm = RslRlPpoAlgorithmCfg(
         value_loss_coef=1.0,

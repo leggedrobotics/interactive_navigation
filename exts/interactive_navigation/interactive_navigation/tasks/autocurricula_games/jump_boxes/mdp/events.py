@@ -312,12 +312,12 @@ def reset_boxes_and_robot(
         prev_radius = box_radius
 
     r_min.append(robot_radius)
-    distances[:, -1] += robot_radius * 2 + prev_radius + min_dist + 0.5  # TODO fix the * 2
+    distances[:, -1] += robot_radius + prev_radius + min_dist + 0.5  # TODO fix the * 2
 
     chain_positions = sample_chain_positions(
         num_envs=len(env_ids),
         N=num_entities,
-        r_min=torch.tensor(r_min, device=env.device) + min_dist,
+        r_min=torch.tensor(r_min, device=env.device) + min_dist / 2,
         distances=distances,
         terrain_size_x=terrain_size[0],
         terrain_size_y=terrain_size[1],
@@ -728,7 +728,9 @@ def sample_chain_positions(
                 prev_positions_env = positions[env_idx, :current_step, :]  # [current_step, 2]
                 deltas = candidate_positions_env.unsqueeze(1) - prev_positions_env.unsqueeze(0)
                 distances_to_prev = torch.norm(deltas, dim=2)
-                distance_to_prev_edge = distances_to_prev - r_min[:current_step].unsqueeze(0)
+                distance_to_prev_edge = distances_to_prev - torch.cat(
+                    [r_min[current_step - 1].unsqueeze(0), r_min[: current_step - 1]]
+                ).unsqueeze(0)
                 min_distances = distance_to_prev_edge.min(dim=1)[0]
                 distance_valid = min_distances >= step_r_min[idx]
                 if distance_valid.any():

@@ -72,7 +72,7 @@ for i in range(N_STEP_BOXES):
     BOXES_DICT[box_prefix] = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/" + f"{box_prim_path_name}",
         spawn=sim_utils.CuboidCfg(
-            size=(height, height, height),
+            size=(max(height, 1.0), max(height, 1.0), height),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 max_depenetration_velocity=1.0,
                 disable_gravity=False,
@@ -118,7 +118,7 @@ class MySceneCfg(InteractiveSceneCfg):
             mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
             project_uvw=True,
         ),
-        debug_vis=True,
+        debug_vis=False,
     )
     # robot
     robot: ArticulationCfg = ANYMAL_D_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
@@ -129,7 +129,7 @@ class MySceneCfg(InteractiveSceneCfg):
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
         attach_yaw_only=True,
         pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
-        debug_vis=True,
+        debug_vis=False,
         mesh_prim_paths=[
             "/World/ground",
             RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
@@ -146,7 +146,7 @@ class MySceneCfg(InteractiveSceneCfg):
         pattern_cfg=patterns.GridPatternCfg(resolution=0.5, size=(5, 5)),
         max_distance=100.0,
         drift_range=(-0.0, 0.0),
-        debug_vis=True,
+        debug_vis=False,
         history_length=0,
         mesh_prim_paths=[
             "/World/ground",
@@ -228,11 +228,12 @@ class ActionsCfg:
 
     interactive_nav_action = mdp.InteractiveNavigationActionCfg(
         asset_name="robot",
-        low_level_action=mdp.JointPositionActionCfg(  # copied from velocity_env
+        low_level_action=mdp.JointPositionActionCfg(  # copied from velocity_env & box_climb_env
             asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True
         ),
         locomotion_policy_file="/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_rough/locomotion_anymal_d_faster/exported/policy.pt",
-        observation_group="locomotion_policy",
+        climbing_policy_file="/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_ll_box_climb/anymal_d_box_climb_ppo_v2/exported/policy.pt",
+        observation_group="low_level_policy",
         locomotion_policy_freq=50.0,
         scale=[0.5, 0.25, 1.0],  # actions = raw_actions * scale + offset, raw_actions squashed to [-1, 1]
         offset=[0.25, 0.0, 0.0],
@@ -247,7 +248,7 @@ class ObservationsCfg:
     """Observation specifications for the MDP."""
 
     @configclass
-    class LocomotionPolicyCfg(ObsGroup):
+    class LowLevelPolicyCfg(ObsGroup):
         """Observations for policy group."""
 
         # observation terms (order preserved)
@@ -309,7 +310,7 @@ class ObservationsCfg:
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
-    locomotion_policy: LocomotionPolicyCfg = LocomotionPolicyCfg()
+    low_level_policy: LowLevelPolicyCfg = LowLevelPolicyCfg()
 
 
 Z_ROBOT = 0.3 + 0.05
@@ -563,7 +564,7 @@ class AnymalBoxeStairEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 0.005  # 200 Hz
         self.decimation = int(1 / (self.sim.dt * self.fz_planner))  # 20
 
-        self.episode_length_s = 20.0
+        self.episode_length_s = 520.0
 
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True

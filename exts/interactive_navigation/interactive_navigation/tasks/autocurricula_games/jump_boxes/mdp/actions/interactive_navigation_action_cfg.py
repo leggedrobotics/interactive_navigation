@@ -20,7 +20,9 @@ class InteractiveNavigationActionCfg(ActionTermCfg):
     """Configuration of the low level action term."""
     locomotion_policy_file: str = MISSING
     """Path to the low level locomotion policy file."""
+    climbing_policy_file: str = MISSING
+    """Path to the low level climbing policy file."""
     locomotion_policy_freq: float = MISSING
     """Frequency of the low level locomotion policy."""
-    observation_group: str = "policy"
+    observation_group: str = MISSING
     """Observation group to use for the low level policy."""
