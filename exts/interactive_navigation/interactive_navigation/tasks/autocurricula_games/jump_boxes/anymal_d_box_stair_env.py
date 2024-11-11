@@ -44,6 +44,7 @@ from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.assets impo
     TALL_BOX_CFG,
     WALL_CFG,
     SEGMENT_RAY_CASTER_MARKER_CFG,
+    HL_RAY_CASTER_MARKER_CFG,
 )
 
 ##
@@ -152,7 +153,7 @@ class MySceneCfg(InteractiveSceneCfg):
             RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
         ],
         track_mesh_transforms=True,
-        visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
+        visualizer_cfg=HL_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
     )
 
     # lights
@@ -534,7 +535,7 @@ class ViewerCfg:
 
 
 @configclass
-class AnymalMoveUpBoxesEnvCfg(ManagerBasedRLEnvCfg):
+class AnymalBoxeStairEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Data container
