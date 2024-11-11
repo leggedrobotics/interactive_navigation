@@ -305,6 +305,7 @@ class EventCfg:
             "pose_range": {"yaw": (0, 6.283)},
             "random_dist": True,
             "min_dist": 0.1,
+            "one_box_only": True,
         },
     )
 

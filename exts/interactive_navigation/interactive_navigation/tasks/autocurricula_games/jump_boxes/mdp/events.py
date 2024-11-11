@@ -250,6 +250,7 @@ def reset_boxes_and_robot(
     min_dist: float = 2.0,
     robot_z_offset: float = 0.5,
     robot_radius: float = 0.5,
+    one_box_only: bool = False,
 ):
     """Reset function for env with one big step and multiple boxes.
     given the "dist" param in the env, set in the curriculum, the boxes will
@@ -272,6 +273,21 @@ def reset_boxes_and_robot(
         |              x   r  |
         |                     |
         +---------------------+
+
+    Args:
+        env (ManagerBasedEnv): the environment
+        env_ids (torch.Tensor): the environment ids
+        robot_cfg (SceneEntityCfg): the robot cfg
+        boxes_sorted (list[SceneEntityCfg]): the boxes, sorted from big to small
+        other_boxes (list[SceneEntityCfg]): other boxes to be spawned randomly
+        pose_range (dict[str, tuple[float, float]]): the pose range (yaw)
+        random_dist (bool, optional): If true, the distances are sampled randomly, else the max distance is used. Defaults to False.
+        min_dist (float, optional): min distance. Defaults to 2.0.
+        robot_z_offset (float, optional): robot z offset. Defaults to 0.5.
+        robot_radius (float, optional): robot radius. Defaults to 0.5.
+        one_box_only (bool, optional): If true, the stair is spawned with min dist, only one box is moved away. Defaults to False.
+
+
     """
     num_entities = len(boxes_sorted) + 1
 
@@ -290,7 +306,8 @@ def reset_boxes_and_robot(
     terrain_origins = env.scene.terrain.env_origins[env_ids]
 
     # sample distances if random dist
-    max_dist_per_env: torch.Tensor = env.dist[env_ids]
+    env_dists = env.dist[env_ids]  # type: ignore
+    max_dist_per_env: torch.Tensor = env_dists * int(not one_box_only)
     if random_dist:
         # random distances within the bounds
         distances = (
@@ -314,7 +331,7 @@ def reset_boxes_and_robot(
     r_min.append(robot_radius)
     distances[:, -1] += robot_radius + prev_radius + min_dist + 0.5
 
-    chain_positions = sample_chain_positions(
+    chain_positions = _sample_chain_positions(
         num_envs=len(env_ids),
         N=num_entities,
         r_min=torch.tensor(r_min, device=env.device) + min_dist,
@@ -326,6 +343,17 @@ def reset_boxes_and_robot(
     )
 
     assert not chain_positions.isnan().any(), "NaN values in chain_positions"
+
+    if one_box_only:
+        # only move one box
+        chain_positions = _random_shift_one_box(
+            len(env_ids),
+            chain_positions,
+            env_dists,
+            torch.tensor(r_min, device=env.device) + min_dist,
+            terrain_size,
+            step_width,
+        )
 
     terrain_origins_2d = terrain_origins[:, :2].unsqueeze(1)
     chain_positions += terrain_origins_2d
@@ -436,7 +464,7 @@ def reset_boxes_and_robot(
 """
 
 
-def sample_chain_positions(
+def _sample_chain_positions(
     num_envs: int,
     N: int,
     r_min: float | torch.Tensor,
@@ -790,6 +818,61 @@ def sample_chain_positions(
                 total_attempt_counters[fail_env_indices] = 0
 
     return positions
+
+
+def _random_shift_one_box(
+    num_envs: int,
+    chain_positions: torch.Tensor,
+    dist: torch.Tensor,
+    r_min: torch.Tensor,
+    terrain_size: tuple[float, float],
+    step_pos: tuple[float, float],
+) -> torch.Tensor:
+    """Randomly shifts one box by the given distance, ensuring no collision with the chain of boxes."""
+    N_boxes = chain_positions.shape[1] - 2  # start point and robot
+    random_box_per_env = torch.randint(0, N_boxes, (num_envs,), device=chain_positions.device) + 1
+
+    # get offsets
+    N_candidates = 124
+    angles = torch.linspace(0, 2 * math.pi, N_candidates, device=chain_positions.device)
+    x_shifts = torch.cos(angles).unsqueeze(0) * dist.unsqueeze(1)
+    y_shifts = torch.sin(angles).unsqueeze(0) * dist.unsqueeze(1)
+
+    # add offsets
+    old_positions = chain_positions[torch.arange(num_envs), random_box_per_env]
+    candidates = old_positions.unsqueeze(1) + torch.stack([x_shifts, y_shifts], dim=-1)
+
+    # check collisions to other boxes
+    valid_candidates = torch.ones(num_envs, N_candidates, device=chain_positions.device, dtype=torch.bool)
+    for i in range(1, N_boxes + 2):
+        same_box = i == random_box_per_env
+        dist_to_box_i = torch.linalg.vector_norm(candidates - chain_positions[:, i].unsqueeze(1), dim=-1)
+        collision_free = dist_to_box_i > r_min[i - 1] + r_min[random_box_per_env - 1].unsqueeze(1)
+        valid_candidates &= collision_free | same_box.unsqueeze(1)
+
+    # check collisions to terrain and step
+    within_terrain = (
+        (candidates[:, :, 0] >= r_min[random_box_per_env - 1].unsqueeze(1) - terrain_size[0] / 2)
+        & (candidates[:, :, 0] <= terrain_size[0] / 2 - r_min[random_box_per_env - 1].unsqueeze(1))
+        & (candidates[:, :, 1] >= r_min[random_box_per_env - 1].unsqueeze(1) - terrain_size[1] / 2)
+        & (candidates[:, :, 1] <= terrain_size[1] / 2 - r_min[random_box_per_env - 1].unsqueeze(1))  # noqa
+    )
+    within_step = (
+        candidates[:, :, 0] + r_min[random_box_per_env - 1].unsqueeze(1) < -terrain_size[0] / 2 + step_pos[0]
+    ) & (candidates[:, :, 1] + r_min[random_box_per_env - 1].unsqueeze(1) < -terrain_size[0] / 2 + step_pos[1])
+    valid_candidates &= within_terrain & ~within_step
+
+    # randomly select one of the valid candidates
+    rand_vals = torch.rand(num_envs, N_candidates, device=chain_positions.device)
+    rand_vals[~valid_candidates] = -1.0
+    max_rand_vals, indices = torch.max(rand_vals, dim=1)  # Shape: [num_envs]
+    selected_shifts = old_positions.clone()
+    valid_envs = max_rand_vals > -1.0  # Shape: [num_envs], bool tensor
+    selected_shifts[valid_envs] = candidates[valid_envs, indices[valid_envs], :]
+
+    # update chain_positions
+    chain_positions[torch.arange(num_envs), random_box_per_env] = selected_shifts
+    return chain_positions
 
 
 ##
