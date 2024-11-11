@@ -59,8 +59,7 @@ class GoalCommand(CommandTerm):
         # - heading
         # goal heading in world frame. This is THE goal heading angle in the world frame
         self.goal_heading = torch.zeros((self.num_envs,), device=self.device)
-        ideal_heading_error = torch.zeros((self.num_envs, 1), device=self.device)
-        self.goal_heading_error = torch.cat([torch.cos(ideal_heading_error), torch.sin(ideal_heading_error)], dim=1)
+        self.heading_error_angle = torch.zeros((self.num_envs,), device=self.device)
         # heading of the robot (cos(yaw), sin(yaw)).
         self.heading_error = torch.zeros((self.num_envs, 2), device=self.device)
 
@@ -120,8 +119,10 @@ class GoalCommand(CommandTerm):
         # get heading
         if self.cfg.heading:
             yaw_angle = math_utils.euler_xyz_from_quat(robot_quat)[2]
-            heading_error = self.goal_heading - yaw_angle
-            self.heading_error = torch.stack([torch.cos(heading_error), torch.sin(heading_error)], dim=1)
+            self.heading_error_angle = math_utils.wrap_to_pi(self.goal_heading - yaw_angle)
+            self.heading_error = torch.stack(
+                [torch.cos(self.heading_error_angle), torch.sin(self.heading_error_angle)], dim=1
+            )
 
     """
     Debug Visualizations
