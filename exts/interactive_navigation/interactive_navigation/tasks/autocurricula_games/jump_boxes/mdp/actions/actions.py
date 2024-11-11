@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 import math
 
-TELEOP = False
+TELEOP = True
 
 if TELEOP:
     from omni.isaac.lab.devices import Se3Keyboard, Se3SpaceMouse, Se3Gamepad

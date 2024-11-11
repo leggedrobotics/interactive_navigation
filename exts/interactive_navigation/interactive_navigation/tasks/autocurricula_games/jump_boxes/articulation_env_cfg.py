@@ -449,7 +449,7 @@ class TerminationsCfg:
 
 
 DIST_CURR = mdp.DistanceCurriculum(
-    start_dist=0.1,
+    start_dist=0.0,
     max_dist=12.0,
     dist_increment=0.1,
     goal_termination_name="goal_reached",
@@ -503,7 +503,7 @@ class ViewerCfg:
 
 
 @configclass
-class MoveUpBoxesEnvCfg(ManagerBasedRLEnvCfg):
+class BoxStairEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Data container

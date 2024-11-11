@@ -290,7 +290,7 @@ def reset_boxes_and_robot(
     terrain_origins = env.scene.terrain.env_origins[env_ids]
 
     # sample distances if random dist
-    max_dist_per_env: torch.Tensor = env.dist[env_ids] * 0
+    max_dist_per_env: torch.Tensor = env.dist[env_ids]
     if random_dist:
         # random distances within the bounds
         distances = (
