@@ -11,9 +11,9 @@ class AnymalDBoxClimbPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
     max_iterations = 100_000
     save_interval = 50
-    experiment_name = "anymal_d_box_climb"
-    wandb_project = "anymal_d_box_climb"
-    run_name = "anymal_d_box_climb_ppo"
+    experiment_name = "anymal_d_ll_box_climb"
+    wandb_project = "anymal_d_ll_box_climb"
+    run_name = "anymal_d_ll_box_climb_ppo"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

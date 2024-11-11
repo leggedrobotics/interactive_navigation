@@ -53,14 +53,14 @@ class AnymalDFlatPPORunnerCfg(AnymalDRoughPPORunnerCfg):
 
 
 @configclass
-class AnymalJumpOnBoxesPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+class AnymalBoxeStairPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     seed = 123
     num_steps_per_env = 24
     max_iterations = 100_000
     save_interval = 250
     experiment_name = "make_stair_ppo"
-    run_name = "anymal_boxes_step"
-    wandb_project = "make_stair_ppo"
+    run_name = "anymal_box_stair"
+    wandb_project = "anymal_box_stair"
     empirical_normalization = False
     policy = RslRlPpoRelationalActorCriticCfg(
         init_noise_std=1.0,
