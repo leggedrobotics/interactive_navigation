@@ -458,7 +458,7 @@ class TerminationsCfg:
 
 
 DIST_CURR = mdp.DistanceCurriculum(
-    start_dist=7.0,
+    start_dist=0.0,
     max_dist=12.0,
     dist_increment=0.1,
     goal_termination_name="goal_reached",
