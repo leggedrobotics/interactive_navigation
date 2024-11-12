@@ -139,12 +139,11 @@ class DistanceCurriculum:
         terminated_at_goal = env.termination_manager._term_dones[self.goal_termination_name]
         terminated = env.termination_manager.dones
         terminated_not_at_goal = terminated & ~terminated_at_goal
-        if terminated_at_goal.any() or True:
+        if terminated_at_goal.any():
             # increase distance if goal was reached
             goal_reached_ids = env_ids[terminated_at_goal[env_ids]]
             self.dist[goal_reached_ids] += self.dist_increment
-            self.dist += self.dist_increment
-        if terminated_not_at_goal.any() and False:
+        if terminated_not_at_goal.any():
             # decrease distance if goal was not reached
             goal_not_reached_ids = env_ids[terminated_not_at_goal[env_ids]]
             self.dist[goal_not_reached_ids] -= self.dist_increment

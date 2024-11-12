@@ -50,7 +50,7 @@ from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.assets impo
 ##
 N_BOXES = 1  # number of same boxes
 
-N_STEP_BOXES = 4  # number of different boxes
+N_STEP_BOXES = 2  # number of different boxes
 STEP_HEIGHT = 0.5
 
 
@@ -70,16 +70,16 @@ for i in range(N_STEP_BOXES):
     BOXES_DICT[box_prefix] = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/" + f"{box_prim_path_name}",
         spawn=sim_utils.CuboidCfg(
-            size=(height, height, height),
+            size=(min(height, 1.0), min(height, 1.0), height),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 max_depenetration_velocity=1.0,
                 disable_gravity=False,
                 max_angular_velocity=3.14,
                 kinematic_enabled=False,
             ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
+            mass_props=sim_utils.MassPropertiesCfg(mass=25.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=0.75, dynamic_friction=0.75, friction_combine_mode="multiply"
+                static_friction=0.3, dynamic_friction=0.3, friction_combine_mode="multiply"
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=color),
@@ -304,7 +304,7 @@ class EventCfg:
             "other_boxes": other_box_entities,
             "pose_range": {"yaw": (0, 6.283)},
             "random_dist": True,
-            "min_dist": 0.1,
+            "min_dist": 0.05,
             "one_box_only": True,
         },
     )
@@ -332,6 +332,8 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
+
+    # TODO: add reward for building a stair (Ideally we dont want this, as this behavior should emerge)
 
     # Box interaction
     box_moving = RewTerm(
@@ -418,11 +420,17 @@ class RewardsCfg:
         weight=-250.0,
     )
 
+    too_slow = RewTerm(
+        func=mdp.is_terminated_term,
+        params={"term_keys": "time_out"},
+        weight=-250.0,
+    )
+
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
 
     wasting_time = RewTerm(
         func=mdp.is_alive,
-        weight=-0.005,
+        weight=-0.01,
     )
 
 
@@ -430,7 +438,7 @@ class RewardsCfg:
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    time_out = DoneTerm(func=mdp.time_out_perturbed, params={"perturbation": 5}, time_out=True)  # type: ignore
+    time_out = DoneTerm(func=mdp.time_out_perturbed, params={"perturbation": 5}, time_out=False)  # type: ignore
 
     goal_reached = DoneTerm(
         func=mdp.goal_reached,
@@ -450,14 +458,14 @@ class TerminationsCfg:
 
 
 DIST_CURR = mdp.DistanceCurriculum(
-    start_dist=0.0,
+    start_dist=7.0,
     max_dist=12.0,
     dist_increment=0.1,
     goal_termination_name="goal_reached",
 )  # TODO: curriculum where only one random box is moved away from the stair
 
 TERRAIN_CURR = mdp.TerrainCurriculum(
-    num_successes=10, num_failures=10, goal_termination_name="goal_reached", random_move_prob=0.05
+    num_successes=2, num_failures=1, goal_termination_name="goal_reached", random_move_prob=0.05
 )
 
 
@@ -475,6 +483,13 @@ class CurriculumCfg:
     # )
 
     # terrain_levels = CurrTerm(func=TERRAIN_CURR.terrain_levels)
+
+    jump_reward_decay = CurrTerm(
+        func=mdp.modify_reward_weight, params={"term_name": "successful_jump", "weight": 0.0, "num_steps": 2_000}
+    )
+    box_moving_reward_decay = CurrTerm(
+        func=mdp.modify_reward_weight, params={"term_name": "box_moving", "weight": 0.0, "num_steps": 4_000}
+    )
 
 
 @configclass
