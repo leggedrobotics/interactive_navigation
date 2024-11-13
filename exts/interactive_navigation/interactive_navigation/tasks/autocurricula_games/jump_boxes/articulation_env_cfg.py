@@ -371,8 +371,8 @@ class RewardsCfg:
     # TODO: reward for valid stair ie, if first is close to step, second closes to first, etc
     stair_building = RewTerm(
         func=mdp.stair_building_reward,  # type: ignore
-        weight=5,
-        params={"boxes_sorted": first_box_entities, "proximity_threshold": 0.3},
+        weight=25,
+        params={"boxes_sorted": first_box_entities},
     )
 
     close_to_box = RewTerm(

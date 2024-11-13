@@ -223,29 +223,22 @@ class stair_building_reward(ManagerTermBase):
         super().__init__(cfg, env)
         self.prev_box_distances = None
 
-    def __call__(
-        self, env: ManagerBasedRLEnv, boxes_sorted: list[SceneEntityCfg], proximity_threshold: float
-    ) -> torch.Tensor:
+    def __call__(self, env: ManagerBasedRLEnv, boxes_sorted: list[SceneEntityCfg]) -> torch.Tensor:
         # - calculate the distance between consecutive boxes
         consecutive_box_distances = []
         for i in range(len(boxes_sorted) - 1):
-            box_prev = env.scene[boxes_sorted[i].name]
-            box_next = env.scene[boxes_sorted[i + 1].name]
-
-            combined_boxes_radius = (box_prev.cfg.spawn.size[0] + box_next.cfg.spawn.size[0]) / math.sqrt(2)
-
             consecutive_box_distances.append(
                 torch.linalg.norm(
-                    box_prev.data.root_pos_w[..., :2] - box_next.data.root_pos_w[..., :2],
+                    env.scene[boxes_sorted[i].name].data.root_pos_w[..., :2]
+                    - env.scene[boxes_sorted[i + 1].name].data.root_pos_w[..., :2],
                     dim=-1,
                 )
-                - combined_boxes_radius
             )
         consecutive_box_distances = torch.stack(consecutive_box_distances, dim=1)
 
         # - compute reward based on previous distances
         if self.prev_box_distances is not None:
-            reward = torch.sum(self.prev_box_distances - consecutive_box_distances, dim=1)
+            reward = torch.sum(self.prev_box_distances - consecutive_box_distances, dim=1) / env.step_dt
         else:
             reward = torch.zeros(env.num_envs).to(env.device)
 
