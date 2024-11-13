@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import math
 import torch
 from typing import TYPE_CHECKING
 
@@ -8,6 +8,7 @@ from omni.isaac.lab.sensors import ContactSensor, RayCaster
 from omni.isaac.lab.assets import Articulation, RigidObject
 from omni.isaac.lab.managers.manager_base import ManagerTermBase
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
+from omni.isaac.lab.managers.manager_term_cfg import RewardTermCfg
 from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.commands import GoalCommand
 from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.utils import (
     get_robot_pos,
@@ -210,6 +211,47 @@ class BoxMovingReward:
 
         self.prev_box_pos = positions
         return max_diff
+
+
+class stair_building_reward(ManagerTermBase):
+    """Reward term for building stairs.
+    The reward is based on the distance between the boxes.
+    If the sum of the distances between the boxes is smaller than the previous sum, the reward is positive (i.e, equal to the difference).
+    """
+
+    def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self.prev_box_distances = None
+
+    def __call__(
+        self, env: ManagerBasedRLEnv, boxes_sorted: list[SceneEntityCfg], proximity_threshold: float
+    ) -> torch.Tensor:
+        # - calculate the distance between consecutive boxes
+        consecutive_box_distances = []
+        for i in range(len(boxes_sorted) - 1):
+            box_prev = env.scene[boxes_sorted[i].name]
+            box_next = env.scene[boxes_sorted[i + 1].name]
+
+            combined_boxes_radius = (box_prev.cfg.spawn.size[0] + box_next.cfg.spawn.size[0]) / math.sqrt(2)
+
+            consecutive_box_distances.append(
+                torch.linalg.norm(
+                    box_prev.data.root_pos_w[..., :2] - box_next.data.root_pos_w[..., :2],
+                    dim=-1,
+                )
+                - combined_boxes_radius
+            )
+        consecutive_box_distances = torch.stack(consecutive_box_distances, dim=1)
+
+        # - compute reward based on previous distances
+        if self.prev_box_distances is not None:
+            reward = torch.sum(self.prev_box_distances - consecutive_box_distances, dim=1)
+        else:
+            reward = torch.zeros(env.num_envs).to(env.device)
+
+        self.prev_box_distances = consecutive_box_distances
+
+        return reward
 
 
 class CloseToBoxReward:

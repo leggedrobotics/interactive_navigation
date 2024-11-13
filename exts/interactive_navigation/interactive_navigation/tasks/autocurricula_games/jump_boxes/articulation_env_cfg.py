@@ -50,7 +50,7 @@ from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.assets impo
 ##
 N_BOXES = 1  # number of same boxes
 
-N_STEP_BOXES = 2  # number of different boxes
+N_STEP_BOXES = 5  # number of different boxes
 STEP_HEIGHT = 0.5
 
 
@@ -70,7 +70,7 @@ for i in range(N_STEP_BOXES):
     BOXES_DICT[box_prefix] = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/" + f"{box_prim_path_name}",
         spawn=sim_utils.CuboidCfg(
-            size=(min(height, 1.0), min(height, 1.0), height),
+            size=(max(height, 1.0), max(height, 1.0), height),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 max_depenetration_velocity=1.0,
                 disable_gravity=False,
@@ -258,6 +258,7 @@ class ObservationsCfg:
                 "return_box_height": True,
                 # "return_mask": True,
             },
+            noise=Unoise(n_min=-0.1, n_max=0.1),
         )
 
         def __post_init__(self):
@@ -368,6 +369,11 @@ class RewardsCfg:
     # )
 
     # TODO: reward for valid stair ie, if first is close to step, second closes to first, etc
+    stair_building = RewTerm(
+        func=mdp.stair_building_reward,  # type: ignore
+        weight=5,
+        params={"boxes_sorted": first_box_entities, "proximity_threshold": 0.3},
+    )
 
     close_to_box = RewTerm(
         func=mdp.CloseToBoxReward().close_to_box_reward,
@@ -489,6 +495,10 @@ class CurriculumCfg:
     )
     box_moving_reward_decay = CurrTerm(
         func=mdp.modify_reward_weight, params={"term_name": "box_moving", "weight": 0.0, "num_steps": 4_000}
+    )
+
+    moving_towards_goal_reward_decay = CurrTerm(
+        func=mdp.modify_reward_weight, params={"term_name": "moving_towards_goal", "weight": 0.0, "num_steps": 6_000}
     )
 
 

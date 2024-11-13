@@ -265,8 +265,13 @@ class GoalCommand(CommandTerm):
                     0
                 ].squeeze(0)
                 # get the the highes point on the terrain
-                non_border_ray_hits = ray_hits[ray_hits[..., 2] < terrain.cfg.terrain_generator.border_height - 0.1]
-                top_hits = non_border_ray_hits[non_border_ray_hits[..., 2] > non_border_ray_hits[..., 2].max() - 0.1]
+                if terrain.cfg.terrain_generator.border_height > 0:
+                    non_border_ray_hits = ray_hits[ray_hits[..., 2] < terrain.cfg.terrain_generator.border_height - 0.1]
+                    top_hits = non_border_ray_hits[
+                        non_border_ray_hits[..., 2] > non_border_ray_hits[..., 2].max() - 0.1
+                    ]
+                else:
+                    top_hits = ray_hits[ray_hits[..., 2] > ray_hits[..., 2].max() - 0.1]
 
                 # randomly select N_points_per_terrain of the top hits
                 if top_hits.shape[0] > N_points_per_terrain:
