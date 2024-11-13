@@ -167,6 +167,23 @@ ENV WANDB_USERNAME=rafaelc
 ENV WANDB_API_KEY=your_wandb_api_key
 ```
 
+##### Step 4
+Build docker container
+Within the IsaacLab folder:
+```bash
+./docker/container.py start
+```
+and enter it with
+```bash
+./docker/container.py start
+```
+Use ctrl-D to exit.
+
+You can delete all old images with this
+```bash
+docker images | grep -v 'isaac-lab-base' | awk '{print $3}' | xargs docker rmi -f
+```
+
 ## Cluster
 
 ### Setup
