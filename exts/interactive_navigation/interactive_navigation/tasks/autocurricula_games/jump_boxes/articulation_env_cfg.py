@@ -50,7 +50,7 @@ from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.assets impo
 ##
 N_BOXES = 1  # number of same boxes
 
-N_STEP_BOXES = 5  # number of different boxes
+N_STEP_BOXES = 3  # number of different boxes
 STEP_HEIGHT = 0.5
 
 
@@ -306,7 +306,7 @@ class EventCfg:
             "pose_range": {"yaw": (0, 6.283)},
             "random_dist": True,
             "min_dist": 0.05,
-            "one_box_only": True,
+            "one_box_only": False,
         },
     )
 
@@ -371,7 +371,7 @@ class RewardsCfg:
     # TODO: reward for valid stair ie, if first is close to step, second closes to first, etc
     stair_building = RewTerm(
         func=mdp.stair_building_reward,  # type: ignore
-        weight=25,
+        weight=100,
         params={"boxes_sorted": first_box_entities},
     )
 
