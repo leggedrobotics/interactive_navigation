@@ -1,6 +1,7 @@
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg, RigidObject, RigidObjectCfg, AssetBase
 from omni.isaac.lab.actuators import ImplicitActuatorCfg
+import os
 
 # - robot:
 ROBOT_CFG = RigidObjectCfg(
@@ -21,7 +22,8 @@ ROBOT_CFG = RigidObjectCfg(
 
 ROBOT_USD_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path="/home/rafael/Projects/MT/interactive_navigation/exts/interactive_navigation/interactive_navigation/tasks/autocurricula_games/jump_boxes/mdp/urdfs/output_2.usd",
+        usd_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "urdfs/output_2.usd"),
+        # usd_path="/home/rafael/Projects/MT/interactive_navigation/exts/interactive_navigation/interactive_navigation/tasks/autocurricula_games/jump_boxes/mdp/urdfs/output_2.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             rigid_body_enabled=True,
             max_linear_velocity=30.0,
