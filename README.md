@@ -163,7 +163,7 @@ Student pc documentation: https://student-pc-docs.leggedrobotics.com/docs/apptai
 Isaac Lab internal documentation: https://leggedrobotics.github.io/IsaacLab-Internal/source/deployment/cluster.html
 
 #### Step 1
-Within `/scratc/user`  install the latest apptainer  version (1.3.5)
+Within `/scratch/user`  install the latest apptainer  version (1.3.5)
 ```bash
 cd /scratch/${USER}
 curl -s https://raw.githubusercontent.com/apptainer/apptainer/main/tools/install-unprivileged.sh | \
@@ -229,7 +229,7 @@ Export singularity image. Within `IsaacLab-Internal`, run
 ```bash
 ./docker/cluster/cluster_interface.sh push
 ```
-this takes up to 15 min.
+this takes up to 20 min.
 
 #### Step 6
 Add your email to `docker/cluster/submit_job_slurm.sh` and load eth_proxy, i.e.,
@@ -238,6 +238,11 @@ Add your email to `docker/cluster/submit_job_slurm.sh` and load eth_proxy, i.e.,
 module load eth_proxy
 ```
 
+#### Step 7 Submitting a job
+To submit a job, cd into `IsaacLab-Internal` and run
+```bash
+./docker/cluster/cluster_interface.sh job "argument1" "argument2" ...
 
-
+```
+You can submit multiple jobs in parallel. If you need to update your docker environment, you need to repeat step 5.
 
