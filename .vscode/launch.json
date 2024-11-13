@@ -53,7 +53,7 @@
                 "--resume",
                 "RESUME",
                 "--load_run",
-                "2024-11-12_21-58-49_BoxStair_5_x_1", // "stair_4_step",
+                "2024-11-13_13-58-05_BoxStair_3_x_1", // "stair_4_step",
                 // "--checkpoint",
                 // "model_3000.pt",
                 "--video",

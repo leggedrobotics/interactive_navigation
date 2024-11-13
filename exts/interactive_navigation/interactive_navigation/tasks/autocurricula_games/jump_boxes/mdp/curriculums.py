@@ -122,12 +122,14 @@ class DistanceCurriculum:
         max_dist: float = 4.0,
         dist_increment: float = 0.1,
         goal_termination_name: str = "goal_reached",
+        move_down_factor: float = 2.0,
     ):
 
         self.goal_termination_name = goal_termination_name
         self.start_dist = start_dist
         self.max_dist = max_dist
         self.dist_increment = dist_increment
+        self.move_down_factor = move_down_factor
         # buffers
         self.dist: torch.Tensor = None
 
@@ -146,7 +148,7 @@ class DistanceCurriculum:
         if terminated_not_at_goal.any():
             # decrease distance if goal was not reached
             goal_not_reached_ids = env_ids[terminated_not_at_goal[env_ids]]
-            self.dist[goal_not_reached_ids] -= self.dist_increment
+            self.dist[goal_not_reached_ids] -= self.dist_increment * self.move_down_factor
 
         # clamp the values
         self.dist[env_ids] = torch.clamp(self.dist[env_ids], self.start_dist, self.max_dist)
