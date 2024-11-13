@@ -99,13 +99,11 @@ rsl_rl and the extension should be installed besides IsaacLab:
 In `IsaacLab-Internal/docker/.env.base` add the paths to rsl_rl and the extension 
 
 ```docker
-
-# Locale xtension path
+# Local rsl_rl path
 LOCAL_RSL_RL_RELATIVE_PATH=../../rsl_rl/rsl_rl
 
-# Local rsl_rl path
-LOCAL_EXTENSION_RELATIVE_PATH=../../interactive_navigation/exts/interactive_navigation
-
+# Locale extension path
+LOCAL_EXTENSION_RELATIVE_PATH=../../interactive_navigation
 ```
 
 #### Step 2
@@ -146,8 +144,8 @@ COPY interactive_navigation/ ${ISAACLAB_PATH}/isaaclab_extension
 
 and install the additional modules after installing Isaac Lab dependencies
 ```docker
-# Upgrade pip to the latest version
-RUN ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install --upgrade pip
+# Upgrade pip, setuptools and wheel to the latest version
+RUN ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install --upgrade pip setuptools wheel
 
 # Install local rsl_rl module
 RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
@@ -155,5 +153,6 @@ RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
 
 # Install local isaaclab_extension module
 RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
-    ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install -e ${ISAACLAB_PATH}/isaaclab_extension
+    ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install -e ${ISAACLAB_PATH}/isaaclab_extension/exts/interactive_navigation
+
 ```
