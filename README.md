@@ -80,3 +80,80 @@ Then you can run pre-commit with:
 ```bash
 pre-commit run --all-files
 ```
+
+## Docker Setup for Extension and rsl_rl
+
+All changes are done in `IsaacLab-Internal/docker`
+rsl_rl and the extension should be installed besides IsaacLab:
+
+```
+├── Project/
+│ ├── IsaacLab-Internal/
+│ ├── rsl_rl/
+│ ├── interactive_navigation/
+```
+
+
+
+#### Step 1
+In `IsaacLab-Internal/docker/.env.base` add the paths to rsl_rl and the extension 
+
+```docker
+
+# Locale xtension path
+LOCAL_RSL_RL_RELATIVE_PATH=../../rsl_rl/rsl_rl
+
+# Local rsl_rl path
+LOCAL_EXTENSION_RELATIVE_PATH=../../interactive_navigation/exts/interactive_navigation
+
+```
+
+#### Step 2
+In `IsaacLab-Internal/docker/docker-compose.yaml`, bind the two modules
+```yaml
+  - type: bind
+    source: ${LOCAL_RSL_RL_RELATIVE_PATH}
+    target: ${DOCKER_ISAACLAB_PATH}/rsl_rl
+  - type: bind
+    source: ${LOCAL_EXTENSION_RELATIVE_PATH}
+    target: ${DOCKER_ISAACLAB_PATH}/isaaclab_extension
+```
+
+Change the context and the docker file path from
+```yaml
+      context: ../
+      dockerfile: docker/Dockerfile.base
+```
+to
+```yaml
+      context: ../..
+      dockerfile: IsaacLab-Internal/docker/Dockerfile.base
+```
+
+#### Step 3
+In `IsaacLab-Internal/docker/Dockerfile.base` change paths to image from
+```docker
+COPY ../ ${ISAACLAB_PATH}
+```
+to
+```docker
+COPY IsaacLab-Internal/ ${ISAACLAB_PATH}
+# Copy rsl_rl into the image
+COPY rsl_rl/ ${ISAACLAB_PATH}/rsl_rl
+# Copy extension into the image
+COPY interactive_navigation/ ${ISAACLAB_PATH}/isaaclab_extension
+```
+
+and install the additional modules after installing Isaac Lab dependencies
+```docker
+# Upgrade pip to the latest version
+RUN ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install --upgrade pip
+
+# Install local rsl_rl module
+RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
+    ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install -e ${ISAACLAB_PATH}/rsl_rl
+
+# Install local isaaclab_extension module
+RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
+    ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install -e ${ISAACLAB_PATH}/isaaclab_extension
+```
