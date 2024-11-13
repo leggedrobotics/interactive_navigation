@@ -157,7 +157,20 @@ RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
 
 ```
 
+and add your wandb credentials as environment variables
+
+```bash
+# Set environment variables
+ENV LANG=C.UTF-8 # already here
+ENV DEBIAN_FRONTEND=noninteractive # already here
+ENV WANDB_USERNAME=rafaelc
+ENV WANDB_API_KEY=your_wandb_api_key
+```
+
 ## Cluster
+
+### Setup
+
 Student pc documentation: https://student-pc-docs.leggedrobotics.com/docs/apptainer.html
 
 Isaac Lab internal documentation: https://leggedrobotics.github.io/IsaacLab-Internal/source/deployment/cluster.html
@@ -237,12 +250,11 @@ Add your email to `docker/cluster/submit_job_slurm.sh` and load eth_proxy, i.e.,
 # e.g., `module load eth_proxy`
 module load eth_proxy
 ```
-
-#### Step 7 Submitting a job
+## Submitting a Job
 To submit a job, cd into `IsaacLab-Internal` and run
 ```bash
 ./docker/cluster/cluster_interface.sh job "argument1" "argument2" ...
 
 ```
-You can submit multiple jobs in parallel. If you need to update your docker environment, you need to repeat step 5.
+You can submit multiple jobs in parallel. If you need to update your docker environment, you need to repeat step 5 of the setup (push singularity image)
 
