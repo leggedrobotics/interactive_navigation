@@ -156,3 +156,93 @@ RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
     ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install -e ${ISAACLAB_PATH}/isaaclab_extension/exts/interactive_navigation
 
 ```
+
+## Cluster
+Student pc documentation: https://student-pc-docs.leggedrobotics.com/docs/apptainer.html
+
+Isaac Lab internal documentation: https://leggedrobotics.github.io/IsaacLab-Internal/source/deployment/cluster.html
+
+#### Step 1
+Within `/scratch/user`  install the latest apptainer  version (1.3.5)
+```bash
+cd /scratch/${USER}
+curl -s https://raw.githubusercontent.com/apptainer/apptainer/main/tools/install-unprivileged.sh | \
+    bash -s - install-dir
+```
+And add the path to the end of the .bashrc :
+```bash
+echo "export PATH=/scratch/${USER}/install-dir/bin:\$PATH" >> ~/.bashrc
+```
+#### Step 2
+Configure cluster parameters in `IsaacLab-Internal/docker/cluster/.env.cluster` 
+substitute `username` with your username
+
+```bash
+###
+# Cluster specific settings
+###
+
+# Job scheduler used by cluster.
+# Currently supports PBS and SLURM
+CLUSTER_JOB_SCHEDULER=SLURM
+# Docker cache dir for Isaac Sim (has to end on docker-isaac-sim)
+# e.g. /cluster/scratch/$USER/docker-isaac-sim
+CLUSTER_ISAAC_SIM_CACHE_DIR=/cluster/scratch/username/docker-isaac-sim
+# Isaac Lab directory on the cluster (has to end on isaaclab)
+# e.g. /cluster/home/$USER/isaaclab
+CLUSTER_ISAACLAB_DIR=/cluster/home/username/isaaclab
+# Cluster login
+CLUSTER_LOGIN=username@euler.ethz.ch
+# Cluster scratch directory to store the SIF file
+# e.g. /cluster/scratch/$USER
+CLUSTER_SIF_PATH=/cluster/scratch/username
+# Remove the temporary isaaclab code copy after the job is done
+REMOVE_CODE_COPY_AFTER_JOB=false
+# Python executable within Isaac Lab directory to run with the submitted job
+# CLUSTER_PYTHON_EXECUTABLE=source/standalone/workflows/rsl_rl/train.py
+# We use the train script of the extension, not the one in IsaacLab
+CLUSTER_PYTHON_EXECUTABLE=isaaclab_extension/scripts/rsl_rl/train.py 
+
+```
+
+#### Step 4
+Enable ssh key-based authentication for euler.
+Generate rsa ssh key:
+```bash
+ssh-keygen -t rsa -b 4096 -C "email@example.com"
+```
+Copy key to cluster (with your username)
+```bash
+ssh-copy-id username@euler.ethz.ch
+```
+Enter your eth password
+
+Test connection:
+```bash
+ssh username@euler.ethz.ch
+```
+This time, no password should be required.
+
+
+#### Step 5
+Export singularity image. Within `IsaacLab-Internal`, run
+```bash
+./docker/cluster/cluster_interface.sh push
+```
+this takes up to 20 min.
+
+#### Step 6
+Add your email to `docker/cluster/submit_job_slurm.sh` and load eth_proxy, i.e.,
+```bash
+# e.g., `module load eth_proxy`
+module load eth_proxy
+```
+
+#### Step 7 Submitting a job
+To submit a job, cd into `IsaacLab-Internal` and run
+```bash
+./docker/cluster/cluster_interface.sh job "argument1" "argument2" ...
+
+```
+You can submit multiple jobs in parallel. If you need to update your docker environment, you need to repeat step 5.
+
