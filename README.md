@@ -83,31 +83,51 @@ pre-commit run --all-files
 
 ## Docker Setup for Extension and rsl_rl
 
+#### Step 0: Installation
+
 All changes are done in `IsaacLab-Internal/docker`
-rsl_rl and the extension should be installed besides IsaacLab:
+rsl_rl and the extension should be installed besides inside of IsaacLab:
 
 ```
 ├── Project/
 │ ├── IsaacLab-Internal/
-│ ├── rsl_rl/
-│ ├── interactive_navigation/
+│ │ ├── rsl_rl/
+│ │ ├── interactive_navigation/
+│ │ ├── source/
+```
+To do so, use git submodules.
+```bash
+cd path/to/IsaacLab-Internal
+# install rsl_rl from bitbucket
+git submodule add git@bitbucket.org:leggedrobotics/rsl_rl.git
+# install extension
+git submodule add git@github.com:leggedrobotics/interactive_navigation.git
+# initialize
+git submodule update --init --recursive
+
+```
+in both modules, switch to your branch.
+
+Create symlinks from IsaacLab extensions to your extension:
+```bash
+cd path/to/IsaacLab-Internal/source/extensions
+# create symlink to the extension
+ln -s ../../interactive_navigation/exts/interactive_navigation .
 ```
 
 
-
-#### Step 1
-In `IsaacLab-Internal/docker/.env.base` add the paths to rsl_rl and the extension 
+#### Step 1: Update .env.base
+In `IsaacLab-Internal/docker/.env.base` add the paths to rsl_rl
 
 ```docker
 # Local rsl_rl path
-LOCAL_RSL_RL_RELATIVE_PATH=../../rsl_rl/rsl_rl
-
-# Locale extension path
-LOCAL_EXTENSION_RELATIVE_PATH=../../interactive_navigation
+LOCAL_RSL_RL_RELATIVE_PATH=../rsl_rl/rsl_rl
+# Local extension path
+LOCAL_EXTENSION_RELATIVE_PATH=../interactive_navigation
 ```
 
-#### Step 2
-In `IsaacLab-Internal/docker/docker-compose.yaml`, bind the two modules
+#### Step 2: Update docker-compose.yaml
+In `IsaacLab-Internal/docker/docker-compose.yaml`, bind the extension modules
 ```yaml
   - type: bind
     source: ${LOCAL_RSL_RL_RELATIVE_PATH}
@@ -117,44 +137,13 @@ In `IsaacLab-Internal/docker/docker-compose.yaml`, bind the two modules
     target: ${DOCKER_ISAACLAB_PATH}/isaaclab_extension
 ```
 
-Change the context and the docker file path from
-```yaml
-      context: ../
-      dockerfile: docker/Dockerfile.base
-```
-to
-```yaml
-      context: ../..
-      dockerfile: IsaacLab-Internal/docker/Dockerfile.base
-```
 
-#### Step 3
-In `IsaacLab-Internal/docker/Dockerfile.base` change paths to image from
+#### Step 3: Update Dockerfile.base
+In `IsaacLab-Internal/docker/Dockerfile.base`  install rsl_rl after installing Isaac Lab dependencies
 ```docker
-COPY ../ ${ISAACLAB_PATH}
-```
-to
-```docker
-COPY IsaacLab-Internal/ ${ISAACLAB_PATH}
-# Copy rsl_rl into the image
-COPY rsl_rl/ ${ISAACLAB_PATH}/rsl_rl
-# Copy extension into the image
-COPY interactive_navigation/ ${ISAACLAB_PATH}/isaaclab_extension
-```
-
-and install the additional modules after installing Isaac Lab dependencies
-```docker
-# Upgrade pip, setuptools and wheel to the latest version
-RUN ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install --upgrade pip setuptools wheel
-
 # Install local rsl_rl module
 RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
-    ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install -e ${ISAACLAB_PATH}/rsl_rl
-
-# Install local isaaclab_extension module
-RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
-    ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install -e ${ISAACLAB_PATH}/isaaclab_extension/exts/interactive_navigation
-
+    ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install ${ISAACLAB_PATH}/rsl_rl
 ```
 
 and add your wandb credentials as environment variables
@@ -163,11 +152,11 @@ and add your wandb credentials as environment variables
 # Set environment variables
 ENV LANG=C.UTF-8 # already here
 ENV DEBIAN_FRONTEND=noninteractive # already here
-ENV WANDB_USERNAME=rafaelc
+ENV WANDB_USERNAME=your_wandb_username
 ENV WANDB_API_KEY=your_wandb_api_key
 ```
 
-##### Step 4
+##### Step 4: Build Docker Container
 Build docker container
 Within the IsaacLab folder:
 ```bash
@@ -175,13 +164,20 @@ Within the IsaacLab folder:
 ```
 and enter it with
 ```bash
-./docker/container.py start
+./docker/container.py enter
 ```
-Use ctrl-D to exit.
-
+Use ctrl-D to exit
+and to stop:
+```bash
+./docker/container.py stop
+```
 You can delete all old images with this
 ```bash
 docker images | grep -v 'isaac-lab-base' | awk '{print $3}' | xargs docker rmi -f
+```
+and delte all images with:
+```bash
+docker system prune -a --volumes -f
 ```
 
 ## Cluster
@@ -231,8 +227,7 @@ REMOVE_CODE_COPY_AFTER_JOB=false
 # Python executable within Isaac Lab directory to run with the submitted job
 # CLUSTER_PYTHON_EXECUTABLE=source/standalone/workflows/rsl_rl/train.py
 # We use the train script of the extension, not the one in IsaacLab
-CLUSTER_PYTHON_EXECUTABLE=isaaclab_extension/scripts/rsl_rl/train.py 
-
+CLUSTER_PYTHON_EXECUTABLE=interactive_navigation/scripts/rsl_rl/train.py
 ```
 
 #### Step 4
@@ -271,7 +266,6 @@ module load eth_proxy
 To submit a job, cd into `IsaacLab-Internal` and run
 ```bash
 ./docker/cluster/cluster_interface.sh job "argument1" "argument2" ...
-
 ```
-You can submit multiple jobs in parallel. If you need to update your docker environment, you need to repeat step 5 of the setup (push singularity image)
+Multiple jobs can be submitted in parallel. If you need to update your docker environment, you need to repeat step 5 of the setup (push singularity image)
 
