@@ -95,16 +95,13 @@ rsl_rl and the extension should be installed besides inside of IsaacLab:
 │ │ ├── interactive_navigation/
 │ │ ├── source/
 ```
-To do so, use git submodules.
+To do so, simply clone (git submodules may fail).
 ```bash
 cd path/to/IsaacLab-Internal
 # install rsl_rl from bitbucket
-git submodule add git@bitbucket.org:leggedrobotics/rsl_rl.git
+git clone git@bitbucket.org:leggedrobotics/rsl_rl.git
 # install extension
-git submodule add git@github.com:leggedrobotics/interactive_navigation.git
-# initialize
-git submodule update --init --recursive
-
+git clone git@github.com:leggedrobotics/interactive_navigation.git
 ```
 in both modules, switch to your branch.
 
