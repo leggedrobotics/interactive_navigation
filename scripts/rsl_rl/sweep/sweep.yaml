@@ -46,7 +46,7 @@ parameters:
     distribution: log_uniform_values
 
 command:
-  - python
+  - /isaac-sim/python.sh
   - ${program}
   - --task=Isaac-CRL-Anymal-D-v0
   - --num_envs=4096
