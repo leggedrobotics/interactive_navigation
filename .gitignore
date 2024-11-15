@@ -7,3 +7,6 @@ wandb/
 **/*.usd
 **/*_hash
 **/*.png
+
+# wandb
+outputs/

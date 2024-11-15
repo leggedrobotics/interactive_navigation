@@ -1,0 +1,59 @@
+# https://docs.wandb.ai/guides/sweeps/sweep-config-keys/#distribution-options-for-random-and-bayesian-search
+program: interactive_navigation/scripts/rsl_rl/train.py
+# program: scripts/rsl_rl/train.py
+description: "Sweep over hyperparameters for anymal crl"
+method: bayes  # or 'grid', 'random'
+metric:
+  name: Metrics/robot_goal/goal_distance  # wandb metric to optimize
+  goal: minimize  # 'minimize' or 'maximize' if optimizing a loss
+parameters:
+  env.episode_length_s:
+    min: 20.0
+    max: 50.0
+    distribution: uniform
+  agent.num_steps_per_env:
+    min: 50
+    max: 1000
+    distribution: int_uniform
+  agent.algorithm.replay_buffer_size_per_env:
+    min: 1000
+    max: 5000
+    distribution: int_uniform
+  agent.num_learning_steps:
+    values: [1, 2, 4, 8]
+  agent.critic.representation_dim:
+    values: [64, 128, 256]
+  agent.algorithm.stack_N_critic_batches:
+    values: [1, 2, 4, 8]
+  agent.algorithm.log_sum_exp_regularization_coef:
+    min: 0.005
+    max: 0.1
+    distribution: log_uniform_values
+  agent.algorithm.gamma:
+    min: 0.9
+    max: 0.995
+    distribution: log_uniform_values
+  agent.seed:
+    min: 0
+    max: 1000
+  agent.algorithm.actor_learning_rate:
+    min: 0.0001
+    max: 0.001
+    distribution: log_uniform_values
+  agent.algorithm.critic_learning_rate:
+    min: 0.0001
+    max: 0.001
+    distribution: log_uniform_values
+
+command:
+  - python
+  - ${program}
+  - --task=Isaac-CRL-Anymal-D-v0
+  - --num_envs=4096
+  - --logger=wandb
+  - --headless
+  - --video
+  - --video_length=250
+  - --video_interval=15000
+  - agent.max_iterations=250
+  - ${args_no_hyphens}

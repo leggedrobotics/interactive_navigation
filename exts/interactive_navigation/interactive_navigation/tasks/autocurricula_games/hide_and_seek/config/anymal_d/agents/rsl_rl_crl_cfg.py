@@ -30,7 +30,7 @@ class AnymalTestCrlRunnerCfg(RslCRlOnPolicyRunnerCfg):
     buffer_fill_steps = 1000
     num_learning_steps = 1
     update_actor_critic_simultaneously = True
-    max_iterations = 1_220_000
+    max_iterations = 250
     save_interval = 50
     experiment_name = "contrastive_RL_anymal"
     run_name = "crl_anymal_w"
