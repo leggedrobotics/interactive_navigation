@@ -55,7 +55,7 @@ class TestCrlRunnerCfg(RslCRlOnPolicyRunnerCfg):
     save_interval = 50
     experiment_name = "contrastive_RL_ant"
     run_name = "crl_ant"
-    wandb_project = "crl_RB_test"
+    wandb_project = "crl_debugging"
     empirical_normalization = False
     policy = RslRlGoalConditionedActorCfg(
         class_name="GoalConditionedGaussianPolicy",
