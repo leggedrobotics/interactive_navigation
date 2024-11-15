@@ -13,7 +13,7 @@ import math
 TELEOP = False
 
 if TELEOP:
-    from omni.isaac.lab.devices import Se3Keyboard, Se3SpaceMouse, Se3Gamepad
+    from omni.isaac.lab.devices import Se3Keyboard
 import carb
 
 import omni.isaac.lab.utils.string as string_utils
@@ -234,7 +234,8 @@ class ArticulatedWrench2DAction(ActionTerm):
         super().__init__(cfg, env)
 
         self.env = env
-        self.max_lin_vel = cfg.max_velocity
+        self.max_velocity_forward = cfg.max_velocity_forward
+        self.max_velocity_backward = cfg.max_velocity_backward
         self.max_vel_sideways = cfg.max_vel_sideways
         self.max_rot_vel = cfg.max_rotvel
 
@@ -271,7 +272,7 @@ class ArticulatedWrench2DAction(ActionTerm):
     @property
     def action_dim(self) -> int:
         """Dimension of the action term."""
-        return 3  # vel x, y, rot_vel z
+        return 3 if not self.cfg.disable_translation else 1
 
     @property
     def raw_actions(self) -> torch.Tensor:
@@ -293,11 +294,21 @@ class ArticulatedWrench2DAction(ActionTerm):
             action_x = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[0] * 4
             action_y = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[1] * 4
             action_r_z = torch.zeros(self.env.num_envs).to(self.device) + delta_pose[2] * 4
+            if self.cfg.disable_translation:
+                action_x = torch.zeros(self.num_envs, 1, device=self.device)
+                action_y = torch.zeros(self.num_envs, 1, device=self.device)
+
+        elif self.cfg.disable_translation:
+            action_x = torch.zeros(self.num_envs, 1, device=self.device)
+            action_y = torch.zeros(self.num_envs, 1, device=self.device)
+            action_r_z = self.scale_tensor(actions.squeeze(), (0, 0.5, 1), (-self.max_rot_vel, 0, self.max_rot_vel))
 
         else:
             ## scale action to max vel:
             ## ie scale [0, 1] to [-max_vel, max_vel]
-            action_x = self.scale_tensor(actions[:, 0], (0, 0.5, 1), (-self.max_lin_vel, 0, self.max_lin_vel))
+            action_x = self.scale_tensor(
+                actions[:, 0], (0, 0.5, 1), (-self.max_velocity_backward, 0, self.max_velocity_forward)
+            )
             action_y = self.scale_tensor(actions[:, 1], (0, 0.5, 1), (-self.max_vel_sideways, 0, self.max_vel_sideways))
             action_r_z = self.scale_tensor(actions[:, 2], (0, 0.5, 1), (-self.max_rot_vel, 0, self.max_rot_vel))
 

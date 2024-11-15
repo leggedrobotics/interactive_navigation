@@ -27,6 +27,7 @@ from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 # Pre-defined configs
 ##
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
+from omni.isaac.lab_assets.ant import ANT_CFG
 
 
 ##
@@ -55,55 +56,10 @@ class MySceneCfg(InteractiveSceneCfg):
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
         terrain_type="plane",
+        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=1.0, restitution=0.0),
     )
-    # terrain = TerrainImporterCfg(
-    #     prim_path="/World/ground",
-    #     terrain_type="generator",
-    #     terrain_generator=mdp.terrain.MESH_STEPPABLE_PYRAMID_TERRAIN_CFG,
-    #     max_init_terrain_level=1000,
-    #     collision_group=-1,
-    #     physics_material=sim_utils.RigidBodyMaterialCfg(
-    #         friction_combine_mode="multiply",
-    #         restitution_combine_mode="multiply",
-    #         static_friction=0.0,
-    #         dynamic_friction=0.0,
-    #     ),
-    #     visual_material=sim_utils.MdlFileCfg(
-    #         mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
-    #         project_uvw=True,
-    #     ),
-    #     debug_vis=False,
-    # )
-    # robots
 
-    robot: ArticulationCfg = ROBOT_USD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
-
-    # sensors
-    # lidar = RayCasterCfg(
-    #     prim_path="{ENV_REGEX_NS}/Robot/yaw_link",
-    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.0)),
-    #     attach_yaw_only=True,
-    #     pattern_cfg=patterns.LidarPatternCfg(
-    #         channels=1,
-    #         vertical_fov_range=(-0.0, 0.0),
-    #         horizontal_fov_range=(0, 360),
-    #         horizontal_res=10,
-    #     ),
-    #     max_distance=100.0,
-    #     drift_range=(-0.0, 0.0),
-    #     debug_vis=False,
-    #     history_length=0,
-    #     # mesh_prim_paths=["/World/ground", self.scene.obstacle.prim_path],
-    #     mesh_prim_paths=[
-    #         "/World/ground",
-    #         # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
-    #         # RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Wall_.*", is_global=False),
-    #     ],
-    #     track_mesh_transforms=True,
-    #     visualizer_cfg=SEGMENT_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
-    # )
-
-    # boxes_contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Box_.*", history_length=1, track_air_time=False)
+    robot: ArticulationCfg = ANT_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # lights
     light = AssetBaseCfg(
@@ -127,9 +83,13 @@ class CommandsCfg:
 
     robot_goal = mdp.GoalCommandCfg(
         asset_name="robot",
+        goal_radius_range=(2.5, 15.0),
         resampling_time_range=(1e9, 1e9),
         only_heading=False,
+        only_position=True,
+        attitude=True,
         debug_vis=True,
+        env_frame=True,
     )
 
 
@@ -137,10 +97,13 @@ class CommandsCfg:
 class ActionsCfg:
     """Action specifications for the MDP."""
 
-    # usd robot
-    wrench = mdp.ArticulatedWrench2DActionCfg(asset_name="robot", debug_vis=True, disable_translation=False)
-
-    # jump = mdp.ArticulatedJumpActionCfg(asset_name="robot")
+    # action = offset + scale * action
+    joint_pos = mdp.JointEffortActionCfg(
+        asset_name="robot",
+        joint_names=[".*(leg|foot).*"],
+        scale=10.0,
+        # offset=-2,
+    )
 
 
 @configclass
@@ -151,20 +114,26 @@ class ObservationsCfg:
     class PolicyCfg(ObsGroup):
         """Observations for the policy."""
 
-        # self
-        # TODO: add robot height
-        my_velocity = ObsTerm(
-            func=mdp.velocity_2d_b,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot"), "pov_entity_cfg": SceneEntityCfg("robot")},
+        my_pose = ObsTerm(
+            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+            params={"entity_cfg": SceneEntityCfg("robot")},
         )
 
-        actions = ObsTerm(func=mdp.last_action)
+        my_velocity = ObsTerm(
+            func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
+            params={"entity_cfg": SceneEntityCfg("robot")},
+        )
 
-        pose_goal = ObsTerm(func=mdp.generated_commands, params={"command_name": "robot_goal"})
+        # actions = ObsTerm(func=mdp.last_action)
+
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 
         # dist_to_goal = ObsTerm(
         #     func=mdp.dist_to_goal, params={"entity_cfg": SceneEntityCfg("robot"), "command_name": "robot_goal"}
         # )
+
+        # goal_pos = ObsTerm(func=mdp.actor_goal.generated_goal, params={"command_name": "robot_goal"})
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -173,12 +142,13 @@ class ObservationsCfg:
     @configclass
     class PolicyGoalCfg(ObsGroup):
         """Goal to condition the policy.
-        This may be constant"""
+        This may be constant. This will not be recorded in the replay buffer.
+        Therefore it should be in the dedicated policy goal group and not in the policy obs group."""
 
         # TODO how to implement this for the constant case? Then we do not need to constantly update the  it,
         # and we also dont need a replay buffer for it
 
-        pose_goal = ObsTerm(func=mdp.actor_goal.generated_goal, params={"command_name": "robot_goal"})
+        goal_pos = ObsTerm(func=mdp.actor_goal.generated_goal, params={"command_name": "robot_goal"})
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -189,17 +159,24 @@ class ObservationsCfg:
         """Observations for the critic."""
 
         # self
-        my_velocity = ObsTerm(
-            func=mdp.velocity_2d_b,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot"), "pov_entity_cfg": SceneEntityCfg("robot")},
+        my_pose = ObsTerm(
+            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+            params={"entity_cfg": SceneEntityCfg("robot")},
         )
+        my_velocity = ObsTerm(
+            func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
+            params={"entity_cfg": SceneEntityCfg("robot")},
+        )
+
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 
         # actions = ObsTerm(func=mdp.last_action)
         # the critic gets the action anyway... TODO: check if this really is not needed
         # dist_to_goal = ObsTerm(
         #     func=mdp.dist_to_goal, params={"entity_cfg": SceneEntityCfg("robot"), "command_name": "robot_goal"}
         # )
-        pose_goal = ObsTerm(func=mdp.generated_commands, params={"command_name": "robot_goal"})
+        # goal_pos = ObsTerm(func=mdp.generated_commands, params={"command_name": "robot_goal"})
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -213,13 +190,14 @@ class ObservationsCfg:
         I.e. : - state contains goal. -> state to goal is trivial.
                - state does not contain future goal. -> state to future goal is not trivial."""
 
-        pose_goal = ObsTerm(func=mdp.generated_commands, params={"command_name": "robot_goal"})
+        goal_pos = ObsTerm(func=mdp.generated_commands, params={"command_name": "robot_goal"})
 
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = True
 
     # observation groups
+    # policy: PolicyCfg = PolicyCfg()
     policy_obs: PolicyCfg = PolicyCfg()
     policy_goal: PolicyGoalCfg = PolicyGoalCfg()
 
@@ -227,9 +205,8 @@ class ObservationsCfg:
     critic_goal: CriticGoalCfg = CriticGoalCfg()
 
 
-Z_ROBOT = 0.3 + 0.05
-Z_BOX = 0.25 + 0.05
-Z_WALL = 0.5 + 0.05
+reset_value = 0.0
+reset_value_pos = 0.01
 
 
 @configclass
@@ -238,13 +215,34 @@ class EventCfg:
 
     # reset_all = EventTerm(func=mdp.reset_scene_to_default)
 
-    reset_robot = EventTerm(
-        func=mdp.reset_random_dist_from_goal,
+    # reset_robot = EventTerm(
+    #     func=mdp.reset_random_dist_from_goal,
+    #     mode="reset",
+    #     params={
+    #         "radius_range": (0.0, 0.01),
+    #         "asset_cfg": SceneEntityCfg("robot"),
+    #         "command_name": "robot_goal",
+    #         "z_offset": 1.0,
+    #     },
+    # )
+
+    reset_base = EventTerm(
+        func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "radius_range": (0.0, 10.0),
-            "asset_cfg": SceneEntityCfg("robot"),
-            "command_name": "robot_goal",
+            "pose_range": {
+                "x": (-reset_value_pos, reset_value_pos),
+                "y": (-reset_value_pos, reset_value_pos),
+                "yaw": (-0.0, 0.0),
+            },
+            "velocity_range": {
+                "x": (-reset_value, reset_value),
+                "y": (-reset_value, reset_value),
+                "z": (-reset_value, reset_value),
+                "roll": (-reset_value, reset_value),
+                "pitch": (-reset_value, reset_value),
+                "yaw": (-reset_value, reset_value),
+            },
         },
     )
 
@@ -263,20 +261,26 @@ class EventCfg:
         },
     )
 
-    reset_robot_yaw_joint = EventTerm(
-        func=mdp.reset_id_joints_by_offset,
-        mode="reset",
-        params={
-            "position_range": (-3.1416, 3.1416),  # (-3.1416, 3.1416),
-            "velocity_range": (0.0, 0.0),
-            "joint_names": ["joint_yaw"],
-        },
-    )
+    # reset_robot_yaw_joint = EventTerm(
+    #     func=mdp.reset_id_joints_by_offset,
+    #     mode="reset",
+    #     params={
+    #         "position_range": (-3.1416, 3.1416),  # (-3.1416, 3.1416),
+    #         "velocity_range": (0.0, 0.0),
+    #         "joint_names": ["joint_yaw"],
+    #     },
+    # )
 
 
 @configclass
 class RewardsCfg:
     """No rewards for CRL."""
+
+    # close_to_goal = RewTerm(func=mdp.close_to_goal, params={"command_name": "robot_goal"}, weight=1.0)
+
+    # at_goal = RewTerm(func=mdp.at_goal, params={"command_name": "robot_goal"}, weight=100.0)
+
+    # move_to_goal = RewTerm(func=mdp.moving_towards_goal, params={"command_name": "robot_goal"}, weight=0.1)
 
 
 @configclass
@@ -285,12 +289,11 @@ class TerminationsCfg:
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
-    too_far_away = DoneTerm(func=mdp.too_far_away, params={"max_dist": 15.0})
+    # too_far_away = DoneTerm(func=mdp.too_far_away, params={"max_dist": 15.0})
 
-    # base_contact = DoneTerm(
-    #     func=mdp.illegal_contact,
-    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
-    # )
+    # upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": 1.5})
+
+    # goal_reached = DoneTerm(func=mdp.goal_reached, params={"threshold_dist": 0.5})
 
 
 @configclass
@@ -307,13 +310,13 @@ class ViewerCfg:
     """Configuration of the scene viewport camera."""
 
     # eye: tuple[float, float, float] = (-60.0, 0.5, 70.0)
-    eye: tuple[float, float, float] = (9.7, 9.7, 8.0)
+    eye: tuple[float, float, float] = (20.0, 50.0, 25.0)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
-    lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    lookat: tuple[float, float, float] = (-25.0, 50.0, 0.0)
     cam_prim_path: str = "/OmniverseKit_Persp"
     resolution: tuple[int, int] = (1280, 720)
-    origin_type: Literal["world", "env", "asset_root"] = "env"
+    origin_type: Literal["world", "env", "asset_root"] = "world"
     """
     * ``"world"``: The origin of the world.
     * ``"env"``: The origin of the environment defined by :attr:`env_index`.
@@ -329,7 +332,7 @@ class ViewerCfg:
 
 
 @configclass
-class CrlTestEnvCfg(ManagerBasedRLEnvCfg):
+class CrlAntEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Data container
@@ -352,17 +355,19 @@ class CrlTestEnvCfg(ManagerBasedRLEnvCfg):
     def __post_init__(self):
         """Post initialization."""
         # general settings
-        self.decimation = 4  # 50 Hz
-        self.episode_length_s = 15.0
+        self.decimation = 1  # 20 Hz
+        self.episode_length_s = 50.0
         # simulation settings
-        self.sim.dt = 0.005  # 200 Hz
+        self.sim.dt = 0.05  # 20 Hz
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material
 
         # GPU settings
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**28
-        self.sim.physx.gpu_collision_stack_size = 2**30
+        self.sim.physx.gpu_total_aggregate_pairs_capacity = 2**24
+        # self.sim.physx.gpu_collision_stack_size = 2**28
+        # self.sim.physx.gpu_found_lost_pairs_capacity = 2**28
 
         # update sensor update periods
         # we tick all the sensors based on the smallest update period (physics update period)
