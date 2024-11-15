@@ -3,6 +3,22 @@
 import gymnasium as gym
 
 from . import agents, flat_env_cfg, rough_env_cfg
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.anymal_env_cfg import CrlAnymalEnvCfg
+
+
+##
+# CRL
+##
+
+gym.register(
+    id="Isaac-CRL-Anymal-D-v0",
+    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": CrlAnymalEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_crl_cfg:AnymalTestCrlRunnerCfg",
+    },
+)
 
 
 ##
