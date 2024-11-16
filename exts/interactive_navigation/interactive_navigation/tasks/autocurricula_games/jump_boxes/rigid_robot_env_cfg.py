@@ -269,25 +269,27 @@ class RewardsCfg:
 
     # rewards
     box_moving = RewTerm(
-        func=mdp.BoxMovingReward().box_interaction,
+        func=mdp.box_moving_reward,  # type: ignore
         weight=0.1,
     )
 
     close_to_box = RewTerm(
-        func=mdp.CloseToBoxReward().close_to_box_reward,
+        func=mdp.close_to_box_reward,
         weight=0.1,
         params={"threshold": 1.0},
     )
 
+    # Jumping
     successful_jump = RewTerm(
-        func=mdp.JumpReward().successful_jump_reward,
+        func=mdp.successful_jump_reward,
         weight=10,
         params={},
     )
 
+    # Moving up
     new_height = RewTerm(
-        func=mdp.JumpReward().new_height_reached_reward,
-        weight=1000,
+        func=mdp.new_height_reached_reward,
+        weight=200,
         params={},
     )
 

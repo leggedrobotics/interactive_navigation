@@ -185,14 +185,15 @@ def closest_box_close_to_step_reward(
     return reward
 
 
-class BoxMovingReward:
+class box_moving_reward(ManagerTermBase):
+    """Dense reward for moving box.
+    Reward is the max position change of all boxes in one step."""
 
-    def __init__(self):
+    def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
         self.prev_box_pos = None
 
-    def box_interaction(self, env: ManagerBasedRLEnv) -> torch.Tensor:
-        """Dense reward for moving box.
-        Reward is the max position change of all boxes in one step."""
+    def __call__(self, env: ManagerBasedRLEnv) -> torch.Tensor:
 
         asset_ids = [asset for asset in list(env.scene.rigid_objects.keys()) if "box" in asset]
         asset_poses = []
@@ -223,14 +224,14 @@ class stair_building_reward(ManagerTermBase):
         super().__init__(cfg, env)
         self.prev_box_distances = torch.zeros(env.num_envs).to(env.device).unsqueeze(1)
 
-    def __call__(self, env: ManagerBasedRLEnv, boxes_sorted: list[SceneEntityCfg]) -> torch.Tensor:
+    def __call__(self, env: ManagerBasedRLEnv, boxes_sorted: list[str]) -> torch.Tensor:
         # - calculate the distance between consecutive boxes
         consecutive_box_distances = []
         for i in range(len(boxes_sorted) - 1):
             consecutive_box_distances.append(
                 torch.linalg.norm(
-                    env.scene[boxes_sorted[i].name].data.root_pos_w[..., :2]
-                    - env.scene[boxes_sorted[i + 1].name].data.root_pos_w[..., :2],
+                    env.scene[boxes_sorted[i]].data.root_pos_w[..., :2]
+                    - env.scene[boxes_sorted[i + 1]].data.root_pos_w[..., :2],
                     dim=-1,
                 )
             )
@@ -249,11 +250,13 @@ class stair_building_reward(ManagerTermBase):
         return reward
 
 
-class CloseToBoxReward:
-    """Class for rewards related to the boxes."""
+class close_to_box_reward(ManagerTermBase):
+    """Dense reward function that returns a reward when the robot is close to a box.
+    Reward increases as the robot gets closer to the closest box from -1 to 1
+    """
 
-    def __init__(self) -> None:
-        # positions of the boxes in world coordinates
+    def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)  # positions of the boxes in world coordinates
         self.boxes_positions_w: torch.Tensor = None  # type: ignore
 
     def _update_buffers(self, env: ManagerBasedRLEnv) -> None:
@@ -267,7 +270,7 @@ class CloseToBoxReward:
 
         self.boxes_positions_w = torch.stack(asset_poses)
 
-    def close_to_box_reward(self, env: ManagerBasedRLEnv, threshold: float) -> torch.Tensor:
+    def __call__(self, env: ManagerBasedRLEnv, threshold: float) -> torch.Tensor:
         """Dense reward function that returns a reward when the robot is close to a box.
         Reward increases as the robot gets closer to the closest box from -1 to 1
         """
@@ -284,10 +287,68 @@ class CloseToBoxReward:
         return torch.clamp(reward, -1, 1)
 
 
-class JumpReward:
+class successful_jump_reward(ManagerTermBase):
     """Class for rewards related to the boxes."""
 
-    def __init__(self) -> None:
+    def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+
+        # previous z position history of the robot
+        self.num_history_steps: int = 10
+        self.step_delta_s: float = 0.2
+        self.half_robot_heigh: float = 0.3
+        self.step_delta: int = None  # type: ignore
+        self.prev_height_buffer: torch.Tensor = None  # type: ignore
+
+    def _update_buffers(self, env: ManagerBasedRLEnv) -> None:
+        """Update the buffers needed for the reward calculations."""
+
+        # - robot height
+        if self.prev_height_buffer is None:
+            self.step_delta = int(self.step_delta_s / env.step_dt)
+            self.prev_height_buffer = (
+                torch.zeros((self.num_history_steps, env.num_envs)).to(env.device) + self.half_robot_heigh
+            )
+
+        if env.common_step_counter % self.step_delta == 0:
+            robot = env.scene["robot"]
+            robot_height = get_robot_pos(robot)[:, 2]
+            self.prev_height_buffer = torch.roll(self.prev_height_buffer, shifts=1, dims=0)
+            self.prev_height_buffer[0] = robot_height
+
+        if env.termination_manager.dones.any():
+            # prev_heighs = self.prev_height_buffer.clone()
+            # prev_heighs[:, env.termination_manager.dones] = self.half_robot_heigh
+            # self.prev_height_buffer = prev_heighs
+            self.prev_height_buffer[:, env.termination_manager.dones] = self.half_robot_heigh
+
+    def __call__(self, env: ManagerBasedRLEnv) -> torch.Tensor:
+        """Sparse reward function that returns a reward when the robot jumps and lands on a higher level than it was before.
+        A jump is considered successful if the robot is not moving vertically, the height difference between the
+        initial and final height is greater than 0.3
+        """
+        self._update_buffers(env)
+
+        moving_vertically = (
+            torch.sum(torch.abs(self.prev_height_buffer[1:4] - self.prev_height_buffer[:3]), dim=0) > 0.1
+        )
+        changed_height = (
+            torch.mean(self.prev_height_buffer[:4], dim=0) - torch.mean(self.prev_height_buffer[-4:], dim=0) > 0.2
+        )
+        successfully_jumped = ~moving_vertically & changed_height
+
+        # if successfully_jumped, set prev_height_buffer to the current height
+        if successfully_jumped.any():
+            self.prev_height_buffer[:, successfully_jumped] = self.prev_height_buffer[0, successfully_jumped]
+        reward = successfully_jumped.float()
+        return reward
+
+
+class new_height_reached_reward(ManagerTermBase):
+    """Class for rewards related to the boxes."""
+
+    def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
 
         # previous z position history of the robot
         self.num_history_steps: int = 10
@@ -325,7 +386,7 @@ class JumpReward:
             # self.max_height_reached = max_height_reached
             self.max_height_reached[env.termination_manager.dones] = self.half_robot_heigh
 
-    def new_height_reached_reward(self, env: ManagerBasedRLEnv) -> torch.Tensor:
+    def __call__(self, env: ManagerBasedRLEnv) -> torch.Tensor:
         """Sparse reward function, given when the robot jumps and lands on a new max height level.
         A jump is considered successful if the robot is not moving vertically and the robot has reached a new maximum height
         """
@@ -340,27 +401,6 @@ class JumpReward:
 
         self.max_height_reached = torch.where(successfully_jumped, self.prev_height_buffer[0], self.max_height_reached)
 
-        reward = successfully_jumped.float()
-        return reward
-
-    def successful_jump_reward(self, env: ManagerBasedRLEnv) -> torch.Tensor:
-        """Sparse reward function that returns a reward when the robot jumps and lands on a higher level than it was before.
-        A jump is considered successful if the robot is not moving vertically, the height difference between the
-        initial and final height is greater than 0.3
-        """
-        self._update_buffers(env)
-
-        moving_vertically = (
-            torch.sum(torch.abs(self.prev_height_buffer[1:4] - self.prev_height_buffer[:3]), dim=0) > 0.1
-        )
-        changed_height = (
-            torch.mean(self.prev_height_buffer[:4], dim=0) - torch.mean(self.prev_height_buffer[-4:], dim=0) > 0.2
-        )
-        successfully_jumped = ~moving_vertically & changed_height
-
-        # if successfully_jumped, set prev_height_buffer to the current height
-        if successfully_jumped.any():
-            self.prev_height_buffer[:, successfully_jumped] = self.prev_height_buffer[0, successfully_jumped]
         reward = successfully_jumped.float()
         return reward
 

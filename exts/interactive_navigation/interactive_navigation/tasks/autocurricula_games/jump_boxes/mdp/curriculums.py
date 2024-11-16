@@ -13,6 +13,9 @@ from typing import TYPE_CHECKING
 from omni.isaac.lab.assets import Articulation
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.terrains import TerrainImporter
+from omni.isaac.lab.managers.manager_base import ManagerTermBase
+from omni.isaac.lab.managers import CurriculumTermCfg
+
 
 import interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.actions as nav_actions
 
@@ -20,23 +23,26 @@ if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
 
 
-class TerrainCurriculum:
+class terrain_levels(ManagerTermBase):
 
     def __init__(
         self,
+        cfg: CurriculumTermCfg,
+        env: ManagerBasedRLEnv,
         num_successes: int = 5,
         num_failures: int = 5,
         goal_termination_name: str = "goal_reached",
         random_move_prob: float = 0.2,
     ):
         """Move up or down the terrain based on the number of successes and failures."""
+        super().__init__(cfg, env)
         self.num_successes = num_successes
         self.num_failures = num_failures
         self.successes: torch.Tensor = None
         self.goal_termination_name = goal_termination_name
         self.random_move_prob = random_move_prob
 
-    def terrain_levels(
+    def __call__(
         self, env: ManagerBasedRLEnv, env_ids: Sequence[int], asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
     ) -> float:
         """Curriculum based on goal reached"""
@@ -112,18 +118,21 @@ def num_boxes_curriculum(
     return (num_range[0] + num_range[1]) / 2
 
 
-class DistanceCurriculum:
+class entity_entity_dist_curriculum(ManagerTermBase):
     # TODO implement the curriculum for the distance between the robot and the box
     # increase distance on termination, when the reward new height is reached
 
     def __init__(
         self,
+        cfg: CurriculumTermCfg,
+        env: ManagerBasedRLEnv,
         start_dist: float = 2.0,
         max_dist: float = 4.0,
         dist_increment: float = 0.1,
         goal_termination_name: str = "goal_reached",
         move_down_factor: float = 2.0,
     ):
+        super().__init__(cfg, env)
 
         self.goal_termination_name = goal_termination_name
         self.start_dist = start_dist
@@ -153,7 +162,7 @@ class DistanceCurriculum:
         # clamp the values
         self.dist[env_ids] = torch.clamp(self.dist[env_ids], self.start_dist, self.max_dist)
 
-    def entity_entity_dist_curriculum(self, env: ManagerBasedRLEnv, env_ids: Sequence[int]):
+    def __call__(self, env: ManagerBasedRLEnv, env_ids: Sequence[int]):
         if self.dist is None:
             env.dist = torch.ones(env.num_envs, device=env.device) * self.start_dist
         self._update(env, env_ids)

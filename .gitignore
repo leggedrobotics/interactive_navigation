@@ -2,6 +2,7 @@
 *.egg-info
 logs/
 wandb/
+outputs/
 
 # usd assets:
 **/*.usd

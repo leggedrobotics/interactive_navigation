@@ -82,7 +82,7 @@ for i in range(N_STEP_BOXES):
                 static_friction=0.3, dynamic_friction=0.3, friction_combine_mode="multiply"
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=color),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.2, 0.3)),
             activate_contact_sensors=True,
         ),
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
@@ -273,10 +273,8 @@ Z_ROBOT = 0.3 + 0.05
 Z_BOX = 0.25 + 0.05
 Z_WALL = 0.5 + 0.05
 
-first_box_entities = [SceneEntityCfg(box_name + "_1") for box_name in BOXES_DICT.keys()]
-other_box_entities = [
-    SceneEntityCfg(box_name + f"_{i}") for box_name in BOXES_DICT.keys() for i in range(2, N_BOXES + 1)
-]
+first_box_entities = [box_name + "_1" for box_name in BOXES_DICT.keys()]
+other_box_entities = [box_name + f"_{i}" for box_name in BOXES_DICT.keys() for i in range(2, N_BOXES + 1)]
 first_box_entities.reverse()
 
 
@@ -338,7 +336,7 @@ class RewardsCfg:
 
     # Box interaction
     box_moving = RewTerm(
-        func=mdp.BoxMovingReward().box_interaction,
+        func=mdp.box_moving_reward,  # type: ignore
         weight=0.01,
     )
 
@@ -376,21 +374,21 @@ class RewardsCfg:
     )
 
     close_to_box = RewTerm(
-        func=mdp.CloseToBoxReward().close_to_box_reward,
+        func=mdp.close_to_box_reward,
         weight=0.1,
         params={"threshold": 1.0},
     )
 
     # Jumping
     successful_jump = RewTerm(
-        func=mdp.JumpReward().successful_jump_reward,
+        func=mdp.successful_jump_reward,
         weight=10,
         params={},
     )
 
     # Moving up
     new_height = RewTerm(
-        func=mdp.JumpReward().new_height_reached_reward,
+        func=mdp.new_height_reached_reward,
         weight=200,
         params={},
     )
@@ -463,16 +461,16 @@ class TerminationsCfg:
     )
 
 
-DIST_CURR = mdp.DistanceCurriculum(
-    start_dist=0.0,
-    max_dist=12.0,
-    dist_increment=0.1,
-    goal_termination_name="goal_reached",
-)  # TODO: curriculum where only one random box is moved away from the stair
+# DIST_CURR = mdp.DistanceCurriculum(
+#     start_dist=0.0,
+#     max_dist=12.0,
+#     dist_increment=0.1,
+#     goal_termination_name="goal_reached",
+# )  # TODO: curriculum where only one random box is moved away from the stair
 
-TERRAIN_CURR = mdp.TerrainCurriculum(
-    num_successes=2, num_failures=1, goal_termination_name="goal_reached", random_move_prob=0.05
-)
+# TERRAIN_CURR = mdp.TerrainCurriculum(
+#     num_successes=2, num_failures=1, goal_termination_name="goal_reached", random_move_prob=0.05
+# )
 
 
 @configclass
@@ -481,14 +479,14 @@ class CurriculumCfg:
 
     # num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
-    distance_curriculum = CurrTerm(func=DIST_CURR.entity_entity_dist_curriculum)
+    distance_curriculum = CurrTerm(func=mdp.entity_entity_dist_curriculum)
 
     # robot_speed = CurrTerm(
     #     func=mdp.robot_speed_curriculum,
     #     params={"action_term_name": "wrench", "num_steps": 25_000, "start_multiplier": 2.0},
     # )
 
-    # terrain_levels = CurrTerm(func=TERRAIN_CURR.terrain_levels)
+    # terrain_levels = CurrTerm(func=mdp.terrain_levels)
 
     jump_reward_decay = CurrTerm(
         func=mdp.modify_reward_weight, params={"term_name": "successful_jump", "weight": 0.0, "num_steps": 2_000}
@@ -544,9 +542,9 @@ class BoxStairEnvCfg(ManagerBasedRLEnvCfg):
     actions: ActionsCfg = ActionsCfg()
     commands: CommandsCfg = CommandsCfg()
     # MDP settings
-    rewards: RewardsCfg = RewardsCfg()
+    rewards: RewardsCfg = RewardsCfg()  # TODO make this work
     terminations: TerminationsCfg = TerminationsCfg()
-    events: EventCfg = EventCfg()
+    events: EventCfg = EventCfg()  # TODO make this work !!
     curriculum: CurriculumCfg = CurriculumCfg()
 
     def __post_init__(self):
