@@ -17,3 +17,13 @@ python interactive_navigation/scripts/rsl_rl/sweep/sweep.py --project_name your_
 
 This command can be run on multiple machines to parallelize the sweep. Note, this only works if the sweep id is the same.
 If you have a big GPU, you can set `--project_name` to run multiple agents in parallel on one machine. Note, multiple GPUs are not supported
+
+Note: to run the sweep on the cluster, you need to initialize the run with a sweep configuration yaml file `/isaac-sim/python.sh` instead of `python` in the command:
+
+```yaml
+command:
+  - /isaac-sim/python.sh
+  - ${program}
+  # reset
+  ```
+  And this has to be done **before** initializing the run. This means you cannot run the same sweep on the cluster and on your local machine.

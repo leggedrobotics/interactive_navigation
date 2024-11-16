@@ -33,7 +33,7 @@ def main():
         required=True,
         help="Name of the WandB entity/team. (e.g. https://wandb.ai/<entity_name>)",
     )
-    parser.add_argument("--agent_count", type=int, default=1, help="Number of sweep agents to start.")
+    parser.add_argument("--agent_count", type=int, default=1, help="Max number of sweep attempts attempts.")
     args = parser.parse_args()
 
     # Get the path of this script
