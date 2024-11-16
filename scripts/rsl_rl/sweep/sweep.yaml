@@ -4,7 +4,7 @@ program: interactive_navigation/scripts/rsl_rl/train.py
 description: "Sweep over hyperparameters for anymal crl"
 method: bayes  # or 'grid', 'random'
 metric:
-  name: Metrics/robot_goal/goal_distance  # wandb metric to optimize
+  name: Metrics/robot_goal/dist_to_goal  # wandb metric to optimize
   goal: minimize  # 'minimize' or 'maximize' if optimizing a loss
 parameters:
   env.episode_length_s:
