@@ -310,10 +310,10 @@ class ViewerCfg:
     """Configuration of the scene viewport camera."""
 
     # eye: tuple[float, float, float] = (-60.0, 0.5, 70.0)
-    eye: tuple[float, float, float] = (20.0, 50.0, 25.0)
+    eye: tuple[float, float, float] = (20.0, 55.0, 6.0)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
-    lookat: tuple[float, float, float] = (-25.0, 50.0, 0.0)
+    lookat: tuple[float, float, float] = (-25.0, 55.0, -8.0)
     cam_prim_path: str = "/OmniverseKit_Persp"
     resolution: tuple[int, int] = (1280, 720)
     origin_type: Literal["world", "env", "asset_root"] = "world"
