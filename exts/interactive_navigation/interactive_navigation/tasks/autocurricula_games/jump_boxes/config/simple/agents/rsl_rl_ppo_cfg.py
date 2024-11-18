@@ -78,8 +78,8 @@ class HideSeekRelationalPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 class BoxStairPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     seed = 123
     num_steps_per_env = 24
-    max_iterations = 100_000
-    save_interval = 250
+    max_iterations = 5000
+    save_interval = 500
     experiment_name = "make_stair_ppo"
     run_name = f"BoxStair_{N_STEP_BOXES}_x_{N_BOXES}"
     wandb_project = "make_stair_ppo"
@@ -87,6 +87,13 @@ class BoxStairPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     policy = RslRlPpoRelationalActorCriticCfg(
         init_noise_std=1.0,
         activation="elu",
+        embedding_dim=128,
+        tf_embedding_dim=64,
+        key_dim=64,
+        value_dim=128,
+        num_seeds=2,
+        output_layer_dim=128,
+        num_output_layers=1,
     )
     algorithm = RslRlPpoAlgorithmCfg(
         value_loss_coef=1.0,

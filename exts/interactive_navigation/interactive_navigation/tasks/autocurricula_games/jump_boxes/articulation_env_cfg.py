@@ -58,7 +58,9 @@ STEP_HEIGHT = 0.5
 
 # create boxes:
 BOXES_DICT = {}
+import numpy as np
 
+the_color = (0.5, 0.5, 0.5)
 cmap = plt.get_cmap("hsv")
 colors = [cmap(i / N_STEP_BOXES) for i in range(N_STEP_BOXES)]
 for i in range(N_STEP_BOXES):
@@ -82,7 +84,7 @@ for i in range(N_STEP_BOXES):
                 static_friction=0.3, dynamic_friction=0.3, friction_combine_mode="multiply"
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.2, 0.3)),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=the_color),
             activate_contact_sensors=True,
         ),
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
@@ -369,7 +371,7 @@ class RewardsCfg:
     # TODO: reward for valid stair ie, if first is close to step, second closes to first, etc
     stair_building = RewTerm(
         func=mdp.stair_building_reward,  # type: ignore
-        weight=100,
+        weight=100.0,
         params={"boxes_sorted": first_box_entities},
     )
 
@@ -382,14 +384,14 @@ class RewardsCfg:
     # Jumping
     successful_jump = RewTerm(
         func=mdp.successful_jump_reward,
-        weight=10,
+        weight=10.0,
         params={},
     )
 
     # Moving up
     new_height = RewTerm(
         func=mdp.new_height_reached_reward,
-        weight=200,
+        weight=200.0,
         params={},
     )
 
@@ -489,14 +491,14 @@ class CurriculumCfg:
     # terrain_levels = CurrTerm(func=mdp.terrain_levels)
 
     jump_reward_decay = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "successful_jump", "weight": 0.0, "num_steps": 2_000}
+        func=mdp.modify_reward_weight, params={"term_name": "successful_jump", "weight": 0.0, "num_steps": 5_000}
     )
     box_moving_reward_decay = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "box_moving", "weight": 0.0, "num_steps": 4_000}
+        func=mdp.modify_reward_weight, params={"term_name": "box_moving", "weight": 0.0, "num_steps": 10_000}
     )
 
     moving_towards_goal_reward_decay = CurrTerm(
-        func=mdp.modify_reward_weight, params={"term_name": "moving_towards_goal", "weight": 0.0, "num_steps": 6_000}
+        func=mdp.modify_reward_weight, params={"term_name": "moving_towards_goal", "weight": 0.0, "num_steps": 15_000}
     )
 
 
@@ -505,7 +507,7 @@ class ViewerCfg:
     """Configuration of the scene viewport camera."""
 
     # eye: tuple[float, float, float] = (-60.0, 0.5, 70.0)
-    eye: tuple[float, float, float] = (100.0, 100.0, 30.0)
+    eye: tuple[float, float, float] = (100.0, 100.0, 10.0)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
     lookat: tuple[float, float, float] = (0.0, 0.0, -35.0)
