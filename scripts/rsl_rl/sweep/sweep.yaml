@@ -8,10 +8,6 @@ metric:
   goal: maximize  # 'minimize' or 'maximize' if optimizing a loss
 parameters:
 # network parameters
-  agent.algorithm.embedding_dim:
-    min: 1000
-    max: 5000
-    distribution: int_uniform
   agent.policy.embedding_dim:
     values: [32, 64, 128, 256]
   agent.policy.tf_embedding_dim:
@@ -56,5 +52,4 @@ command:
   - --video
   - --video_length=250
   - --video_interval=10000
-  - agent.max_iterations=250
   - ${args_no_hyphens}
