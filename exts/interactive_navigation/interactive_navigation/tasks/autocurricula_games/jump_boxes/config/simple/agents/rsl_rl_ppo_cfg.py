@@ -78,7 +78,7 @@ class HideSeekRelationalPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 class BoxStairPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     seed = 123
     num_steps_per_env = 24
-    max_iterations = 5000
+    max_iterations = 3000
     save_interval = 500
     experiment_name = "make_stair_ppo"
     run_name = f"BoxStair_{N_STEP_BOXES}_x_{N_BOXES}"
