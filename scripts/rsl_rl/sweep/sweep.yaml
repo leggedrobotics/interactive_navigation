@@ -45,7 +45,7 @@ parameters:
 command:
   - /isaac-sim/python.sh
   - ${program}
-  - --Isaac-BoxStair-v0
+  - --task=Isaac-BoxStair-v0
   - --num_envs=4096
   - --logger=wandb
   - --headless

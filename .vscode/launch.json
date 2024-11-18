@@ -73,6 +73,20 @@
             "envFile": "${workspaceFolder}/.vscode/.python.env",
         },
         {
+            "name": "Python: SWEEP",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--project_name",
+                "simple_box_stair",
+                "--entity_name",
+                "rafaelc",
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/sweep/sweep.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        {
             "name": "Python: TRAIN RigidRobot",
             "type": "debugpy",
             "request": "launch",
