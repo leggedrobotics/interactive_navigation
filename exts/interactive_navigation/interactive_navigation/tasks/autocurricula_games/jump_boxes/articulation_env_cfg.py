@@ -65,6 +65,7 @@ cmap = plt.get_cmap("hsv")
 colors = [cmap(i / N_STEP_BOXES) for i in range(N_STEP_BOXES)]
 for i in range(N_STEP_BOXES):
     color = colors[i][:3]
+    color = tuple(float(i) for i in color)
     height = STEP_HEIGHT * (i + 1)
 
     box_prefix = f"box_step_{i + 1}"
@@ -84,7 +85,7 @@ for i in range(N_STEP_BOXES):
                 static_friction=0.3, dynamic_friction=0.3, friction_combine_mode="multiply"
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=the_color),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=color),
             activate_contact_sensors=True,
         ),
         init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
