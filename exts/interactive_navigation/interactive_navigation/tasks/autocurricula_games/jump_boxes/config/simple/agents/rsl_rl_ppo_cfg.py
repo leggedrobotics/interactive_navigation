@@ -87,13 +87,13 @@ class BoxStairPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     policy = RslRlPpoRelationalActorCriticCfg(
         init_noise_std=1.0,
         activation="elu",
-        embedding_dim=128,
-        tf_embedding_dim=64,
-        key_dim=64,
-        value_dim=128,
-        num_seeds=2,
-        output_layer_dim=128,
-        num_output_layers=1,
+        embedding_dim=64,
+        tf_embedding_dim=128,
+        key_dim=256,
+        value_dim=32,
+        num_seeds=8,
+        output_layer_dim=256,
+        num_output_layers=4,
     )
     algorithm = RslRlPpoAlgorithmCfg(
         value_loss_coef=1.0,
