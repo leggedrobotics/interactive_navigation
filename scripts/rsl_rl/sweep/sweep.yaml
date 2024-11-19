@@ -1,0 +1,55 @@
+# https://docs.wandb.ai/guides/sweeps/sweep-config-keys/#distribution-options-for-random-and-bayesian-search
+program: interactive_navigation/scripts/rsl_rl/train.py
+# program: scripts/rsl_rl/train.py
+description: "Sweep over hyperparameters for simple stair buidling"
+method: bayes  # or 'grid', 'random'
+metric:
+  name: Curriculum/distance_curriculum  # wandb metric to optimize
+  goal: maximize  # 'minimize' or 'maximize' if optimizing a loss
+parameters:
+# network parameters
+  agent.policy.embedding_dim:
+    values: [32, 64, 128, 256]
+  agent.policy.tf_embedding_dim:
+    values: [32, 64, 128, 256]
+  agent.policy.key_dim:
+    values: [32, 64, 128, 256]
+  agent.policy.value_dim:
+    values: [32, 64, 128, 256]
+  agent.policy.num_seeds:
+    values: [2,4, 6, 8]
+  agent.policy.output_layer_dim:
+    values: [128, 256]
+  agent.policy.num_output_layers:
+    values: [1,2,3,4]
+
+
+# reward weights
+  env.rewards.stair_building.weight:
+    min: 50.0
+    max: 500.0
+    distribution: uniform
+  env.rewards.new_height.weight:
+    min: 100.0
+    max: 2000.0
+    distribution: uniform
+  env.rewards.successful_jump.weight:
+    min: 5.0
+    max: 100.0
+    distribution: uniform
+  env.rewards.goal_reached.weight:
+    min: 1000.0
+    max: 10000.0
+    distribution: uniform
+
+command:
+  - /isaac-sim/python.sh
+  - ${program}
+  - --task=Isaac-BoxStair-v0
+  - --num_envs=4096
+  - --logger=wandb
+  - --headless
+  - --video
+  - --video_length=250
+  - --video_interval=10000
+  - ${args_no_hyphens}
