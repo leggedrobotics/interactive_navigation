@@ -78,7 +78,7 @@ class HideSeekRelationalPPORunnerCfg(RslRlOnPolicyRunnerCfg):
 class BoxStairPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     seed = 123
     num_steps_per_env = 24
-    max_iterations = 3000
+    max_iterations = 6000
     save_interval = 500
     experiment_name = "make_stair_ppo"
     run_name = f"BoxStair_{N_STEP_BOXES}_x_{N_BOXES}"
@@ -89,8 +89,8 @@ class BoxStairPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         activation="elu",
         embedding_dim=64,
         tf_embedding_dim=128,
-        key_dim=256,
-        value_dim=32,
+        key_dim=128,
+        value_dim=64,
         num_seeds=8,
         output_layer_dim=256,
         num_output_layers=4,

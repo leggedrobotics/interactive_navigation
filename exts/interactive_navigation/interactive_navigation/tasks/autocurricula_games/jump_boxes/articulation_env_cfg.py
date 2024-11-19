@@ -50,7 +50,7 @@ from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.assets impo
 ##
 N_BOXES = 1  # number of same boxes
 
-N_STEP_BOXES = 3  # number of different boxes
+N_STEP_BOXES = 4  # number of different boxes
 STEP_HEIGHT = 0.5
 
 
