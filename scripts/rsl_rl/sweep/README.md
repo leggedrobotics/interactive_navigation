@@ -36,6 +36,10 @@ parameters:
 # network parameters
   agent.policy.layer_dim:
     values: [32, 64, 128, 256]
+  agent.algorithm.gamma:
+    min: 0.99
+    max: 0.999
+    distribution: log_uniform_values
 # reward weights
   env.rewards.goal_reached.weight:
     min: 50.0
