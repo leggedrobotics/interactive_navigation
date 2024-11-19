@@ -53,7 +53,7 @@ import os
 import torch
 from datetime import datetime
 
-from rsl_rl.runners import OnPolicyRunner, ContrastiveOnPolicyRunner
+from rsl_rl.runners import OnPolicyRunner, ContrastiveOnPolicyRunner, MetraOnPolicyRunner
 
 from omni.isaac.lab.envs import (
     DirectMARLEnv,
@@ -82,7 +82,10 @@ torch.backends.cudnn.benchmark = False
 
 
 @hydra_task_config(args_cli.task, "rsl_rl_cfg_entry_point")
-def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlOnPolicyRunnerCfg):
+def main(
+    env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg,
+    agent_cfg: RslRlOnPolicyRunnerCfg | RslCRlOnPolicyRunnerCfg,
+):
     """Train with RSL-RL agent."""
     # ugly hack to check if the environment is CRL or not
     try:
@@ -90,6 +93,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         is_crl = True
     except AttributeError:
         is_crl = False
+
+    # check if metra
+    is_metra = agent_cfg.metra is not None
 
     # update max iterations based on num_steps_per_env such that the total number of transitions is the same
     agent_cfg.max_iterations = int(agent_cfg.max_iterations * 1000 / agent_cfg.num_steps_per_env)
@@ -141,6 +147,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     if is_crl:
         runner = ContrastiveOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+    elif is_metra:
+        runner = MetraOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     else:
         runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     # write git state to logs

@@ -55,5 +55,5 @@ command:
   - --video
   - --video_length=100
   - --video_interval=50000
-  - agent.max_iterations=250
+  - agent.max_iterations=100
   - ${args_no_hyphens}

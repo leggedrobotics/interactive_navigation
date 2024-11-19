@@ -4,6 +4,7 @@ from . import agents, ppo_ant
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.articulation_env_cfg import MoveUpBoxesEnvCfg
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.simple_crl_env_cfg import CrlTestEnvCfg
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.ant_env_cfg import CrlAntEnvCfg
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.ant_metra_env_cfg import MetraAntEnvCfg
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.rigid_robot_env_cfg import RigidRobotEnvCfg
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.config.simple.ppo_ant import PPOAntEnvCfg
 
@@ -73,6 +74,21 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": CrlAntEnvCfg,
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_crl_cfg:TestCrlRunnerCfg",
+    },
+)
+
+
+##
+# Metra
+##
+
+gym.register(
+    id="Isaac-METRA-ANT-v0",
+    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": MetraAntEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:AntMetraPPORunnerCfg",
     },
 )
 

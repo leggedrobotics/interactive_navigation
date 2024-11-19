@@ -26,7 +26,7 @@ beta_actor_value = 1 / 8
 
 """
 one epoch = one iteration of the main loop
-    replaybuffer_size_per_env = 1000
+    ReplayBufferCrl_size_per_env = 1000
 
     num_learning_samples_critic = num_learning_steps * num_critic_steps_per_update * mini_batch_size_and_num_inserts_per_sample * stack_N_critic_batches
     = 10 * 2 * 256 * 1 = 5120
@@ -38,9 +38,9 @@ one epoch = one iteration of the main loop
 
     ratio = num_new_samples_per_epoch / num_learning_samples_critic = 81_920 / 5120 = 16
     
-    same_sample_in_buffer_for_n_steps = replaybuffer_size_per_env / num_steps_per_env = 1000 / 20 = 50
+    same_sample_in_buffer_for_n_steps = ReplayBufferCrl_size_per_env / num_steps_per_env = 1000 / 20 = 50
     
-    expected_same_sample_reused_n_times = num_learning_samples_critic / (num_envs * replaybuffer_size_per_env) * same_sample_in_buffer_for_n_steps
+    expected_same_sample_reused_n_times = num_learning_samples_critic / (num_envs * ReplayBufferCrl_size_per_env) * same_sample_in_buffer_for_n_steps
     = 5120 / (4096 * 1000) * 50 = 0.0625 = 1/16
 """
 

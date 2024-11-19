@@ -6,6 +6,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 )
 
 
+## Old code
 @configclass
 class AnymalDRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24

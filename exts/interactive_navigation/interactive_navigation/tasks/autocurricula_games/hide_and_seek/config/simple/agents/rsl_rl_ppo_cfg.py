@@ -8,7 +8,56 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
     RslRlPpoAlgorithmCfg,
     RslRlPpoRelationalActorCriticCfg,
     RslRlPpoRecurrentActorCriticCfg,
+    RslRlMetraAlgorithmCfg,
 )
+
+
+##
+# METRA
+##
+@configclass
+class AntMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
+    num_steps_per_env = 24
+    max_iterations = 1500
+    save_interval = 50
+    experiment_name = "metra_ant_test"
+    empirical_normalization = False
+    policy = RslRlPpoRelationalActorCriticCfg(
+        init_noise_std=1.0,
+        activation="elu",
+    )
+    algorithm = RslRlPpoAlgorithmCfg(
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.005,
+        num_learning_epochs=5,
+        num_mini_batches=4,
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.99,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+    )
+    metra = RslRlMetraAlgorithmCfg(
+        state_representation_args={
+            "hidden_layers": [256, 256],
+            "latent_dim": 4,
+            "activation": "elu",
+        },
+        batch_size=256,
+        replay_buffer_size_per_env=2000,
+        num_learning_steps_per_env=1,
+        skill_dim=4,
+        lr=1e-3,
+        lr_tau=1e-3,
+    )
+
+
+##
+# PPO
+##
 
 
 @configclass
