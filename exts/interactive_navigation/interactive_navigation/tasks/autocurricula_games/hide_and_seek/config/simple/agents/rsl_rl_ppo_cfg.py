@@ -21,6 +21,8 @@ class AntMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     max_iterations = 1500
     save_interval = 50
     experiment_name = "metra_ant_test"
+    run_name = "metra_ant_test"
+    wandb_project = "metra_test"
     empirical_normalization = False
     policy = RslRlPpoRelationalActorCriticCfg(
         init_noise_std=1.0,
@@ -42,7 +44,7 @@ class AntMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
     metra = RslRlMetraAlgorithmCfg(
         state_representation_args={
-            "hidden_layers": [256, 256],
+            "hidden_layers": [256, 256, 256, 256],
             "latent_dim": 4,
             "activation": "elu",
         },
