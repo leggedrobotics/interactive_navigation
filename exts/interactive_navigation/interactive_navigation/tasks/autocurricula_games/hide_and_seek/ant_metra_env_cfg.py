@@ -81,17 +81,6 @@ class MySceneCfg(InteractiveSceneCfg):
 class CommandsCfg:
     """Command specifications for the MDP."""
 
-    robot_goal = mdp.GoalCommandCfg(
-        asset_name="robot",
-        goal_radius_range=(2.5, 15.0),
-        resampling_time_range=(1e9, 1e9),
-        only_heading=False,
-        only_position=True,
-        attitude=True,
-        debug_vis=True,
-        env_frame=True,
-    )
-
 
 @configclass
 class ActionsCfg:
@@ -129,12 +118,6 @@ class ObservationsCfg:
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 
-        # dist_to_goal = ObsTerm(
-        #     func=mdp.dist_to_goal, params={"entity_cfg": SceneEntityCfg("robot"), "command_name": "robot_goal"}
-        # )
-
-        # goal_pos = ObsTerm(func=mdp.actor_goal.generated_goal, params={"command_name": "robot_goal"})
-
         def __post_init__(self):
             self.enable_corruption = False
             self.concatenate_terms = False
@@ -157,11 +140,6 @@ class ObservationsCfg:
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 
         # actions = ObsTerm(func=mdp.last_action)
-        # the critic gets the action anyway... TODO: check if this really is not needed
-        # dist_to_goal = ObsTerm(
-        #     func=mdp.dist_to_goal, params={"entity_cfg": SceneEntityCfg("robot"), "command_name": "robot_goal"}
-        # )
-        # goal_pos = ObsTerm(func=mdp.generated_commands, params={"command_name": "robot_goal"})
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -173,7 +151,7 @@ class ObservationsCfg:
 
 
 reset_value = 0.0
-reset_value_pos = 10.01
+reset_value_pos = 0.01
 
 
 @configclass
@@ -181,17 +159,6 @@ class EventCfg:
     """Configuration for events."""
 
     # reset_all = EventTerm(func=mdp.reset_scene_to_default)
-
-    # reset_robot = EventTerm(
-    #     func=mdp.reset_random_dist_from_goal,
-    #     mode="reset",
-    #     params={
-    #         "radius_range": (0.0, 0.01),
-    #         "asset_cfg": SceneEntityCfg("robot"),
-    #         "command_name": "robot_goal",
-    #         "z_offset": 1.0,
-    #     },
-    # )
 
     reset_base = EventTerm(
         func=mdp.reset_root_state_uniform,
@@ -242,12 +209,6 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """No rewards for METRA."""
-
-    # close_to_goal = RewTerm(func=mdp.close_to_goal, params={"command_name": "robot_goal"}, weight=1.0)
-
-    # at_goal = RewTerm(func=mdp.at_goal, params={"command_name": "robot_goal"}, weight=100.0)
-
-    # move_to_goal = RewTerm(func=mdp.moving_towards_goal, params={"command_name": "robot_goal"}, weight=0.1)
 
 
 @configclass
@@ -323,7 +284,7 @@ class MetraAntEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 1  # 20 Hz
-        self.episode_length_s = 50.0
+        self.episode_length_s = 10.0
         # simulation settings
         self.sim.dt = 0.05  # 20 Hz
         self.sim.render_interval = self.decimation

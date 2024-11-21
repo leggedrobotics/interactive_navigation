@@ -98,7 +98,7 @@ def main(
     is_metra = agent_cfg.metra is not None
 
     # update max iterations based on num_steps_per_env such that the total number of transitions is the same
-    agent_cfg.max_iterations = int(agent_cfg.max_iterations * 1000 / agent_cfg.num_steps_per_env)
+    # agent_cfg.max_iterations = int(agent_cfg.max_iterations * 1000 / agent_cfg.num_steps_per_env)
 
     # override configurations with non-hydra CLI arguments
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
