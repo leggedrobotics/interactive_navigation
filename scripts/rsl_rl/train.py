@@ -97,12 +97,17 @@ def main(
     # check if metra
     is_metra = agent_cfg.metra is not None
 
+    # set num steps per env
+    num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
+    if agent_cfg.num_transitions_per_episode is not None:
+        agent_cfg.num_steps_per_env = min(max(agent_cfg.num_transitions_per_episode // num_envs, 1), 1000)
+
     # update max iterations based on num_steps_per_env such that the total number of transitions is the same
     # agent_cfg.max_iterations = int(agent_cfg.max_iterations * 1000 / agent_cfg.num_steps_per_env)
 
     # override configurations with non-hydra CLI arguments
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
-    env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
+    env_cfg.scene.num_envs = num_envs
     agent_cfg.max_iterations = (
         args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
     )

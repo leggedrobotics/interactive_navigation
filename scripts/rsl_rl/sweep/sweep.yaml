@@ -1,47 +1,48 @@
 # https://docs.wandb.ai/guides/sweeps/sweep-config-keys/#distribution-options-for-random-and-bayesian-search
 program: interactive_navigation/scripts/rsl_rl/train.py
 # program: scripts/rsl_rl/train.py
-description: "Sweep over hyperparameters for metra ant"
+description: "Sweep over hyperparameters for metra sac ant"
 method: bayes  # or 'grid', 'random'
 metric:
-  name: Metra/mean_phi_norm  # wandb metric to optimize
+  name: Metra/reward_mean  # wandb metric to optimize
   goal: maximize  # 'minimize' or 'maximize' if optimizing a loss
 parameters:
-  agent.num_steps_per_env:
-    min: 24
-    max: 100
+  env.scene.num_envs:
+    values: [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+  agent.num_transitions_per_episode:
+    min: 1000
+    max: 100000
     distribution: int_uniform
-  agent.algorithm.gamma:
-    min: 0.9
-    max: 0.995
-    distribution: log_uniform_values
-  agent.algorithm.entropy_coef:
-    min: 0.001
-    max: 0.01
-    distribution: log_uniform_values
   agent.seed:
     min: 0
     max: 1000
   agent.metra.batch_size:
-    values: [64, 128, 256, 512, 1024]
-  agent.metra.replay_buffer_size_per_env:
-    min: 250
-    max: 2000
-    distribution: int_uniform
-  agent.metra.num_metra_learning_epochs:
-    min: 1
-    max: 10
+    values: [128, 256, 512, 1024]
+  agent.metra.replay_buffer_size_total:
+    min: 100000
+    max: 1000000
     distribution: int_uniform
   agent.metra.num_sgd_steps_metra:
     min: 10
     max: 250
     distribution: int_uniform
+  agent.metra.sac_hyperparameters.gamma:
+    min: 0.95
+    max: 0.995
+    distribution: log_uniform_values
+  agent.metra.sac_hyperparameters.polyak:
+    min: 0.001
+    max: 0.01
+    distribution: log_uniform_values
+  agent.metra.sac_hyperparameters.lr:
+    min: 0.00005
+    max: 0.001
+    distribution: log_uniform_values
 
 command:
   - /isaac-sim/python.sh
   - ${program}
   - --task=Isaac-METRA-ANT-v0
-  - --num_envs=4096
   - --logger=wandb
   - --headless
   - ${args_no_hyphens}
