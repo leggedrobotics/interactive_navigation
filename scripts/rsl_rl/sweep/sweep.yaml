@@ -11,7 +11,7 @@ parameters:
     values: [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
   agent.num_transitions_per_episode:
     min: 1000
-    max: 100000
+    max: 150000
     distribution: int_uniform
   agent.seed:
     min: 0
@@ -20,7 +20,7 @@ parameters:
     values: [128, 256, 512, 1024]
   agent.metra.replay_buffer_size_total:
     min: 100000
-    max: 1000000
+    max: 2500000
     distribution: int_uniform
   agent.metra.num_sgd_steps_metra:
     min: 10
@@ -45,4 +45,7 @@ command:
   - --task=Isaac-METRA-ANT-v0
   - --logger=wandb
   - --headless
+  - --video
+  - --video_length=100
+  - --video_interval=50000
   - ${args_no_hyphens}

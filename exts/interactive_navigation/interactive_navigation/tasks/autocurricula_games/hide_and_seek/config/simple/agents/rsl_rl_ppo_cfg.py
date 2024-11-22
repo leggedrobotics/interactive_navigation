@@ -21,8 +21,8 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 @configclass
 class AntMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 200
-    num_transitions_per_episode = 1000
-    max_iterations = 10_000
+    num_transitions_per_episode = 100000
+    max_iterations = 5_000
     save_interval = 2000
     experiment_name = "metra_ant_test"
     run_name = "metra_ant_test"
@@ -52,11 +52,11 @@ class AntMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
             "hidden_layers": [1024, 1024, 512],
             "activation": "elu",
         },
-        batch_size=256,
+        batch_size=512,
         replay_buffer_size_per_env=100,
-        replay_buffer_size_total=1_000_000,
+        replay_buffer_size_total=1_000_00,
         num_metra_learning_epochs=1,
-        num_sgd_steps_metra=50,
+        num_sgd_steps_metra=150,
         skill_dim=2,
         lr=1e-4,
         lr_tau=1e-4,

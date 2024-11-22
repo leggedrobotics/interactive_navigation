@@ -110,11 +110,10 @@
             "args": [
                 "--task",
                 "Isaac-METRA-ANT-v0",
-                // "--num_envs",
-                // "8",
+                "--num_envs",
+                "32",
                 "--run_name",
                 "metra_ant_debug",
-                "env.scene.num_envs= 256"
             ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
             "console": "integratedTerminal",
