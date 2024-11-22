@@ -46,6 +46,6 @@ command:
   - --logger=wandb
   - --headless
   - --video
-  - --video_length=100
-  - --video_interval=50000
+  - --video_length=150
+  - --video_interval=200000
   - ${args_no_hyphens}
