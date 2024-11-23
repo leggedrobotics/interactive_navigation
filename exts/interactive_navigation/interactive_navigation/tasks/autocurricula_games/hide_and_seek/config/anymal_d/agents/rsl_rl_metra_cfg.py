@@ -18,7 +18,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 200
     num_transitions_per_episode = 100000
-    max_iterations = 5_000
+    max_iterations = 10_000
     save_interval = 2000
     experiment_name = "metra_anymal_test"
     run_name = "metra_anymal_test"
