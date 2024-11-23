@@ -120,6 +120,22 @@
             "envFile": "${workspaceFolder}/.vscode/.python.env",
         },
         {
+            "name": "Python: METRA Anymal",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--task",
+                "Isaac-METRA-Anymal-D-v0",
+                "--num_envs",
+                "32",
+                "--run_name",
+                "metra_ant_debug",
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        {
             "name": "Python: CRL Anymal",
             "type": "debugpy",
             "request": "launch",

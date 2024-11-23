@@ -97,6 +97,12 @@ def main(
     # check if metra
     is_metra = agent_cfg.metra is not None
 
+    # # reward scaling
+    reward_names = list(env_cfg.rewards.to_dict().keys())
+    for reward_name in reward_names:
+        rew_attr = getattr(env_cfg.rewards, reward_name)
+        rew_attr.weight *= agent_cfg.metra.non_metra_reward_scale
+
     # set num steps per env
     num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     if agent_cfg.num_transitions_per_episode is not None:
