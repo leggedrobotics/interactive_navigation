@@ -110,7 +110,10 @@ def main(
     # set num steps per env
     num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     if agent_cfg.num_transitions_per_episode is not None:
-        agent_cfg.num_steps_per_env = min(max(agent_cfg.num_transitions_per_episode // num_envs, 1), 1000)
+        agent_cfg.num_steps_per_env = min(
+            max(agent_cfg.num_transitions_per_episode // num_envs, 1),
+            int(env_cfg.episode_length_s / (env_cfg.sim.dt * env_cfg.decimation)),
+        )
 
     # update max iterations based on num_steps_per_env such that the total number of transitions is the same
     # agent_cfg.max_iterations = int(agent_cfg.max_iterations * 1000 / agent_cfg.num_steps_per_env)

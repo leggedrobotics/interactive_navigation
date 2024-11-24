@@ -8,9 +8,7 @@ metric:
   goal: maximize  # 'minimize' or 'maximize' if optimizing a loss
 parameters:
   env.scene.num_envs:
-    values: [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
-  env.sim.dt:
-    values: [0.005, 0.01, 0.02, 0.05] # 200, 100, 50, 20 Hz, 
+    values: [8, 16, 32, 64, 128, 256, 512]
   agent.num_transitions_per_episode:
     min: 1000
     max: 250000
@@ -44,6 +42,9 @@ parameters:
     min: 0.0
     max: 1.0
     distribution: uniform
+  agent.metra.skill_dim:
+    values: [2, 4, 8, 16, 32]
+
 
 command:
   - /isaac-sim/python.sh

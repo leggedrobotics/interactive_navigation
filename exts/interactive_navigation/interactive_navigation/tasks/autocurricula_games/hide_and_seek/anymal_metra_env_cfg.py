@@ -228,10 +228,15 @@ class RewardsCfg:
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
     )
 
-    terminated = RewTerm(
-        func=mdp.is_terminated_term,
-        params={"term_keys": "upside_down"},
-        weight=-100.0,
+    # terminated = RewTerm(
+    #     func=mdp.is_terminated_term,
+    #     params={"term_keys": "upside_down"},
+    #     weight=-1000.0,
+    # )
+    bad_orientation = RewTerm(
+        func=mdp.bad_orientation,
+        params={"limit_angle": math.radians(100)},
+        weight=-25.0,
     )
 
 
@@ -243,7 +248,7 @@ class TerminationsCfg:
 
     # too_far_away = DoneTerm(func=mdp.too_far_away, params={"max_dist": 15.0})
 
-    upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": math.radians(100)})
+    # upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": math.radians(100)})
 
     # goal_reached = DoneTerm(func=mdp.goal_reached, params={"threshold_dist": 0.5})
 
@@ -307,10 +312,10 @@ class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
     def __post_init__(self):
         """Post initialization."""
         # general settings
-        self.decimation = 1  # 20 Hz
+        self.decimation = 4  # 50 Hz
         self.episode_length_s = 10.0
         # simulation settings
-        self.sim.dt = 0.05  # 20 Hz
+        self.sim.dt = 0.005  # 200 Hz
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material
