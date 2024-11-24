@@ -94,6 +94,10 @@ def main(
     except AttributeError:
         is_crl = False
 
+    if env_cfg.sim.dt < 0.01:
+        # set controller to 50Hz
+        env_cfg.decimation = int(1 // (50 * env_cfg.sim.dt))
+
     # check if metra
     is_metra = agent_cfg.metra is not None
 

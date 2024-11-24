@@ -4,11 +4,13 @@ program: interactive_navigation/scripts/rsl_rl/train.py
 description: "Sweep over hyperparameters for metra sac anymal"
 method: bayes  # or 'grid', 'random'
 metric:
-  name: Metra/super_phi_metric  # wandb metric to optimize
+  name: StateCoverage/std_pos  # wandb metric to optimize
   goal: maximize  # 'minimize' or 'maximize' if optimizing a loss
 parameters:
   env.scene.num_envs:
     values: [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+  env.sim.dt:
+    values: [0.005, 0.01, 0.02, 0.05] # 200, 100, 50, 20 Hz, 
   agent.num_transitions_per_episode:
     min: 1000
     max: 250000
