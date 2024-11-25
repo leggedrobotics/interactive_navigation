@@ -23,15 +23,30 @@
             "envFile": "${workspaceFolder}/.vscode/.python.env",
         },
         {
-            "name": "Python: Train Environment",
+            "name": "Python: Train Anymal Rough",
             "type": "debugpy",
             "request": "launch",
             "args": [
                 "--task",
                 "Template-Isaac-Velocity-Rough-Anymal-D-v0",
                 "--num_envs",
-                "16",
-                "--headless"
+                "64",
+                // "--headless"
+            ],
+            "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.vscode/.python.env",
+        },
+        {
+            "name": "Python: Train Anymal Flat",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "--task",
+                "Template-Isaac-Velocity-Flat-Anymal-D-v0",
+                "--num_envs",
+                "4096",
+                // "--headless"
             ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",
             "console": "integratedTerminal",
@@ -127,7 +142,7 @@
                 "--task",
                 "Isaac-METRA-Anymal-D-v0",
                 "--num_envs",
-                "32",
+                "512",
                 "--run_name",
                 "metra_ant_debug",
             ],

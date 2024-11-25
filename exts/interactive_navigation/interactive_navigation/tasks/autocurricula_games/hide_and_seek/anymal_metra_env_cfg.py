@@ -89,7 +89,7 @@ class CommandsCfg:
 class ActionsCfg:
     """Action specifications for the MDP."""
 
-    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=5, use_default_offset=True)
+    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
 
 
 @configclass
@@ -101,17 +101,18 @@ class ObservationsCfg:
         """Observations for the policy."""
 
         my_pose = ObsTerm(
-            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot")},
-        )
-
-        my_velocity = ObsTerm(
-            func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
+            func=mdp.pose_2d_env,  # velocity_2d_b, rotation_velocity_2d_b
             params={"entity_cfg": SceneEntityCfg("robot")},
         )
 
         # actions = ObsTerm(func=mdp.last_action)
-
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        actions = ObsTerm(func=mdp.last_action)
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 
@@ -148,14 +149,35 @@ class ObservationsCfg:
 
 
 reset_value = 0.1
-reset_value_pos = 0.1
+reset_value_pos = 0.25
 
 
 @configclass
 class EventCfg:
     """Configuration for events."""
 
-    # reset_all = EventTerm(func=mdp.reset_scene_to_default)
+    # startup
+    physics_material = EventTerm(
+        func=mdp.randomize_rigid_body_material,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "static_friction_range": (0.8, 0.8),
+            "dynamic_friction_range": (0.6, 0.6),
+            "restitution_range": (0.0, 0.0),
+            "num_buckets": 64,
+        },
+    )
+
+    add_base_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "mass_distribution_params": (-5.0, 5.0),
+            "operation": "add",
+        },
+    )
 
     reset_base = EventTerm(
         func=mdp.reset_root_state_uniform,
@@ -164,7 +186,7 @@ class EventCfg:
             "pose_range": {
                 "x": (-reset_value_pos, reset_value_pos),
                 "y": (-reset_value_pos, reset_value_pos),
-                "yaw": (-0.0, 0.0),
+                "yaw": (-3.14, 3.14),
             },
             "velocity_range": {
                 "x": (-reset_value, reset_value),
@@ -184,11 +206,11 @@ class EventCfg:
     # )
 
     reset_robot_joints = EventTerm(
-        func=mdp.reset_joints_by_offset,
+        func=mdp.reset_joints_by_scale,
         mode="reset",
         params={
-            "position_range": (-reset_value_pos, reset_value_pos),
-            "velocity_range": (-reset_value_pos, reset_value_pos),
+            "position_range": (0.5, 1.5),
+            "velocity_range": (0.0, 0.0),
         },
     )
 
@@ -205,7 +227,7 @@ class EventCfg:
 
 @configclass
 class RewardsCfg:
-    """No task reward, only style."""
+    """Positive style reward, to scale metra reward."""
 
     # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
@@ -238,6 +260,43 @@ class RewardsCfg:
         params={"limit_angle": math.radians(100)},
         weight=-25.0,
     )
+
+
+# @configclass
+# class RewardsCfg:
+#     """No task reward, only style."""
+
+#     # -- penalties
+#     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
+#     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
+#     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
+#     dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
+#     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
+#     feet_air_time = RewTerm(
+#         func=mdp.feet_air_time,
+#         weight=0.125,
+#         params={
+#             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
+#             "command_name": "base_velocity",
+#             "threshold": 0.5,
+#         },
+#     )
+#     undesired_contacts = RewTerm(
+#         func=mdp.undesired_contacts,
+#         weight=-1.0,
+#         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
+#     )
+
+#     # terminated = RewTerm(
+#     #     func=mdp.is_terminated_term,
+#     #     params={"term_keys": "upside_down"},
+#     #     weight=-1000.0,
+#     # )
+#     bad_orientation = RewTerm(
+#         func=mdp.bad_orientation,
+#         params={"limit_angle": math.radians(100)},
+#         weight=-25.0,
+#     )
 
 
 @configclass

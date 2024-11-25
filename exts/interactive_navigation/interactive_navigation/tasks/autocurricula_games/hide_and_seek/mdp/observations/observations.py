@@ -66,7 +66,7 @@ def lidar_obs_dist_2d_log(env: ManagerBasedEnv, sensor_cfg: SceneEntityCfg) -> t
 ##
 # - positions
 ##
-def pose_2d_to(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
+def pose_2d_env(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
     """Returns the pose of the entity relative to the terrain origin.
     x,y position and heading in the form of cos(theta), sin(theta)."""
     entity: RigidObject | Articulation = env.scene[entity_cfg.name]
