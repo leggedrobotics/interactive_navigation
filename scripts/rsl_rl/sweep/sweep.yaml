@@ -1,14 +1,14 @@
 # https://docs.wandb.ai/guides/sweeps/sweep-config-keys/#distribution-options-for-random-and-bayesian-search
 program: interactive_navigation/scripts/rsl_rl/train.py
 # program: scripts/rsl_rl/train.py
-description: "Sweep over hyperparameters for metra ppo ant"
+description: "Sweep over hyperparameters for metra sac anymal"
 method: bayes  # or 'grid', 'random'
 metric:
   name: StateCoverage/std_pos  # wandb metric to optimize
   goal: maximize  # 'minimize' or 'maximize' if optimizing a loss
 parameters:
   env.scene.num_envs:
-    values: [8, 16, 32, 64, 128, 256, 512, 1024, 2048]
+    values: [8, 16, 32, 64, 128, 256, 512]
   agent.num_transitions_per_episode:
     min: 1000
     max: 250000
@@ -28,6 +28,22 @@ parameters:
     min: 10
     max: 250
     distribution: int_uniform
+  agent.metra.sac_hyperparameters.gamma:
+    min: 0.95
+    max: 0.995
+    distribution: log_uniform_values
+  agent.metra.sac_hyperparameters.polyak:
+    min: 0.001
+    max: 0.01
+    distribution: log_uniform_values
+  agent.metra.sac_hyperparameters.lr:
+    min: 0.00005
+    max: 0.001
+    distribution: log_uniform_values
+  agent.metra.non_metra_reward_scale:
+    min: 1.0
+    max: 3.0
+    distribution: uniform
   agent.metra.skill_dim:
     values: [2, 4, 8, 16, 32]
 
@@ -35,7 +51,7 @@ parameters:
 command:
   - /isaac-sim/python.sh
   - ${program}
-  - --task=Isaac-METRA-ANT-v0
+  - --task=Isaac-METRA-Anymal-D-v0 
   - --logger=wandb
   - --headless
   - --video
