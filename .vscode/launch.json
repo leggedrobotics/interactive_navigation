@@ -145,7 +145,7 @@
                 "--task",
                 "Isaac-METRA-ANT-v0",
                 "--num_envs",
-                "32",
+                "16",
                 "--run_name",
                 "metra_ant_debug",
             ],
