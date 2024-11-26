@@ -50,7 +50,7 @@
                 "--resume",
                 "RESUME",
                 "--load_run",
-                "anymal_rought_test",
+                "anymal_rough_trained",
             ],
             "program": "${workspaceFolder}/scripts/rsl_rl/train_instructor.py",
             "console": "integratedTerminal",

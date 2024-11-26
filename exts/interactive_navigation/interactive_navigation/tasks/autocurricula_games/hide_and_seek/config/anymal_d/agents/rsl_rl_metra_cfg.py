@@ -43,7 +43,7 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         max_grad_norm=1.0,
     )
     metra = RslRlMetraAlgorithmCfg(
-        class_name="METRA",  # METRA or METRA_SAC
+        class_name="METRA_SAC",  # METRA_SAC or METRA_SAC
         state_representation_args={
             "hidden_layers": [1024, 1024, 512],
             "activation": "elu",

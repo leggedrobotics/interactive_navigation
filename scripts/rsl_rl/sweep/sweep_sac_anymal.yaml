@@ -13,6 +13,8 @@ parameters:
     min: 1000
     max: 250000
     distribution: int_uniform
+  agent.empirical_normalization:
+    values: [True, False]
   agent.seed:
     min: 0
     max: 1000
@@ -39,8 +41,8 @@ parameters:
     max: 0.001
     distribution: log_uniform_values
   agent.metra.non_metra_reward_scale:
-    min: 0.0
-    max: 1.0
+    min: 1.0
+    max: 3.0
     distribution: uniform
   agent.metra.skill_dim:
     values: [2, 4, 8, 16, 32]

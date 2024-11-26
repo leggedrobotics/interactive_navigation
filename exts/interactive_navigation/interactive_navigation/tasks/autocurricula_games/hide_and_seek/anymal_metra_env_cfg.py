@@ -143,9 +143,25 @@ class ObservationsCfg:
             self.enable_corruption = False
             self.concatenate_terms = False
 
+    @configclass
+    class InstructorObsCfg(ObsGroup):
+        """Observations for the style instructor group."""
+
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
+
     # observation groups
     policy: PolicyCfg = PolicyCfg()
     metra: MetraStateCfg = MetraStateCfg()  # currently not used
+    instructor: InstructorObsCfg = InstructorObsCfg()
 
 
 reset_value = 0.1
@@ -229,37 +245,40 @@ class EventCfg:
 class RewardsCfg:
     """Positive style reward, to scale metra reward."""
 
-    # -- penalties
-    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-    ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
-    dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
-    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
-    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
-    feet_air_time = RewTerm(
-        func=mdp.feet_air_time,
-        weight=0.125,
-        params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
-            "command_name": "base_velocity",
-            "threshold": 0.5,
-        },
-    )
-    undesired_contacts = RewTerm(
-        func=mdp.undesired_contacts,
-        weight=-1.0,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
-    )
+    # instructor net
+    instructor_guidance = RewTerm(func=mdp.instruction_guidance, params={"obs_name": "instructor"}, weight=1.0)
 
-    # terminated = RewTerm(
-    #     func=mdp.is_terminated_term,
-    #     params={"term_keys": "upside_down"},
-    #     weight=-1000.0,
+    # # -- penalties
+    # lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
+    # ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
+    # dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
+    # dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
+    # action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
+    # feet_air_time = RewTerm(
+    #     func=mdp.feet_air_time,
+    #     weight=0.125,
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
+    #         "command_name": "base_velocity",
+    #         "threshold": 0.5,
+    #     },
     # )
-    bad_orientation = RewTerm(
-        func=mdp.bad_orientation,
-        params={"limit_angle": math.radians(100)},
-        weight=-25.0,
-    )
+    # undesired_contacts = RewTerm(
+    #     func=mdp.undesired_contacts,
+    #     weight=-1.0,
+    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
+    # )
+
+    # # terminated = RewTerm(
+    # #     func=mdp.is_terminated_term,
+    # #     params={"term_keys": "upside_down"},
+    # #     weight=-1000.0,
+    # # )
+    # bad_orientation = RewTerm(
+    #     func=mdp.bad_orientation,
+    #     params={"limit_angle": math.radians(100)},
+    #     weight=-25.0,
+    # )
 
 
 # @configclass

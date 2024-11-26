@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import torch
 from typing import TYPE_CHECKING
-
+import os
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.sensors import ContactSensor, RayCaster
+from omni.isaac.lab.managers.manager_base import ManagerTermBase
+from omni.isaac.lab.managers.manager_term_cfg import RewardTermCfg
+from omni.isaac.lab.utils.assets import check_file_path, read_file
+
 from omni.isaac.lab.assets import Articulation, RigidObject
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.commands import GoalCommand
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.nets import NET_PATH
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
     get_robot_pos,
     get_robot_quat,
@@ -463,6 +468,24 @@ def feet_air_time(
 ##
 # - DosNDonts
 ##
+
+
+class instruction_guidance(ManagerTermBase):
+    def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+
+        instruction_net_path = os.path.join(NET_PATH, "2024-11-26_10-31-32_style_instructor.pt")
+
+        if not check_file_path(instruction_net_path):
+            raise ValueError(f"Instruction network file not found at {instruction_net_path}")
+
+        file_bytes = read_file(instruction_net_path)
+        self.instruction_net = torch.jit.load(file_bytes, map_location=self.device)
+        self.instruction_net = torch.jit.freeze(self.instruction_net.eval())
+
+    def __call__(self, env: ManagerBasedRLEnv, obs_name: str) -> torch.Tensor:
+        instruct_obs = env.observation_manager.compute_group(group_name=obs_name)
+        return self.instruction_net(instruct_obs).squeeze(1)
 
 
 ##
