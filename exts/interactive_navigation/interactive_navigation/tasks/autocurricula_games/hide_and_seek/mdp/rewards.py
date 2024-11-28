@@ -23,6 +23,50 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils im
 
 if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedRLEnv
+# dummy reward functions
+
+
+def dist_from_origin(env: ManagerBasedRLEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
+    entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+
+    # - position
+    pos = get_robot_pos(entity)
+    terrain = env.scene.terrain
+    terrain_origins = terrain.env_origins
+    rel_pos = pos.squeeze(1) - terrain_origins
+
+    # - distance
+    dist = torch.linalg.vector_norm(rel_pos, dim=-1)
+    return torch.log(dist + 1)
+
+
+def x_dist_from_origin(env: ManagerBasedRLEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
+    entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+    # - position
+    pos = get_robot_pos(entity)
+    terrain = env.scene.terrain
+    terrain_origins = terrain.env_origins
+    rel_pos = pos.squeeze(1) - terrain_origins
+
+    x_pos = rel_pos[..., 0]
+    negative = x_pos < 0
+    log_dist = torch.log(torch.abs(x_pos) + 1)
+    log_dist[negative] = -log_dist[negative]
+
+    return log_dist
+
+
+def dist_from_x(env: ManagerBasedRLEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
+    entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+    # - position
+    pos = get_robot_pos(entity)
+    terrain = env.scene.terrain
+    terrain_origins = terrain.env_origins
+    rel_pos = pos.squeeze(1) - terrain_origins
+
+    y_pos = rel_pos[..., 1]
+    log_dist = torch.log(torch.abs(y_pos) + 1)
+    return log_dist
 
 
 def dummy_reward(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, threshold: float) -> torch.Tensor:
