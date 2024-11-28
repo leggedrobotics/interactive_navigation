@@ -20,13 +20,13 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 
 @configclass
 class AntMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 200
-    num_transitions_per_episode = 178602
+    num_steps_per_env = 100
+    num_transitions_per_episode = 4096
     max_iterations = 5_000
     save_interval = 2000
-    experiment_name = "metra_ant_test"
-    run_name = "metra_ant_test"
-    wandb_project = "metra_test"
+    experiment_name = "metra_ant_ppo_test"
+    run_name = "metra_ant_ppo_test"
+    wandb_project = "metra_ant_ppo"
     empirical_normalization = False
     policy = RslRlPpoRelationalActorCriticCfg(
         init_noise_std=1.0,
@@ -47,26 +47,27 @@ class AntMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         max_grad_norm=1.0,
     )
     metra = RslRlMetraAlgorithmCfg(
-        class_name="METRA",  # METRA or METRA_SAC
+        class_name="METRA",  # "METRA" with ppo or "METRA_SAC" with sac
         state_representation_args={
             "hidden_layers": [1024, 1024, 512],
             "activation": "elu",
         },
         batch_size=1024,
+        instructor_reward_scaling=False,
         replay_buffer_size_per_env=100,
-        replay_buffer_size_total=405595,
+        replay_buffer_size_total=100000,
         num_metra_learning_epochs=1,
-        num_sgd_steps_metra=197,
-        skill_dim=32,
+        num_sgd_steps_metra=250,
+        skill_dim=2,
         lr=1e-4,
         lr_tau=1e-4,
         visualizer_interval=250,
-        sac_hyperparameters=SAC_MetraCfg(
-            gamma=0.999,
-            alpha=0.22,
+        sac_hyperparameters=SAC_MetraCfg(  # only used if class_name is "METRA_SAC"
+            gamma=0.99,
+            alpha=0.2,
             polyak=0.005,
             lr=1e-4,
-        ),  # {"gamma": 0.99, "alpha": 0.2, "polyak": 0.005, "lr": 1e-4},
+        ),
     )
 
 

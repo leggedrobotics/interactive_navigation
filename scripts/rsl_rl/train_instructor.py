@@ -50,6 +50,9 @@ from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab_tasks.utils import get_checkpoint_path, parse_env_cfg
 from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper, export_policy_as_onnx
 
+# import metra policy
+from rsl_rl.modules.metra.actor import StochasticActor
+
 
 def main():
     """Play with RSL-RL agent."""
@@ -59,7 +62,7 @@ def main():
     )
     agent_cfg: RslRlOnPolicyRunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
 
-    env_cfg.episode_length_s = 10.0
+    env_cfg.episode_length_s = 3.0
     # specify directory for logging experiments
     log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
@@ -117,6 +120,28 @@ def main():
     policy_action_mask = env_idx % 2 == 0
     actions = torch.zeros(env.num_envs, env.num_actions, device=env.unwrapped.device)
 
+    # bad metra policy
+    metra_obs = extras["observations"]["metra_policy"]
+    bad_metra_policy_path = (
+        "/home/rafael/Projects/MT/CRL/interactive_navigation/logs/rsl_rl/metra_anymal_test/anymal_loc_bad/model_2000.pt"
+    )
+    metra_state_dict = torch.load(bad_metra_policy_path, weights_only=True)["model_state_dict"]["policy"]
+    # make skill tensor
+    input_shape = metra_state_dict[list(metra_state_dict.keys())[1]].shape[1]
+    raw_obs_shape = 0
+    for _, tensor in metra_obs.items():
+        raw_obs_shape += tensor.flatten(1).shape[-1]
+    skill_dim = input_shape - raw_obs_shape
+    skills = torch.eye(skill_dim, device=env.unwrapped.device)
+    repeates = int(env.num_envs // skill_dim) + 1
+    skill_tensor = skills.repeat(repeates, 1)[: env.num_envs]
+    skill_dict = {"skill": skill_tensor}
+    # load weights
+    metra_obs |= skill_dict
+    bad_metra_policy = StochasticActor(actor_obs_dict=metra_obs, num_actions=env.action_space.shape[1])
+    bad_metra_policy.to(env.unwrapped.device)
+    bad_metra_policy.load_state_dict(metra_state_dict)
+
     # set up the instructor
     instructor_obs = extras["observations"]["instructor"]
     style_instructor = StyleInstructor(input_shape=instructor_obs.shape[1])
@@ -128,28 +153,39 @@ def main():
     os.makedirs(os.path.dirname(instructor_save_path), exist_ok=True)
 
     # simulate environment
+    metra_ratio = 0.8
     count = 0
     current_best_loss = 1e6
     loss = []
+    env.episode_length_buf = torch.randint(0, env.max_episode_length, (env.num_envs,), device=env.unwrapped.device)
+
     while simulation_app.is_running():
         # run everything in inference mode
         with torch.inference_mode():
             if count % 50 == 0:
                 # alternate between normal and uniform
-                choose_normal = torch.rand(env.num_envs, device=env.unwrapped.device) < 0.5
+                choose_normal = torch.rand(num_random_envs, device=env.unwrapped.device) < 0.5
+                choose_metra = torch.rand(num_random_envs, device=env.unwrapped.device) < metra_ratio
             count += 1
 
-            # agent stepping
+            # - agent stepping
+            # policy action
             good_actions = policy(obs[policy_action_mask])
+            # bad metra policy action
+            bad_metra_actions = bad_metra_policy.act(extras["observations"]["metra_policy"] | skill_dict)[
+                ~policy_action_mask
+            ]
+            # random actions
             random_actions_normal = random_policy_normal.sample()
             random_actions_uniform = random_policy_uniform.sample()
-            random_actions = torch.where(
-                choose_normal[~policy_action_mask].unsqueeze(1), random_actions_normal, random_actions_uniform
-            )
+            random_actions = torch.where(choose_normal.unsqueeze(1), random_actions_normal, random_actions_uniform)
+            # negative actions
+            bad_actions = torch.where(choose_metra.unsqueeze(1), bad_metra_actions, random_actions)
+            # combine actions
             actions[policy_action_mask] = good_actions
-            actions[~policy_action_mask] = random_actions
+            actions[~policy_action_mask] = bad_actions
 
-            # env stepping
+            # - env stepping
             obs, _, _, extras = env.step(actions)
 
         # instructor update
@@ -169,7 +205,7 @@ def main():
             else:
                 print(f"Current loss: {current_loss}")
             loss = []
-        print(f"Style loss: {style_loss}")
+        # print(f"Style loss: {style_loss}")
 
         if args_cli.video:
             timestep += 1

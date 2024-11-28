@@ -4,6 +4,7 @@ import math
 from dataclasses import MISSING
 
 import interactive_navigation.tasks.locomotion.velocity.mdp as mdp
+import interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp as metra_mdp
 
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import ArticulationCfg, AssetBaseCfg
@@ -139,6 +140,30 @@ class ObservationsCfg:
             self.concatenate_terms = True
 
     @configclass
+    class MetraPolicyCfg(ObsGroup):
+        """Observations for the policy."""
+
+        my_pose = ObsTerm(
+            func=metra_mdp.pose_2d_env,  # velocity_2d_b, rotation_velocity_2d_b
+            params={"entity_cfg": SceneEntityCfg("robot")},
+        )
+
+        # actions = ObsTerm(func=mdp.last_action)
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        actions = ObsTerm(func=mdp.last_action)
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = False
+
+    @configclass
     class InstructorObsCfg(ObsGroup):
         """Observations for the style instructor group."""
 
@@ -158,6 +183,7 @@ class ObservationsCfg:
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
+    metra_policy: MetraPolicyCfg = MetraPolicyCfg()
     instructor: InstructorObsCfg = InstructorObsCfg()
 
 
@@ -274,10 +300,10 @@ class TerminationsCfg:
     """Termination terms for the MDP."""
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    base_contact = DoneTerm(
-        func=mdp.illegal_contact,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
-    )
+    # base_contact = DoneTerm(
+    #     func=mdp.illegal_contact,
+    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
+    # )
 
 
 @configclass
@@ -310,6 +336,12 @@ class LocomotionVelocityRoughEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         """Post initialization."""
+
+        # # TODELETE
+        # self.scene.terrain.terrain_type = "plane"
+        # self.scene.terrain.terrain_generator = None
+        # self.curriculum.terrain_levels = None
+
         # general settings
         self.decimation = 4
         self.episode_length_s = 20.0
