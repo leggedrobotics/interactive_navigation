@@ -21,7 +21,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 @configclass
 class AntMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    num_transitions_per_episode = None
+    num_transitions_per_episode = 10_000
     max_iterations = 10_000
     save_interval = 2000
     experiment_name = "metra_ant_ppo_test"
