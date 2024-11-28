@@ -4,7 +4,7 @@ program: interactive_navigation/scripts/rsl_rl/train.py
 description: "Sweep over hyperparameters for metra ant"
 method: bayes  # or 'grid', 'random'
 metric:
-  name: Metra/mean_phi_norm  # wandb metric to optimize
+  name: Metra/reward_mean  # wandb metric to optimize
   goal: maximize  # 'minimize' or 'maximize' if optimizing a loss
 parameters:
   agent.num_steps_per_env:
