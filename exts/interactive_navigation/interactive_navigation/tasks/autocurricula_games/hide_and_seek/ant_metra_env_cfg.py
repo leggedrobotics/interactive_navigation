@@ -238,7 +238,7 @@ class TerminationsCfg:
 
     # too_far_away = DoneTerm(func=mdp.too_far_away, params={"max_dist": 15.0})
 
-    # upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": 1.5})
+    # upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": math.radians(100.0)})
 
     # goal_reached = DoneTerm(func=mdp.goal_reached, params={"threshold_dist": 0.5})
 
@@ -247,7 +247,7 @@ class TerminationsCfg:
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
-    num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
+    # num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
     # terrain_levels = CurrTerm(func=mdp.terrain_levels_vel)
 
