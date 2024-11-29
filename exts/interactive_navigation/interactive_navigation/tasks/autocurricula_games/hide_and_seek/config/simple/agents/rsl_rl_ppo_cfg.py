@@ -51,6 +51,7 @@ class AntMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         state_representation_args={
             "hidden_layers": [1024, 1024, 512],
             "activation": "elu",
+            "layer_norm": True,
         },
         batch_size=1024,
         instructor_reward_scaling=False,
