@@ -20,6 +20,8 @@ parameters:
     min: 0
     max: 1000
 # metra
+  agent.metra.state_representation_args.layer_norm:
+    values: [True, False]
   agent.metra.batch_size:
     values: [128, 256, 512, 1024]
   agent.metra.replay_buffer_size_total:

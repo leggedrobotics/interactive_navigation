@@ -8,6 +8,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
     RslRlPpoRecurrentActorCriticCfg,
     RslRlMetraAlgorithmCfg,
     SAC_MetraCfg,
+    StateReprCfg,
 )
 
 
@@ -44,10 +45,10 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     )
     metra = RslRlMetraAlgorithmCfg(
         class_name="METRA_SAC",  # METRA_SAC or METRA_SAC
-        state_representation_args={
-            "hidden_layers": [1024, 1024, 512],
-            "activation": "elu",
-        },
+        state_representation_args=StateReprCfg(
+            hidden_layers=[1024, 1024, 512],
+            activation="elu",
+        ),
         batch_size=256,
         replay_buffer_size_per_env=100,
         replay_buffer_size_total=1_000_00,
