@@ -50,7 +50,7 @@ parameters:
 command:
   - /isaac-sim/python.sh
   - ${program}
-  - --Isaac-METRA-Anymal-D-v0
+  - --task=Isaac-METRA-Anymal-D-v0
   - --logger=wandb
   - --headless
   - --video
