@@ -9,7 +9,7 @@ metric:
 parameters:
 # env
   env.scene.num_envs:
-    values: [2048, 4096]
+    values: [4096]
   agent.num_steps_per_env:
     values: [25, 49, 97]
   agent.empirical_normalization:
@@ -29,6 +29,10 @@ parameters:
   agent.metra.lr_tau:
     min: 5.0e-5
     max: 5.0e-4
+    distribution: log_uniform_values
+  agent.metra.sigma:
+    min: 0.1
+    max: 10.0
     distribution: log_uniform_values
 # algorithm
   agent.algorithm.entropy_coef:
