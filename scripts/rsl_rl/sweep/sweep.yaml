@@ -1,7 +1,7 @@
 # https://docs.wandb.ai/guides/sweeps/sweep-config-keys/#distribution-options-for-random-and-bayesian-search
 program: interactive_navigation/scripts/rsl_rl/train.py
 # program: scripts/rsl_rl/train.py
-description: "Sweep over hyperparameters for metra ppo ant"
+description: "Sweep over hyperparameters for metra ppo anymal"
 method: bayes  # or 'grid', 'random'
 metric:
   name: Metra/reward_mean  # wandb metric to optimize
@@ -9,53 +9,35 @@ metric:
 parameters:
 # env
   env.scene.num_envs:
-    values: [256, 512, 1024, 2048, 4096]
-  agent.num_transitions_per_episode:
-    min: 4096 # 4096 * 1
-    max: 409600 # 4096 * 100
-    distribution: int_uniform
+    values: [2048, 4096]
+  agent.num_steps_per_env:
+    values: [25, 49, 97]
   agent.empirical_normalization:
-    values: [True]
+    values: [True, False]
   agent.seed:
     min: 0
     max: 1000
 # metra
   agent.metra.state_representation_args.layer_norm:
-    values: [True, False]
-  agent.metra.batch_size:
-    values: [128, 256, 512, 1024]
-  agent.metra.replay_buffer_size_total:
-    min: 100000 #100k
-    max: 2500000 #2.5M
-    distribution: int_uniform
-  agent.metra.num_sgd_steps_metra:
-    min: 10
-    max: 250
-    distribution: int_uniform
-  agent.metra.num_metra_learning_epochs:
-    min: 1
-    max: 20
-    distribution: int_uniform
-  agent.metra.replay_buffer_num_envs:
-    values: [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
-  # agent.metra.non_metra_reward_scale:
-  #   min: 1.0
-  #   max: 3.0
-  #   distribution: uniform
+    values: [False]
   agent.metra.skill_dim:
-    values: [2, 4]
-# algorithm
-  agent.algorithm.gamma:
-    min: 0.95
-    max: 0.995
+    values: [2, 3, 4]
+  agent.metra.lr:
+    min: 1.0e-4
+    max: 1.0e-2
     distribution: log_uniform_values
+  agent.metra.lr_tau:
+    min: 5.0e-5
+    max: 5.0e-4
+    distribution: log_uniform_values
+# algorithm
   agent.algorithm.entropy_coef:
     min: 0.0025
     max: 0.01
     distribution: log_uniform_values
   agent.algorithm.learning_rate:
-    min: 5e-5
-    max: 25e-4
+    min: 5.0e-5
+    max: 2.5e-3
     distribution: log_uniform_values
   agent.algorithm.clip_param:
     min: 0.1
@@ -68,7 +50,7 @@ parameters:
 command:
   - /isaac-sim/python.sh
   - ${program}
-  - --task=Isaac-METRA-ANT-v0
+  - --Isaac-METRA-Anymal-D-v0
   - --logger=wandb
   - --headless
   - --video
