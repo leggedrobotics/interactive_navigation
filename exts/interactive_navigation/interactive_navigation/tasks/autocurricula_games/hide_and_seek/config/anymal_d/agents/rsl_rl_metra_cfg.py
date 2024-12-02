@@ -65,5 +65,5 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         #     polyak=0.005,
         #     lr=1e-4,
         # ),
-        non_metra_reward_scale=0.5,
+        non_metra_reward_scale=1.0,
     )
