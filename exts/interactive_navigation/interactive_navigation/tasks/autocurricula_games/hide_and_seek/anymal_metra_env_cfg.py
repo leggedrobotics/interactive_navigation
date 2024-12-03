@@ -63,14 +63,14 @@ class MySceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = ANYMAL_D_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # sensors
-    height_scanner = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/base",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
-        attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
-        debug_vis=True,
-        mesh_prim_paths=["/World/ground"],
-    )
+    # height_scanner = RayCasterCfg(
+    #     prim_path="{ENV_REGEX_NS}/Robot/base",
+    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+    #     attach_yaw_only=True,
+    #     pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
+    #     debug_vis=True,
+    #     mesh_prim_paths=["/World/ground"],
+    # )
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
 
     # lights
@@ -122,11 +122,19 @@ class ObservationsCfg:
             params={"robot_cfg": SceneEntityCfg("robot")},
         )
 
-        height_scan = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            noise=Unoise(n_min=-0.1, n_max=0.1),
-            clip=(-1.0, 1.0),
+        # height_scan = ObsTerm(
+        #     func=mdp.height_scan,
+        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+        #     noise=Unoise(n_min=-0.1, n_max=0.1),
+        #     clip=(-1.0, 1.0),
+        # )
+
+        box_pose = ObsTerm(
+            func=mdp.box_pose,
+            params={
+                "entity_str": "box",
+                "pov_entity": SceneEntityCfg("robot"),
+            },
         )
 
         # proprioception
@@ -154,10 +162,9 @@ class ObservationsCfg:
             params={"entity_cfg": SceneEntityCfg("robot")},
         )
         box_pose = ObsTerm(
-            func=mdp.box_pose,
+            func=mdp.pose_3d_env,
             params={
-                "entity_str": "box",
-                "pov_entity": SceneEntityCfg("robot"),
+                "entity_cfg": SceneEntityCfg("box"),
             },
         )
         my_velocity = ObsTerm(
