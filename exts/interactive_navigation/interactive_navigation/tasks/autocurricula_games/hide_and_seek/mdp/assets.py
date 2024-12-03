@@ -85,21 +85,20 @@ ROBOT_USD_CFG = ArticulationCfg(
 CUBOID_CFG = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/Cuboid",
     spawn=sim_utils.CuboidCfg(
-        size=(0.95, 0.95, 0.5),
-        rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            max_depenetration_velocity=1.0, disable_gravity=False, max_angular_velocity=3.14, kinematic_enabled=False
-        ),
-        mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
+        size=(0.95, 0.95, 0.25),
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+        mass_props=sim_utils.MassPropertiesCfg(mass=5.0),
         physics_material=sim_utils.RigidBodyMaterialCfg(
-            static_friction=0.75, dynamic_friction=0.75, friction_combine_mode="max"
+            static_friction=0.5, dynamic_friction=0.5, friction_combine_mode="average"
         ),
         collision_props=sim_utils.CollisionPropertiesCfg(),
-        visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.2, 0.2)),
+        visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.2, 0.9, 0.2)),
         activate_contact_sensors=True,
     ),
     init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
     collision_group=0,
 )
+
 
 # - wall:
 WALL_CFG = RigidObjectCfg(

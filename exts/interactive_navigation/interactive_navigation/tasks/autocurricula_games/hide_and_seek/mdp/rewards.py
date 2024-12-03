@@ -8,6 +8,7 @@ from omni.isaac.lab.sensors import ContactSensor, RayCaster
 from omni.isaac.lab.managers.manager_base import ManagerTermBase
 from omni.isaac.lab.managers.manager_term_cfg import RewardTermCfg
 from omni.isaac.lab.utils.assets import check_file_path, read_file
+from omni.isaac.lab.utils.warp import raycast_mesh
 
 from omni.isaac.lab.assets import Articulation, RigidObject
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
@@ -510,16 +511,42 @@ def feet_air_time(
 
 
 def base_below_min_height(
-    env: ManagerBasedRLEnv, minimum_height: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    env: ManagerBasedRLEnv,
+    target_height: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    radius: float = 0.5,
 ) -> torch.Tensor:
-    """Terminate when the asset's root height is below the minimum height.
+    """Penalize asset height from its target using L2 squared kernel.
+    The distance is calcualted by raycasting the terrain mesh.
 
-    Note:
-        This is currently only supported for flat terrains, i.e. the minimum height is in the world frame.
     """
+
+    # create the ray casting pattern
+    N_rays = 100
+    angles = torch.linspace(0, 2 * torch.pi, N_rays + 1, device=env.device)[:-1]
+    ray_starts = torch.stack([torch.cos(angles), torch.sin(angles), torch.zeros_like(angles)], dim=1) * radius
+    ray_directions = torch.stack([torch.zeros_like(angles), torch.zeros_like(angles), -torch.ones_like(angles)], dim=1)
+
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject = env.scene[asset_cfg.name]
-    return (asset.data.root_pos_w[:, 2] < minimum_height).float()
+    robot_base_positions = asset.data.root_pos_w
+
+    # offset the ray starts by the robot base positions
+    ray_starts_w = ray_starts.unsqueeze(0) + robot_base_positions.unsqueeze(1)
+    ray_dirs_w = ray_directions.unsqueeze(0).expand_as(ray_starts_w)
+
+    # raycast the terrain mesh
+    terrain_mesh = env.scene.terrain.warp_meshes["terrain"]
+    ray_hits = raycast_mesh(
+        ray_starts_w.float().contiguous(),
+        ray_dirs_w.float().contiguous(),
+        terrain_mesh.id,
+    )[
+        0
+    ].squeeze(0)
+
+    mean_heights = robot_base_positions[:, 2] - ray_hits[..., 2].mean(dim=1)
+    return torch.square(torch.clamp(target_height - mean_heights, min=0))
 
 
 ##

@@ -62,6 +62,15 @@ class MySceneCfg(InteractiveSceneCfg):
 
     robot: ArticulationCfg = ANYMAL_D_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
+    # sensors
+    height_scanner = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+        attach_yaw_only=True,
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
+        debug_vis=True,
+        mesh_prim_paths=["/World/ground"],
+    )
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
 
     # lights
@@ -72,6 +81,12 @@ class MySceneCfg(InteractiveSceneCfg):
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(color=(0.75, 0.75, 0.75), intensity=2000.0),
+    )
+
+    # box
+    box = CUBOID_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box",
+        init_state=CUBOID_CFG.InitialStateCfg(pos=[0.0, 1.5, 0.25]),
     )
 
 
@@ -98,14 +113,23 @@ class ObservationsCfg:
 
     @configclass
     class PolicyCfg(ObsGroup):
-        """Observations for the policy."""
+        """Observations for the policy.
+        These observations need to be available from the robot's perspective.
+        """
 
-        my_pose = ObsTerm(
-            func=mdp.pose_2d_env,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot")},
+        origin = ObsTerm(
+            func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
+            params={"robot_cfg": SceneEntityCfg("robot")},
         )
 
-        # actions = ObsTerm(func=mdp.last_action)
+        height_scan = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(-1.0, 1.0),
+        )
+
+        # proprioception
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
         projected_gravity = ObsTerm(
@@ -129,11 +153,20 @@ class ObservationsCfg:
             func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
             params={"entity_cfg": SceneEntityCfg("robot")},
         )
+        box_pose = ObsTerm(
+            func=mdp.box_pose,
+            params={
+                "entity_str": "box",
+                "pov_entity": SceneEntityCfg("robot"),
+            },
+        )
         my_velocity = ObsTerm(
             func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
             params={"entity_cfg": SceneEntityCfg("robot")},
         )
 
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 
@@ -202,7 +235,7 @@ class EventCfg:
             "pose_range": {
                 "x": (-reset_value_pos, reset_value_pos),
                 "y": (-reset_value_pos, reset_value_pos),
-                "yaw": (-3.14, 3.14),
+                "yaw": (-0.1, 0.1),
             },
             "velocity_range": {
                 "x": (-reset_value, reset_value),
@@ -327,7 +360,7 @@ class RewardsCfg:
     )
 
     base_height = RewTerm(
-        func=mdp.base_height_l2,
+        func=mdp.base_below_min_height,
         weight=-step_dt * 5.0,
         params={"target_height": 0.6},
     )
@@ -378,6 +411,34 @@ class TerminationsCfg:
 @configclass
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
+
+    remove_rewards = CurrTerm(
+        func=mdp.anneal_reward_weight,
+        params={
+            "term_names": [
+                "base_height",
+                "joint_deviation",
+                "bad_orientation",
+            ],
+            "ratio": 0.0,
+            "start_step": 25_000,
+            "num_steps": 70_000,
+        },
+    )
+
+    anneal_rewards = CurrTerm(
+        func=mdp.anneal_reward_weight,
+        params={
+            "term_names": [
+                "undesired_contacts_thigh",
+                "undesired_contacts_shank",
+                "undesired_contacts_base",
+            ],
+            "ratio": 0.1,
+            "start_step": 25_000,
+            "num_steps": 70_000,
+        },
+    )
 
     # num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 

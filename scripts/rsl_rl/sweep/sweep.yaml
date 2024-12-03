@@ -12,41 +12,45 @@ parameters:
     values: [4096]
   agent.num_steps_per_env:
     values: [25, 49, 97]
-  agent.empirical_normalization:
-    values: [True, False]
+  # agent.empirical_normalization:
+  #   values: [True]
   agent.seed:
     min: 0
     max: 1000
 # metra
-  agent.metra.state_representation_args.layer_norm:
-    values: [False]
+  # agent.metra.state_representation_args.layer_norm:
+  #   values: [False]
   agent.metra.skill_dim:
-    values: [2, 3, 4]
+    values: [3, 4, 5, 6]
   agent.metra.lr:
     min: 1.0e-4
     max: 1.0e-2
     distribution: log_uniform_values
-  agent.metra.lr_tau:
-    min: 5.0e-5
-    max: 5.0e-4
-    distribution: log_uniform_values
-  agent.metra.sigma:
+  agent.metra.skill_step_size:
     min: 0.1
-    max: 10.0
-    distribution: log_uniform_values
-# algorithm
-  agent.algorithm.entropy_coef:
-    min: 0.0025
-    max: 0.01
-    distribution: log_uniform_values
-  agent.algorithm.learning_rate:
-    min: 5.0e-5
-    max: 2.5e-3
-    distribution: log_uniform_values
-  agent.algorithm.clip_param:
-    min: 0.1
-    max: 0.3
+    max: 1.0
     distribution: uniform
+  # agent.metra.lr_tau:
+  #   min: 5.0e-5
+  #   max: 5.0e-4
+  #   distribution: log_uniform_values
+  # agent.metra.sigma:
+  #   min: 0.1
+  #   max: 10.0
+  #   distribution: log_uniform_values
+# algorithm
+  # agent.algorithm.entropy_coef:
+  #   min: 0.0025
+  #   max: 0.01
+  #   distribution: log_uniform_values
+  # agent.algorithm.learning_rate:
+  #   min: 5.0e-5
+  #   max: 2.5e-3
+  #   distribution: log_uniform_values
+  # agent.algorithm.clip_param:
+  #   min: 0.1
+  #   max: 0.3
+  #   distribution: uniform
 
     # TODO gamma and other ppo params
 

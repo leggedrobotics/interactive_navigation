@@ -55,10 +55,11 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         replay_buffer_size_total=1_000_00,
         num_metra_learning_epochs=1,
         num_sgd_steps_metra=10,
-        skill_dim=2,
-        lr=5e-3,
+        skill_dim=4,
+        lr=1e-3,
         lr_tau=1e-4,
         visualizer_interval=250,
+        skill_step_size=0.17,
         sigma=5.0,
         # sac_hyperparameters=SAC_MetraCfg(
         #     gamma=0.999,

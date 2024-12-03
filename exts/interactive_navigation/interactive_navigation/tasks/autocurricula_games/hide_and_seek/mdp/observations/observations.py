@@ -86,6 +86,22 @@ def pose_2d_env(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tenso
     return pose_2d
 
 
+def origin_b(env: ManagerBasedEnv, robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+    """Returns the vector from the robot to the origin in the robots frame."""
+    robot: Articulation = env.scene[robot_cfg.name]
+
+    robot_pos = robot.data.root_pos_w
+    robot_quat = robot.data.root_quat_w
+    terrain_origins = env.scene.terrain.env_origins
+
+    rel_pos = robot_pos.squeeze(1) - terrain_origins
+
+    # Rotate the vector to the robot's frame
+    rel_pos_rot = math_utils.quat_rotate_inverse(robot_quat, rel_pos)
+
+    return rel_pos_rot
+
+
 def pose_3d_env(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
     """Position and Quaternion in environment frame"""
     entity: RigidObject | Articulation = env.scene[entity_cfg.name]
