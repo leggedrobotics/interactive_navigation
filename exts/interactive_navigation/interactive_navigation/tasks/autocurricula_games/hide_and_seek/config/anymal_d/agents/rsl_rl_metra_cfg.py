@@ -17,7 +17,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 ##
 @configclass
 class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 25  # -1
+    num_steps_per_env = 25  # 24 + 1 extra
     num_transitions_per_episode = None
     max_iterations = 20_000
     save_interval = 2000
@@ -56,7 +56,7 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         num_metra_learning_epochs=1,
         num_sgd_steps_metra=10,
         skill_dim=4,
-        lr=1e-3,
+        lr=2e-4,
         lr_tau=1e-4,
         visualizer_interval=250,
         skill_step_size=0.17,
