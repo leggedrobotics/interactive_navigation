@@ -265,6 +265,16 @@ class EventCfg:
         },
     )
 
+    reset_box = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {},
+            "velocity_range": {},
+            "asset_cfg": SceneEntityCfg("box"),
+        },
+    )
+
     # reset_robot_fix = EventTerm(
     #     func=mdp.reset_root_state_uniform,
     #     mode="reset",
