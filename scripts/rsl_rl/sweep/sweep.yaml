@@ -20,8 +20,8 @@ parameters:
 # metra
   # agent.metra.state_representation_args.layer_norm:
   #   values: [False]
-  agent.metra.skill_dim:
-    values: [3, 4, 5, 6]
+  # agent.metra.skill_dim:
+  #   values: [3, 4, 5, 6]
   # agent.metra.lr:
   #   min: 1.0e-4
   #   max: 1.0e-2
