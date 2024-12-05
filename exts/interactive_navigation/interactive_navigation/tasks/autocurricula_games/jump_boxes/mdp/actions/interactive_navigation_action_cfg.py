@@ -26,3 +26,6 @@ class InteractiveNavigationActionCfg(ActionTermCfg):
     """Frequency of the low level locomotion policy."""
     observation_group: str = MISSING
     """Observation group to use for the low level policy."""
+    reorder_joint_list: list[str] = MISSING
+    """Reorder the joint actions given from the low-level policy to match the Isaac Sim order if policy has been
+    trained with a different order."""

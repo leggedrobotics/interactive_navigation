@@ -139,9 +139,12 @@ class GoalCommand(CommandTerm):
 
         # get the current pos of the robot
         robot_pos_w = get_robot_pos(self.robot)
-        robot_pos_w[:, 2] -= self.robot_height
+        height_offset = torch.zeros_like(robot_pos_w)
+        height_offset[:, 2] = self.robot_height
         robot_quat = math_utils.yaw_quat(get_robot_quat(self.robot))
-        self.goal_pos_b, _ = math_utils.subtract_frame_transforms(robot_pos_w, robot_quat, self.goal_pos_w)
+        self.goal_pos_b, _ = math_utils.subtract_frame_transforms(
+            robot_pos_w + height_offset, robot_quat, self.goal_pos_w
+        )
 
         # get heading
         if self.cfg.heading:

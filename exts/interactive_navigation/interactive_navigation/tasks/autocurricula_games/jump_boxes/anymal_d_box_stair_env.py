@@ -33,6 +33,21 @@ from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: sk
 
 from omni.isaac.lab_assets.anymal import ANYMAL_D_CFG  # isort: skip
 
+ISAAC_GYM_JOINT_NAMES = [
+    "LF_HAA",
+    "LF_HFE",
+    "LF_KFE",
+    "LH_HAA",
+    "LH_HFE",
+    "LH_KFE",
+    "RF_HAA",
+    "RF_HFE",
+    "RF_KFE",
+    "RH_HAA",
+    "RH_HFE",
+    "RH_KFE",
+]
+
 ##
 # Task-specific configurations
 ##
@@ -128,8 +143,8 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
-        debug_vis=False,
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[2.0, 1.0]),
+        debug_vis=True,
         mesh_prim_paths=[
             "/World/ground",
             RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
@@ -217,7 +232,7 @@ class CommandsCfg:
     robot_goal = mdp.GoalCommandCfg(
         asset_name="robot",
         resampling_time_range=(1e9, 1e9),
-        debug_vis=True,
+        debug_vis=False,
         randomize_goal=True,
     )
 
@@ -231,13 +246,16 @@ class ActionsCfg:
         low_level_action=mdp.JointPositionActionCfg(  # copied from velocity_env & box_climb_env
             asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True
         ),
-        locomotion_policy_file="/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_rough/locomotion_anymal_d_faster/exported/policy.pt",
-        climbing_policy_file="/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_ll_box_climb/anymal_d_box_climb_ppo_v2/exported/policy.pt",
+        locomotion_policy_file=os.path.join(mdp.LOW_LEVEL_NET_PATH, "policy_walk_0310.jit"),
+        # "/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_rough/locomotion_anymal_d_faster/exported/policy.pt",
+        climbing_policy_file=os.path.join(mdp.LOW_LEVEL_NET_PATH, "policy_climb_0310.jit"),
+        # "/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_ll_box_climb/anymal_d_box_climb_ppo_v2/exported/policy.pt",
         observation_group="low_level_policy",
         locomotion_policy_freq=50.0,
         scale=[0.5, 0.25, 1.0],  # actions = raw_actions * scale + offset, raw_actions squashed to [-1, 1]
         offset=[0.25, 0.0, 0.0],
         debug_vis=True,
+        reorder_joint_list=ISAAC_GYM_JOINT_NAMES,
     )
 
     # usd robot
@@ -259,9 +277,19 @@ class ObservationsCfg:
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
         # velocity_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})
-        velocity_commands = ObsTerm(func=mdp.action_command, params={"action_name": "interactive_nav_action"})
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+        # command, 2d pos, sin cos heading, time left [0,1]
+        pos_head_time_command = ObsTerm(func=mdp.action_command, params={"action_name": "interactive_nav_action"})
+
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            params={"asset_cfg": SceneEntityCfg(name="robot", joint_names=ISAAC_GYM_JOINT_NAMES, preserve_order=True)},
+            noise=Unoise(n_min=-0.01, n_max=0.01),
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg(name="robot", joint_names=ISAAC_GYM_JOINT_NAMES, preserve_order=True)},
+            noise=Unoise(n_min=-1.5, n_max=1.5),
+        )
         actions = ObsTerm(func=mdp.last_low_level_action, params={"action_name": "interactive_nav_action"})
         height_scan = ObsTerm(
             func=mdp.height_scan,
