@@ -452,33 +452,33 @@ class TerminationsCfg:
 class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
-    remove_rewards = CurrTerm(
-        func=mdp.anneal_reward_weight,
-        params={
-            "term_names": [
-                "base_height",
-                "joint_deviation",
-                "bad_orientation",
-            ],
-            "ratio": 0.0,
-            "start_step": 25_000,
-            "num_steps": 70_000,
-        },
-    )
+    # remove_rewards = CurrTerm(
+    #     func=mdp.anneal_reward_weight,
+    #     params={
+    #         "term_names": [
+    #             "base_height",
+    #             "joint_deviation",
+    #             "bad_orientation",
+    #         ],
+    #         "ratio": 0.0,
+    #         "start_step": 25_000,
+    #         "num_steps": 70_000,
+    #     },
+    # )
 
-    anneal_rewards = CurrTerm(
-        func=mdp.anneal_reward_weight,
-        params={
-            "term_names": [
-                "undesired_contacts_thigh",
-                "undesired_contacts_shank",
-                "undesired_contacts_base",
-            ],
-            "ratio": 0.1,
-            "start_step": 25_000,
-            "num_steps": 70_000,
-        },
-    )
+    # anneal_rewards = CurrTerm(
+    #     func=mdp.anneal_reward_weight,
+    #     params={
+    #         "term_names": [
+    #             "undesired_contacts_thigh",
+    #             "undesired_contacts_shank",
+    #             "undesired_contacts_base",
+    #         ],
+    #         "ratio": 0.1,
+    #         "start_step": 25_000,
+    #         "num_steps": 70_000,
+    #     },
+    # )
 
     # num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
@@ -490,7 +490,7 @@ class ViewerCfg:
     """Configuration of the scene viewport camera."""
 
     # eye: tuple[float, float, float] = (-60.0, 0.5, 70.0)
-    eye: tuple[float, float, float] = (0.0, -10.0, 6.0)
+    eye: tuple[float, float, float] = (0.0, -14.0, 6.0)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
     lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
@@ -519,7 +519,7 @@ class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
     data_container: mdp.DataContainer = mdp.DataContainer()
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=4.0)
+    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=3.0)
     viewer: ViewerCfg = ViewerCfg()
 
     # Basic settings
@@ -536,7 +536,7 @@ class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
         """Post initialization."""
         # general settings
         self.decimation = 4  # 50 Hz
-        self.episode_length_s = 6.0  # 300 steps
+        self.episode_length_s = 8.0  # 300 steps
         # simulation settings
         self.sim.dt = 0.005  # 200 Hz
         self.sim.render_interval = self.decimation
