@@ -353,6 +353,8 @@ def reset_boxes_and_robot(
     z_offset = torch.zeros_like(env_ids) + robot_z_offset
     robot_pose = torch.cat([chain_positions[:, -1], z_offset.unsqueeze(1), orientations], dim=-1).float()
     robot.write_root_pose_to_sim(robot_pose, env_ids=env_ids)
+    zero_velocity = torch.zeros((len(env_ids), 6), device=robot.device)
+    robot.write_root_velocity_to_sim(zero_velocity, env_ids=env_ids)
 
     # set other boxes randomly but collision free
     used_positions = chain_positions[:, 1:]

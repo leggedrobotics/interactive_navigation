@@ -131,7 +131,7 @@ class InteractiveNavigationAction(ActionTerm):
 
         squashed_actions = torch.tanh(action_command)
 
-        position_2d = squashed_actions[:, :2] * 1.0  # position scaling TODO: make this a parameter
+        position_2d = squashed_actions[:, :2] * 1.5  # position scaling TODO: make this a parameter
         angle = squashed_actions[:, 2] * torch.pi / 4  # angle scaling TODO: make this a parameter
         heading_sin_cos = torch.cat((torch.sin(angle).unsqueeze(1), torch.cos(angle).unsqueeze(1)), dim=1)
 
@@ -155,7 +155,7 @@ class InteractiveNavigationAction(ActionTerm):
             self._counter = 0
             self._prev_low_level_actions.copy_(self._low_level_actions.clone())
             # Get low level actions from low level policy
-            print(self._skill_mask[0])
+            print(f"skill {self._skill_mask[0].nonzero().item()}")
 
             for skill_id in range(self.num_skills):
                 self.low_level_actions[self._skill_mask[:, skill_id]] = self.low_level_policies[skill_id](
@@ -206,7 +206,7 @@ class InteractiveNavigationAction(ActionTerm):
         if debug_vis:
             if not hasattr(self, "pos_cmd_visualizer"):
                 marker_cfg = BLUE_ARROW_X_MARKER_CFG.copy()
-                marker_cfg.markers["arrow"].scale = (0.1, 0.1, 0.1)
+                marker_cfg.markers["arrow"].scale = (0.1, 0.1, 1.0)
                 marker_cfg.prim_path = "/Visuals/Command/action_force"
 
                 self.pos_cmd_visualizer = VisualizationMarkers(marker_cfg)
@@ -258,9 +258,9 @@ class InteractiveNavigationAction(ActionTerm):
             torch.zeros_like(yaw_angle_heading_w), torch.zeros_like(yaw_angle_heading_w), yaw_angle_heading_w
         )
 
-        scales = torch.linalg.norm(pos_command, dim=1, keepdim=True) * 4
+        scales = torch.linalg.norm(pos_command, dim=1, keepdim=True)
         default_scale = torch.ones_like(scales) * 2
-        scales_3d = torch.cat([scales * 2, default_scale, default_scale], dim=1)
+        scales_3d = torch.cat([scales, default_scale, default_scale], dim=1)
         scales_3d[scales_3d == 0] = 0.1
         const_scales = torch.cat([default_scale * 4, default_scale, default_scale], dim=1)
         self.pos_cmd_visualizer.visualize(
