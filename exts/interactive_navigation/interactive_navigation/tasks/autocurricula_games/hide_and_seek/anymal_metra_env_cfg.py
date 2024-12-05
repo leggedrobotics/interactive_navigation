@@ -264,7 +264,8 @@ class EventCfg:
                 "x": (-reset_value_pos, reset_value_pos),
                 "y": (-reset_value_pos, reset_value_pos),
                 # "z": (0.35, 0.35),
-                "yaw": (-math.pi, math.pi),
+                "yaw": (-0.1, 0.1),
+                # "yaw": (-math.pi, math.pi),
             },
             "velocity_range": {
                 "x": (-reset_value, reset_value),
