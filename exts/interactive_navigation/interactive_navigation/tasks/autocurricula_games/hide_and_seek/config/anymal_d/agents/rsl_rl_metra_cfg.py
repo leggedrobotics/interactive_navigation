@@ -19,7 +19,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 25  # 24 + 1 extra
     num_transitions_per_episode = None
-    max_iterations = 20_000
+    max_iterations = 100_000
     save_interval = 2000
     experiment_name = "metra_ppo_anymal_test"
     run_name = "metra_ppo_anymal_test"
@@ -46,7 +46,7 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     metra = RslRlMetraAlgorithmCfg(
         class_name="METRA_PPO",  # METRA_PPO or METRA_SAC
         state_representation_args=StateReprCfg(
-            hidden_layers=[1024, 1024, 512],
+            hidden_layers=[512, 512, 512, 512],
             activation="elu",
             layer_norm=False,
         ),

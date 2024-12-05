@@ -63,5 +63,5 @@ command:
   - --headless
   - --video
   - --video_length=250
-  - --video_interval=30000
+  - --video_interval=20000
   - ${args_no_hyphens}

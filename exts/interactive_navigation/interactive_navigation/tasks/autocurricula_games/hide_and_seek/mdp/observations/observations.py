@@ -94,7 +94,7 @@ def origin_b(env: ManagerBasedEnv, robot_cfg: SceneEntityCfg = SceneEntityCfg("r
     robot_quat = robot.data.root_quat_w
     terrain_origins = env.scene.terrain.env_origins
 
-    rel_pos = robot_pos.squeeze(1) - terrain_origins
+    rel_pos = terrain_origins - robot_pos
 
     # Rotate the vector to the robot's frame
     rel_pos_rot = math_utils.quat_rotate_inverse(robot_quat, rel_pos)
@@ -119,8 +119,8 @@ def pose_3d_env(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tenso
 
 
 def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) -> torch.Tensor:
-    """Returns the pose of all entities relative to the terrain origin.
-    x,y position and heading in the form of cos(theta), sin(theta)."""
+    """Returns the pose of all entities relative to the robot's frame.
+    x, y positions and heading in the form of cos(theta), sin(theta)."""
 
     # - box poses
     box_ids = [asset for asset in list(env.scene.rigid_objects.keys()) if entity_str in asset]
@@ -164,7 +164,7 @@ def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) 
 
     # yaw = torch.atan2(sin_yaw, cos_yaw)
     # Stack the results into a single tensor
-    pose = torch.stack([x, y, cos_yaw, sin_yaw], dim=-1)
+    pose = torch.concat([x, y, cos_yaw, sin_yaw], dim=1)
 
     return pose
 

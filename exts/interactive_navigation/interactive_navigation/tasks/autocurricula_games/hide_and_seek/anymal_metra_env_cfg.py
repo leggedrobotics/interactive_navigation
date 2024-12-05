@@ -117,34 +117,34 @@ class ObservationsCfg:
         These observations need to be available from the robot's perspective.
         """
 
-        # origin = ObsTerm(
-        #     func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
-        #     params={"robot_cfg": SceneEntityCfg("robot")},
-        # )
-        my_pose = ObsTerm(
-            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot")},
+        origin = ObsTerm(
+            func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
+            params={"robot_cfg": SceneEntityCfg("robot")},
         )
+        # my_pose = ObsTerm(
+        #     func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+        #     params={"entity_cfg": SceneEntityCfg("robot")},
+        # )
         # height_scan = ObsTerm(
         #     func=mdp.height_scan,
         #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
         #     noise=Unoise(n_min=-0.1, n_max=0.1),
         #     clip=(-1.0, 1.0),
         # )
-        box_pose = ObsTerm(
-            func=mdp.pose_3d_env,
-            params={
-                "entity_cfg": SceneEntityCfg("box"),
-            },
-        )
-
         # box_pose = ObsTerm(
-        #     func=mdp.box_pose,
+        #     func=mdp.pose_3d_env,
         #     params={
-        #         "entity_str": "box",
-        #         "pov_entity": SceneEntityCfg("robot"),
+        #         "entity_cfg": SceneEntityCfg("box"),
         #     },
         # )
+
+        box_pose = ObsTerm(
+            func=mdp.box_pose,
+            params={
+                "entity_str": "box",
+                "pov_entity": SceneEntityCfg("robot"),
+            },
+        )
 
         # proprioception
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
@@ -166,19 +166,31 @@ class ObservationsCfg:
         """Observations for the metra."""
 
         # self
+        # my_pose = ObsTerm(
+        #     func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+        #     params={"entity_cfg": SceneEntityCfg("robot")},
+        # )
+        # box_pose = ObsTerm(
+        #     func=mdp.pose_3d_env,
+        #     params={
+        #         "entity_cfg": SceneEntityCfg("box"),
+        #     },
+        # )
+        # my_velocity = ObsTerm(
+        #     func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
+        #     params={"entity_cfg": SceneEntityCfg("robot")},
+        # )
+
         my_pose = ObsTerm(
-            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot")},
+            func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
+            params={"robot_cfg": SceneEntityCfg("robot")},
         )
         box_pose = ObsTerm(
-            func=mdp.pose_3d_env,
+            func=mdp.box_pose,
             params={
-                "entity_cfg": SceneEntityCfg("box"),
+                "entity_str": "box",
+                "pov_entity": SceneEntityCfg("robot"),
             },
-        )
-        my_velocity = ObsTerm(
-            func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot")},
         )
 
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
@@ -214,7 +226,7 @@ class ObservationsCfg:
 
 
 reset_value = 0.1
-reset_value_pos = 0.05
+reset_value_pos = 10.05
 
 
 @configclass
@@ -252,7 +264,7 @@ class EventCfg:
                 "x": (-reset_value_pos, reset_value_pos),
                 "y": (-reset_value_pos, reset_value_pos),
                 # "z": (0.35, 0.35),
-                "yaw": (-0.1, 0.1),
+                "yaw": (-math.pi, math.pi),
             },
             "velocity_range": {
                 "x": (-reset_value, reset_value),
