@@ -226,7 +226,7 @@ class ObservationsCfg:
 
 
 reset_value = 0.1
-reset_value_pos = 10.05
+reset_value_pos = 0.05
 
 
 @configclass
