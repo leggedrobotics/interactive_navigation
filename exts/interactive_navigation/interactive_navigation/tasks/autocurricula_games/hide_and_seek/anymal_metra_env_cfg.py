@@ -38,7 +38,10 @@ from omni.isaac.lab_assets.anymal import ANYMAL_D_CFG  # isort: skip
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets import (
     ROBOT_CFG,
     ROBOT_USD_CFG,
-    CUBOID_CFG,
+    CUBOID_FLAT_CFG,
+    CUBOID_BIG_CFG,
+    CUBOID_SMALL_CFG,
+    CUBOID_TALL_CFG,
     WALL_CFG,
     SEGMENT_RAY_CASTER_MARKER_CFG,
 )
@@ -63,14 +66,18 @@ class MySceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = ANYMAL_D_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # sensors
-    # height_scanner = RayCasterCfg(
-    #     prim_path="{ENV_REGEX_NS}/Robot/base",
-    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
-    #     attach_yaw_only=True,
-    #     pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
-    #     debug_vis=True,
-    #     mesh_prim_paths=["/World/ground"],
-    # )
+    height_scanner = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+        attach_yaw_only=True,
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.15, size=[4.0, 4.0]),
+        debug_vis=False,
+        mesh_prim_paths=[
+            "/World/ground",
+            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
+        ],
+        track_mesh_transforms=True,
+    )
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
 
     # lights
@@ -84,9 +91,21 @@ class MySceneCfg(InteractiveSceneCfg):
     )
 
     # box
-    box = CUBOID_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box",
-        init_state=CUBOID_CFG.InitialStateCfg(pos=[0.0, 1.5, 0.25]),
+    box1 = CUBOID_FLAT_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_1",
+        init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 1.5, 0.25]),
+    )
+    box2 = CUBOID_BIG_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_2",
+        init_state=CUBOID_BIG_CFG.InitialStateCfg(pos=[0.0, -2.0, 0.5]),
+    )
+    box3 = CUBOID_SMALL_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_3",
+        init_state=CUBOID_SMALL_CFG.InitialStateCfg(pos=[1.5, 0.0, 0.25]),
+    )
+    box4 = CUBOID_TALL_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_4",
+        init_state=CUBOID_TALL_CFG.InitialStateCfg(pos=[-1.5, 0.0, 0.5]),
     )
 
 
@@ -117,34 +136,34 @@ class ObservationsCfg:
         These observations need to be available from the robot's perspective.
         """
 
-        origin = ObsTerm(
-            func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"robot_cfg": SceneEntityCfg("robot")},
+        # origin = ObsTerm(
+        #     func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
+        #     params={"robot_cfg": SceneEntityCfg("robot")},
+        # )
+        # # my_pose = ObsTerm(
+        # #     func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+        # #     params={"entity_cfg": SceneEntityCfg("robot")},
+        # # )
+        height_scan = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(-1.0, 1.0),
         )
-        # my_pose = ObsTerm(
-        #     func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
-        #     params={"entity_cfg": SceneEntityCfg("robot")},
-        # )
-        # height_scan = ObsTerm(
-        #     func=mdp.height_scan,
-        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-        #     noise=Unoise(n_min=-0.1, n_max=0.1),
-        #     clip=(-1.0, 1.0),
-        # )
+        # # box_pose = ObsTerm(
+        # #     func=mdp.pose_3d_env,
+        # #     params={
+        # #         "entity_cfg": SceneEntityCfg("box"),
+        # #     },
+        # # )
+
         # box_pose = ObsTerm(
-        #     func=mdp.pose_3d_env,
+        #     func=mdp.box_pose,
         #     params={
-        #         "entity_cfg": SceneEntityCfg("box"),
+        #         "entity_str": "box",
+        #         "pov_entity": SceneEntityCfg("robot"),
         #     },
         # )
-
-        box_pose = ObsTerm(
-            func=mdp.box_pose,
-            params={
-                "entity_str": "box",
-                "pov_entity": SceneEntityCfg("robot"),
-            },
-        )
 
         # proprioception
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
@@ -165,33 +184,40 @@ class ObservationsCfg:
     class MetraStateCfg(ObsGroup):
         """Observations for the metra."""
 
-        # self
+        # # self
+        # # my_pose = ObsTerm(
+        # #     func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+        # #     params={"entity_cfg": SceneEntityCfg("robot")},
+        # # )
+        # # box_pose = ObsTerm(
+        # #     func=mdp.pose_3d_env,
+        # #     params={
+        # #         "entity_cfg": SceneEntityCfg("box"),
+        # #     },
+        # # )
+        # # my_velocity = ObsTerm(
+        # #     func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
+        # #     params={"entity_cfg": SceneEntityCfg("robot")},
+        # # )
+
+        height_scan = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(-1.0, 1.0),
+        )
+
         # my_pose = ObsTerm(
-        #     func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
-        #     params={"entity_cfg": SceneEntityCfg("robot")},
+        #     func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
+        #     params={"robot_cfg": SceneEntityCfg("robot")},
         # )
         # box_pose = ObsTerm(
-        #     func=mdp.pose_3d_env,
+        #     func=mdp.box_pose,
         #     params={
-        #         "entity_cfg": SceneEntityCfg("box"),
+        #         "entity_str": "box",
+        #         "pov_entity": SceneEntityCfg("robot"),
         #     },
         # )
-        # my_velocity = ObsTerm(
-        #     func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
-        #     params={"entity_cfg": SceneEntityCfg("robot")},
-        # )
-
-        my_pose = ObsTerm(
-            func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"robot_cfg": SceneEntityCfg("robot")},
-        )
-        box_pose = ObsTerm(
-            func=mdp.box_pose,
-            params={
-                "entity_str": "box",
-                "pov_entity": SceneEntityCfg("robot"),
-            },
-        )
 
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
@@ -264,8 +290,8 @@ class EventCfg:
                 "x": (-reset_value_pos, reset_value_pos),
                 "y": (-reset_value_pos, reset_value_pos),
                 # "z": (0.35, 0.35),
-                "yaw": (-0.1, 0.1),
-                # "yaw": (-math.pi, math.pi),
+                # "yaw": (-0.1, 0.1),
+                "yaw": (-math.pi, math.pi),
             },
             "velocity_range": {
                 "x": (-reset_value, reset_value),
@@ -278,13 +304,40 @@ class EventCfg:
         },
     )
 
-    reset_box = EventTerm(
+    reset_box1 = EventTerm(
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
             "pose_range": {},
             "velocity_range": {},
-            "asset_cfg": SceneEntityCfg("box"),
+            "asset_cfg": SceneEntityCfg("box1"),
+        },
+    )
+    reset_box2 = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {},
+            "velocity_range": {},
+            "asset_cfg": SceneEntityCfg("box2"),
+        },
+    )
+    reset_box3 = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {},
+            "velocity_range": {},
+            "asset_cfg": SceneEntityCfg("box3"),
+        },
+    )
+    reset_box4 = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {},
+            "velocity_range": {},
+            "asset_cfg": SceneEntityCfg("box4"),
         },
     )
 
@@ -519,7 +572,7 @@ class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
     data_container: mdp.DataContainer = mdp.DataContainer()
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=3.0)
+    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=8.0)
     viewer: ViewerCfg = ViewerCfg()
 
     # Basic settings

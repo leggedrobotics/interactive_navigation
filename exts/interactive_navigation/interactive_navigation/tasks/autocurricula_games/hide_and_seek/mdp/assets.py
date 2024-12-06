@@ -81,11 +81,11 @@ ROBOT_USD_CFG = ArticulationCfg(
 
 # - movable objects:
 
-# - cuboid:
-CUBOID_CFG = RigidObjectCfg(
+# - cuboids:
+CUBOID_FLAT_CFG = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/Cuboid",
     spawn=sim_utils.CuboidCfg(
-        size=(0.95, 0.95, 0.25),
+        size=(1.0, 1.0, 0.25),
         rigid_props=sim_utils.RigidBodyPropertiesCfg(max_depenetration_velocity=1.0),
         mass_props=sim_utils.MassPropertiesCfg(mass=5.0),
         physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -93,6 +93,58 @@ CUBOID_CFG = RigidObjectCfg(
         ),
         collision_props=sim_utils.CollisionPropertiesCfg(),
         visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.2, 0.9, 0.2)),
+        activate_contact_sensors=True,
+    ),
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
+    collision_group=0,
+)
+
+
+CUBOID_SMALL_CFG = RigidObjectCfg(
+    prim_path="{ENV_REGEX_NS}/Cuboid",
+    spawn=sim_utils.CuboidCfg(
+        size=(0.25, 0.25, 0.25),
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(max_depenetration_velocity=1.0),
+        mass_props=sim_utils.MassPropertiesCfg(mass=5.0),
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            static_friction=0.5, dynamic_friction=0.5, friction_combine_mode="average"
+        ),
+        collision_props=sim_utils.CollisionPropertiesCfg(),
+        visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.3, 0.3)),
+        activate_contact_sensors=True,
+    ),
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
+    collision_group=0,
+)
+
+CUBOID_BIG_CFG = RigidObjectCfg(
+    prim_path="{ENV_REGEX_NS}/Cuboid",
+    spawn=sim_utils.CuboidCfg(
+        size=(1.5, 1.5, 0.5),
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(max_depenetration_velocity=1.0),
+        mass_props=sim_utils.MassPropertiesCfg(mass=500.0),
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            static_friction=0.5, dynamic_friction=0.5, friction_combine_mode="average"
+        ),
+        collision_props=sim_utils.CollisionPropertiesCfg(),
+        visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.6, 0.6, 0.6)),
+        activate_contact_sensors=True,
+    ),
+    init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
+    collision_group=0,
+)
+
+CUBOID_TALL_CFG = RigidObjectCfg(
+    prim_path="{ENV_REGEX_NS}/Cuboid",
+    spawn=sim_utils.CuboidCfg(
+        size=(0.3, 0.3, 1.0),
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(max_depenetration_velocity=1.0),
+        mass_props=sim_utils.MassPropertiesCfg(mass=5.0),
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            static_friction=0.5, dynamic_friction=0.5, friction_combine_mode="average"
+        ),
+        collision_props=sim_utils.CollisionPropertiesCfg(),
+        visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9, 0.2, 0.9)),
         activate_contact_sensors=True,
     ),
     init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),

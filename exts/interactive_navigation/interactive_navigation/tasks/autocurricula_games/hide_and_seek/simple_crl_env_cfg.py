@@ -36,7 +36,7 @@ from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: sk
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets import (
     ROBOT_CFG,
     ROBOT_USD_CFG,
-    CUBOID_CFG,
+    CUBOID_FLAT_CFG,
     WALL_CFG,
     SEGMENT_RAY_CASTER_MARKER_CFG,
 )
