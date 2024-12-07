@@ -87,7 +87,7 @@ def pose_2d_env(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tenso
 
 
 def origin_b(env: ManagerBasedEnv, robot_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
-    """Returns the vector from the robot to the origin in the robots frame."""
+    """Returns the vector from the robot to the origin in the robots yaw frame."""
     robot: Articulation = env.scene[robot_cfg.name]
 
     robot_pos = robot.data.root_pos_w
@@ -97,7 +97,7 @@ def origin_b(env: ManagerBasedEnv, robot_cfg: SceneEntityCfg = SceneEntityCfg("r
     rel_pos = terrain_origins - robot_pos
 
     # Rotate the vector to the robot's frame
-    rel_pos_rot = math_utils.quat_rotate_inverse(robot_quat, rel_pos)
+    rel_pos_rot = math_utils.quat_rotate_inverse(math_utils.yaw_quat(robot_quat), rel_pos)
 
     return rel_pos_rot
 
@@ -118,8 +118,8 @@ def pose_3d_env(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tenso
     return torch.cat([rel_pos, quat], dim=-1)
 
 
-def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) -> torch.Tensor:
-    """Returns the pose of all entities relative to the robot's frame.
+def box_pose_2d(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) -> torch.Tensor:
+    """Returns the 2d pose of all entities relative to the robot's frame.
     x, y positions and heading in the form of cos(theta), sin(theta)."""
 
     # - box poses
@@ -166,6 +166,43 @@ def box_pose(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) 
     # Stack the results into a single tensor
     pose = torch.concat([x, y, cos_yaw, sin_yaw], dim=1)
 
+    return pose
+
+
+def box_pose_3d(
+    env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg, yaw_only: bool = True
+) -> torch.Tensor:
+    """Returns the full pose of all entities relative to the robot's frame.
+    x, y, z positions and quaternion."""
+
+    # - box poses
+    box_ids = [asset for asset in list(env.scene.rigid_objects.keys()) if entity_str in asset]
+    box_poses = []
+    box_quats = []
+
+    for box_id in box_ids:
+        box_poses.append(env.scene.rigid_objects[box_id].data.root_pos_w)
+        box_quats.append(env.scene.rigid_objects[box_id].data.root_quat_w)
+
+    boxes_positions_w = torch.stack(box_poses, dim=1)
+    boxes_quats_w = torch.stack(box_quats, dim=1)
+
+    # - robot pose
+    robot = env.scene[pov_entity.name]
+    robot_pos_w = get_robot_pos(robot)
+    robot_quat_w = get_robot_quat(robot)
+    if yaw_only:
+        robot_quat_w = math_utils.yaw_quat(robot_quat_w)
+
+    # Expand robot pose to match the number of boxes
+    robot_pos_w_expanded = robot_pos_w.unsqueeze(1).expand_as(boxes_positions_w)
+    robot_quat_w_expanded = robot_quat_w.unsqueeze(1).expand_as(boxes_quats_w)
+
+    # - calculate pose of boxes in robot frame
+    t_box_robot, q_box_robot = math_utils.subtract_frame_transforms(
+        robot_pos_w_expanded, robot_quat_w_expanded, boxes_positions_w, boxes_quats_w
+    )
+    pose = torch.concat([t_box_robot, q_box_robot], dim=-1).squeeze(1)
     return pose
 
 

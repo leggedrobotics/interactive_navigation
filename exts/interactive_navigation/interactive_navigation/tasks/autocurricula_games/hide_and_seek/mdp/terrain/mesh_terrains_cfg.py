@@ -11,6 +11,10 @@ import omni.isaac.lab.terrains.trimesh.utils as mesh_utils_terrains
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.terrains.terrain_generator_cfg import SubTerrainBaseCfg
 
+import omni.isaac.lab.terrains as terrain_gen
+
+from omni.isaac.lab.terrains import TerrainGeneratorCfg
+
 
 @configclass
 class MeshPyramidTerrainCfg(SubTerrainBaseCfg):

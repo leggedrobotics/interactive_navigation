@@ -170,9 +170,9 @@
                 // "box_move_skill_test",
                 // "--video",
                 // "--video_length",
-                // "1000",
+                // "300",
                 // "--video_interval",
-                // "20000"
+                // "1000"
             ],
             "justMyCode": false,
             "program": "${workspaceFolder}/scripts/rsl_rl/train.py",

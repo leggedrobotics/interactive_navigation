@@ -246,7 +246,7 @@ class ObservationsCfg:
 
         # boxes:
         boxes_poses = ObsTerm(
-            func=mdp.box_pose,
+            func=mdp.box_pose_2d,
             params={
                 "entity_str": "box",
                 "pov_entity": SceneEntityCfg("robot"),
