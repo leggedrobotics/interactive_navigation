@@ -57,29 +57,29 @@ class MySceneCfg(InteractiveSceneCfg):
     """Configuration for the terrain scene with a legged robot."""
 
     # ground terrain
-    # terrain = TerrainImporterCfg(
-    #     prim_path="/World/ground",
-    #     terrain_type="plane",
-    #     physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=1.0, restitution=0.0),
-    # )
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
-        terrain_type="generator",
-        terrain_generator=mdp.terrain.PYRAMID_TERRAINS_CFG,
-        max_init_terrain_level=500,
-        collision_group=-1,
-        physics_material=sim_utils.RigidBodyMaterialCfg(
-            friction_combine_mode="multiply",
-            restitution_combine_mode="multiply",
-            static_friction=1.0,
-            dynamic_friction=1.0,
-        ),
-        visual_material=sim_utils.MdlFileCfg(
-            mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
-            project_uvw=True,
-        ),
-        debug_vis=False,
+        terrain_type="plane",
+        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=1.0, restitution=0.0),
     )
+    # terrain = TerrainImporterCfg(
+    #     prim_path="/World/ground",
+    #     terrain_type="generator",
+    #     terrain_generator=mdp.terrain.PYRAMID_TERRAINS_CFG,
+    #     max_init_terrain_level=500,
+    #     collision_group=-1,
+    #     physics_material=sim_utils.RigidBodyMaterialCfg(
+    #         friction_combine_mode="multiply",
+    #         restitution_combine_mode="multiply",
+    #         static_friction=1.0,
+    #         dynamic_friction=1.0,
+    #     ),
+    #     visual_material=sim_utils.MdlFileCfg(
+    #         mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
+    #         project_uvw=True,
+    #     ),
+    #     debug_vis=False,
+    # )
 
     robot: ArticulationCfg = ANYMAL_D_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
@@ -113,6 +113,19 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Box_1",
         init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 0.75, 0.25]),
     )
+    # box2 = CUBOID_FLAT_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Box_2",
+    #     init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 0.75, 0.25]),
+    # )
+    # box3 = CUBOID_FLAT_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Box_3",
+    #     init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 0.75, 0.25]),
+    # )
+    # box4 = CUBOID_FLAT_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Box_4",
+    #     init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 0.75, 0.25]),
+    # )
+
     # box2 = CUBOID_BIG_CFG.replace(
     #     prim_path="{ENV_REGEX_NS}/Box_2",
     #     init_state=CUBOID_BIG_CFG.InitialStateCfg(pos=[0.0, -2.0, 0.5]),
@@ -158,25 +171,16 @@ class ObservationsCfg:
             func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
             params={"robot_cfg": SceneEntityCfg("robot")},
         )
-        # my_pose = ObsTerm(
-        #     func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
-        #     params={"entity_cfg": SceneEntityCfg("robot")},
-        # )
+
         height_scan = ObsTerm(
             func=mdp.height_scan,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
             noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(-1.0, 1.0),
         )
-        # box_pose = ObsTerm(
-        #     func=mdp.pose_3d_env,
-        #     params={
-        #         "entity_cfg": SceneEntityCfg("box"),
-        #     },
-        # )
 
         box_pose = ObsTerm(
-            func=mdp.box_pose_3d,
+            func=mdp.box_pose_2d,
             params={
                 "entity_str": "box",
                 "pov_entity": SceneEntityCfg("robot"),
@@ -218,19 +222,19 @@ class ObservationsCfg:
         # #     params={"entity_cfg": SceneEntityCfg("robot")},
         # # )
 
-        # height_scan = ObsTerm(
-        #     func=mdp.height_scan,
-        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-        #     noise=Unoise(n_min=-0.1, n_max=0.1),
-        #     clip=(-1.0, 1.0),
-        # )
+        height_scan = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(-1.0, 1.0),
+        )
 
         my_pose = ObsTerm(
             func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
             params={"robot_cfg": SceneEntityCfg("robot")},
         )
         box_pose = ObsTerm(
-            func=mdp.box_pose_3d,
+            func=mdp.box_pose_2d,
             params={
                 "entity_str": "box",
                 "pov_entity": SceneEntityCfg("robot"),
@@ -392,37 +396,6 @@ class EventCfg:
 # instructor net
 # instructor_guidance = RewTerm(func=mdp.instruction_guidance, params={"obs_name": "instructor"}, weight=1.0)
 
-# # -- penalties
-# lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-# ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
-# dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
-# dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
-# action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
-# feet_air_time = RewTerm(
-#     func=mdp.feet_air_time,
-#     weight=0.125,
-#     params={
-#         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
-#         "command_name": "base_velocity",
-#         "threshold": 0.5,
-#     },
-# )
-# undesired_contacts = RewTerm(
-#     func=mdp.undesired_contacts,
-#     weight=-1.0,
-#     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
-# )
-
-# # terminated = RewTerm(
-# #     func=mdp.is_terminated_term,
-# #     params={"term_keys": "upside_down"},
-# #     weight=-1000.0,
-# # )
-# bad_orientation = RewTerm(
-#     func=mdp.bad_orientation,
-#     params={"limit_angle": math.radians(100)},
-#     weight=-25.0,
-# )
 
 step_dt = 1 / 50
 
@@ -472,7 +445,7 @@ class RewardsCfg:
 
     base_height = RewTerm(
         func=mdp.base_below_min_height,
-        weight=-step_dt * 5.0,
+        weight=-step_dt * 10.0,
         params={"target_height": 0.6},
     )
 
@@ -514,7 +487,7 @@ class TerminationsCfg:
 
     # too_far_away = DoneTerm(func=mdp.too_far_away, params={"max_dist": 15.0})
 
-    # upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": math.radians(100)})
+    upside_down = DoneTerm(func=mdp.bad_orientation, params={"limit_angle": math.radians(100)})
 
     # goal_reached = DoneTerm(func=mdp.goal_reached, params={"threshold_dist": 0.5})
 
@@ -541,9 +514,10 @@ class CurriculumCfg:
     #     func=mdp.anneal_reward_weight,
     #     params={
     #         "term_names": [
-    #             "undesired_contacts_thigh",
-    #             "undesired_contacts_shank",
-    #             "undesired_contacts_base",
+    #             "joint_deviation"
+    #             # "undesired_contacts_thigh",
+    #             # "undesired_contacts_shank",
+    #             # "undesired_contacts_base",
     #         ],
     #         "ratio": 0.1,
     #         "start_step": 25_000,
@@ -560,21 +534,21 @@ class CurriculumCfg:
 class ViewerCfg:
     """Configuration of the scene viewport camera."""
 
-    # eye: tuple[float, float, float] = (0.0, -14.0, 6.0)
-    eye: tuple[float, float, float] = (0.0, 3.0, 2.0)
+    eye: tuple[float, float, float] = (0.0, -14.0, 6.0)
+    # eye: tuple[float, float, float] = (0.0, 3.0, 2.0)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
     lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
     cam_prim_path: str = "/OmniverseKit_Persp"
     resolution: tuple[int, int] = (1280, 720)
-    origin_type: Literal["world", "env", "asset_root"] = "asset_root"
+    origin_type: Literal["world", "env", "asset_root"] = "world"
     """
     * ``"world"``: The origin of the world.
     * ``"env"``: The origin of the environment defined by :attr:`env_index`.
     * ``"asset_root"``: The center of the asset defined by :attr:`asset_name` in environment :attr:`env_index`.
     """
     env_index: int = 0
-    asset_name: str | None = "robot"
+    asset_name: str | None = None  # "robot"
 
 
 ##
@@ -590,7 +564,7 @@ class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
     data_container: mdp.DataContainer = mdp.DataContainer()
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=800.0)
+    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=3.0)
     viewer: ViewerCfg = ViewerCfg()
 
     # Basic settings

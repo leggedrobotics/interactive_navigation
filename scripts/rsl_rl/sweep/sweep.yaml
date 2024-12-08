@@ -22,7 +22,7 @@ parameters:
   #   values: [False]
   agent.metra.skill_dim:
     min: 4
-    max: 12
+    max: 8
   # agent.metra.lr:
   #   min: 1.0e-4
   #   max: 1.0e-2

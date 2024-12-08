@@ -60,7 +60,7 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         lr_tau=1e-4,
         visualizer_interval=250,
         skill_step_size=0.17,
-        sigma=5.0,
+        sigma=10.0,
         # sac_hyperparameters=SAC_MetraCfg(
         #     gamma=0.999,
         #     alpha=0.22,
