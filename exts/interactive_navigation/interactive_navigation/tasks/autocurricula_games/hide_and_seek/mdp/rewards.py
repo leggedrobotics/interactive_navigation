@@ -524,7 +524,8 @@ def base_below_min_height(
     # create the ray casting pattern
     N_rays = 100
     angles = torch.linspace(0, 2 * torch.pi, N_rays + 1, device=env.device)[:-1]
-    ray_starts = torch.stack([torch.cos(angles), torch.sin(angles), torch.zeros_like(angles)], dim=1) * radius
+    offset = 25.0
+    ray_starts = torch.stack([torch.cos(angles), torch.sin(angles), torch.zeros_like(angles) + offset], dim=1) * radius
     ray_directions = torch.stack([torch.zeros_like(angles), torch.zeros_like(angles), -torch.ones_like(angles)], dim=1)
 
     # extract the used quantities (to enable type-hinting)
@@ -546,6 +547,7 @@ def base_below_min_height(
     ].squeeze(0)
 
     mean_heights = robot_base_positions[:, 2] - ray_hits[..., 2].mean(dim=1)
+    mean_heights = torch.clamp(mean_heights, min=-100, max=100)
     return torch.square(torch.clamp(target_height - mean_heights, min=0))
 
 

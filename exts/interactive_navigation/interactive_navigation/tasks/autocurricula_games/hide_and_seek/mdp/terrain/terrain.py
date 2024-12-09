@@ -118,8 +118,8 @@ MESH_STEPPABLE_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
     size=(25.0, 25.0),
     border_width=10.0,
     border_height=7.5,
-    num_rows=8,  # difficulty levels
-    num_cols=8,  # number of terrains per difficulty level
+    num_rows=32,  # difficulty levels
+    num_cols=16,  # number of terrains per difficulty level
     horizontal_scale=0.5,
     vertical_scale=0.05,
     slope_threshold=0.75,
@@ -201,9 +201,9 @@ MESH_FLAT_TERRAIN_CFG = TerrainGeneratorCfg(
 
 
 PYRAMID_TERRAINS_CFG = TerrainGeneratorCfg(
-    size=(12.0, 12.0),
+    size=(6.0, 6.0),
     border_width=20.0,
-    num_rows=64,  # difficulty levels
+    num_rows=32,  # difficulty levels
     num_cols=32,  # number of terrains per difficulty level
     horizontal_scale=0.1,
     vertical_scale=0.005,
@@ -218,14 +218,23 @@ PYRAMID_TERRAINS_CFG = TerrainGeneratorCfg(
         #     border_width=1.0,
         #     holes=False,
         # ),
-        "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
-            proportion=0.5,
-            step_height_range=(0.00, 0.5),
-            step_width=3.0,
-            platform_width=8.0,
-            border_width=3.0,
-            holes=False,
+        # "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
+        #     proportion=0.5,
+        #     step_height_range=(0.00, 0.5),
+        #     step_width=3.0,
+        #     platform_width=8.0,
+        #     border_width=3.0,
+        #     holes=False,
+        # ),
+        "random_rough1": terrain_gen.HfRandomUniformTerrainCfg(
+            proportion=0.5, noise_range=(0.005, 0.05), noise_step=0.005, border_width=0.1
         ),
+        "random_rough2": terrain_gen.HfRandomUniformTerrainCfg(
+            proportion=0.5, noise_range=(0.005, 0.10), noise_step=0.005, border_width=0.1
+        ),
+        # "random_rough1": terrain_gen.HfRandomUniformTerrainCfg(
+        #     proportion=1.0, noise_range=(0.005, 0.05), noise_step=0.005, border_width=0.1
+        # ),
     },
 )
 """Rough terrains configuration."""

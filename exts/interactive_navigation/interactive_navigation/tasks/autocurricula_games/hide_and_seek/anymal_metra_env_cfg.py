@@ -57,29 +57,29 @@ class MySceneCfg(InteractiveSceneCfg):
     """Configuration for the terrain scene with a legged robot."""
 
     # ground terrain
-    terrain = TerrainImporterCfg(
-        prim_path="/World/ground",
-        terrain_type="plane",
-        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=1.0, restitution=0.0),
-    )
     # terrain = TerrainImporterCfg(
     #     prim_path="/World/ground",
-    #     terrain_type="generator",
-    #     terrain_generator=mdp.terrain.PYRAMID_TERRAINS_CFG,
-    #     max_init_terrain_level=500,
-    #     collision_group=-1,
-    #     physics_material=sim_utils.RigidBodyMaterialCfg(
-    #         friction_combine_mode="multiply",
-    #         restitution_combine_mode="multiply",
-    #         static_friction=1.0,
-    #         dynamic_friction=1.0,
-    #     ),
-    #     visual_material=sim_utils.MdlFileCfg(
-    #         mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
-    #         project_uvw=True,
-    #     ),
-    #     debug_vis=False,
+    #     terrain_type="plane",
+    #     physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=1.0, restitution=0.0),
     # )
+    terrain = TerrainImporterCfg(
+        prim_path="/World/ground",
+        terrain_type="generator",
+        terrain_generator=mdp.terrain.PYRAMID_TERRAINS_CFG,
+        max_init_terrain_level=500,
+        collision_group=-1,
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            friction_combine_mode="multiply",
+            restitution_combine_mode="multiply",
+            static_friction=1.0,
+            dynamic_friction=1.0,
+        ),
+        visual_material=sim_utils.MdlFileCfg(
+            mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
+            project_uvw=True,
+        ),
+        debug_vis=False,
+    )
 
     robot: ArticulationCfg = ANYMAL_D_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
@@ -412,7 +412,7 @@ class RewardsCfg:
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=step_dt * -5.0e-2)
     feet_air_time = RewTerm(
         func=mdp.feet_air_time,
-        weight=step_dt * 10.0,
+        weight=step_dt * 30.0,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
             "command_name": "base_velocity",
@@ -467,11 +467,11 @@ class RewardsCfg:
         weight=-step_dt * 10.0,
     )
 
-    # terminated = RewTerm(
-    #     func=mdp.is_terminated_term,
-    #     params={"term_keys": "upside_down"},
-    #     weight=-1000.0,
-    # )
+    terminated = RewTerm(
+        func=mdp.is_terminated_term,
+        params={"term_keys": "upside_down"},
+        weight=-1000.0,
+    )
 
 
 @configclass

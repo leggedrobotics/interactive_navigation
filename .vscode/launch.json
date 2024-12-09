@@ -161,7 +161,7 @@
                 "--task",
                 "Isaac-METRA-Anymal-D-v0",
                 "--num_envs",
-                "128",
+                "4096",
                 "--run_name",
                 "metra_anymal_debug",
                 // "--resume",
