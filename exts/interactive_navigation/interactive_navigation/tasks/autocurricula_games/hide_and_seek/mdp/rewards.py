@@ -547,8 +547,7 @@ def base_below_min_height(
     ].squeeze(0)
 
     mean_heights = robot_base_positions[:, 2] - ray_hits[..., 2].mean(dim=1)
-    mean_heights = torch.clamp(mean_heights, min=-100, max=100)
-    return torch.square(torch.clamp(target_height - mean_heights, min=0))
+    return torch.square(torch.clamp(target_height - mean_heights, min=0, max=1))
 
 
 ##
