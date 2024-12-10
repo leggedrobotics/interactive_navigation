@@ -84,18 +84,18 @@ class MySceneCfg(InteractiveSceneCfg):
     robot: ArticulationCfg = ANYMAL_D_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # sensors
-    height_scanner = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/base",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
-        attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[2.0, 1.0]),
-        debug_vis=False,
-        mesh_prim_paths=[
-            "/World/ground",
-            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
-        ],
-        track_mesh_transforms=True,
-    )
+    # height_scanner = RayCasterCfg(
+    #     prim_path="{ENV_REGEX_NS}/Robot/base",
+    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+    #     attach_yaw_only=True,
+    #     pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[2.0, 1.0]),
+    #     debug_vis=False,
+    #     mesh_prim_paths=[
+    #         "/World/ground",
+    #         RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
+    #     ],
+    #     track_mesh_transforms=True,
+    # )
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
 
     # lights
@@ -172,12 +172,12 @@ class ObservationsCfg:
             params={"robot_cfg": SceneEntityCfg("robot")},
         )
 
-        height_scan = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            noise=Unoise(n_min=-0.1, n_max=0.1),
-            clip=(-1.0, 1.0),
-        )
+        # height_scan = ObsTerm(
+        #     func=mdp.height_scan,
+        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+        #     noise=Unoise(n_min=-0.1, n_max=0.1),
+        #     clip=(-1.0, 1.0),
+        # )
 
         box_pose = ObsTerm(
             func=mdp.box_pose_2d,
@@ -222,12 +222,12 @@ class ObservationsCfg:
         # #     params={"entity_cfg": SceneEntityCfg("robot")},
         # # )
 
-        height_scan = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            noise=Unoise(n_min=-0.1, n_max=0.1),
-            clip=(-1.0, 1.0),
-        )
+        # height_scan = ObsTerm(
+        #     func=mdp.height_scan,
+        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+        #     noise=Unoise(n_min=-0.1, n_max=0.1),
+        #     clip=(-1.0, 1.0),
+        # )
 
         my_pose = ObsTerm(
             func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
@@ -536,8 +536,10 @@ class ViewerCfg:
 
     eye: tuple[float, float, float] = (0.0, -14.0, 6.0)
     # eye: tuple[float, float, float] = (0.0, 3.0, 2.0)
+    # eye: tuple[float, float, float] = (1.5, -1.5, 0.5)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
+    # lookat: tuple[float, float, float] = (0.0, 0.0, -0.2)
     lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
     cam_prim_path: str = "/OmniverseKit_Persp"
     resolution: tuple[int, int] = (1280, 720)
