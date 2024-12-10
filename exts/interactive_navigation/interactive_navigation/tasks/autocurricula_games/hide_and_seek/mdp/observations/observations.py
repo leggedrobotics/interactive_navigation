@@ -1,6 +1,5 @@
 import torch
-
-
+import numpy as np
 from omni.isaac.lab.envs import ManagerBasedEnv, ManagerBasedRLEnv
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.assets import Articulation, AssetBaseCfg, RigidObject
@@ -8,6 +7,9 @@ from omni.isaac.lab.sensors import CameraCfg, ContactSensorCfg, RayCasterCfg, pa
 from omni.isaac.lab.utils import math as math_utils
 from omni.isaac.lab.utils.timer import Timer, TIMER_CUMULATIVE
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.commands import GoalCommand
+from omni.isaac.lab.managers import ObservationTermCfg
+from omni.isaac.lab.managers.manager_base import ManagerTermBase
+from omni.isaac.lab.sensors import TiledCamera
 
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.utils import (
     get_robot_pos,
@@ -274,3 +276,77 @@ def dist_to_goal(env: ManagerBasedRLEnv, entity_cfg: SceneEntityCfg, command_nam
 
     diff = torch.linalg.norm(entity_pos - goal_pos, dim=-1).unsqueeze(1)
     return diff
+
+
+##
+# - video
+##
+
+
+class video_recorder(ManagerTermBase):
+
+    # TODO: move this to observations or something, but not here since this is only callled on reset maybe???
+
+    def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedRLEnv):
+
+        super().__init__(cfg, env)
+
+        self.video_length_steps = 60
+        self.video_intervall = 1000
+
+        self.record_video = False
+        self.video_dict = {}
+        self.video_counter = 0
+        self.step_counter = 0
+
+    def __call__(self, env: ManagerBasedRLEnv, camera: str = "tiled_camera") -> torch.Tensor:
+        """
+        Args:
+            env: The learning environment.
+            env_ids: The list of reset environments.
+            camera: The name of the camera sensor to record.
+        """
+        # get sensor
+        sensor: TiledCamera = env.scene.sensors[camera]
+        cam_env_ids = sensor.cam_env_ids
+        cam_ids = sensor._ALL_INDICES
+
+        # check if we should start to record videos
+        if self.step_counter % self.video_intervall == 10:
+            self.record_video = True
+
+            # clear image stack
+            for env_id in cam_env_ids.cpu().numpy():
+                self.video_dict[env_id] = []
+
+        if self.record_video:
+
+            env_ids = env.termination_manager.dones.nonzero()
+
+            # check which envs to start recording
+            start_record_env_mask = torch.isin(cam_env_ids, env_ids)
+            start_record_env_ids = cam_env_ids[start_record_env_mask].cpu().numpy()
+            start_record_cam_ids = cam_ids[start_record_env_mask].cpu().numpy()
+
+            # record such that we start at a new episode
+            isfull = len(start_record_env_ids) > 0
+            env_frames = sensor.data.output["rgb"].cpu().numpy()
+            for env_id, cam_id in zip(start_record_env_ids, start_record_cam_ids):
+                # start recording if env was reset
+                if env_id in start_record_env_ids:
+                    self.video_dict[env_id].append(env_frames[cam_id])
+                # if we started before, keep recording until the video length is reached
+                elif 0 < len(self.video_dict[env_id]) < self.video_length_steps:
+                    self.video_dict[env_id].append(env_frames[cam_id])
+                # check if we are done
+                isfull &= len(self.video_dict[env_id]) == self.video_length_steps
+
+            if isfull:
+                self.record_video = False
+                self.video_counter += 1
+
+        self.step_counter += 1
+        return torch.tensor(self.video_counter)
+
+    def get_video(self):
+        np_video_stack = np.stack(self.image_stack, axis=1)

@@ -17,7 +17,7 @@ from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from omni.isaac.lab.scene import InteractiveSceneCfg
-from omni.isaac.lab.sensors import ContactSensorCfg, RayCasterCfg, patterns
+from omni.isaac.lab.sensors import ContactSensorCfg, RayCasterCfg, patterns, TiledCameraCfg
 from omni.isaac.lab.terrains import TerrainImporterCfg
 from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
@@ -78,7 +78,7 @@ class MySceneCfg(InteractiveSceneCfg):
             mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
             project_uvw=True,
         ),
-        debug_vis=False,
+        debug_vis=True,
     )
 
     robot: ArticulationCfg = ANYMAL_D_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
@@ -138,6 +138,20 @@ class MySceneCfg(InteractiveSceneCfg):
     #     prim_path="{ENV_REGEX_NS}/Box_4",
     #     init_state=CUBOID_TALL_CFG.InitialStateCfg(pos=[-1.5, 0.0, 0.5]),
     # )
+
+    # camera for skill recording
+
+    tiled_camera: TiledCameraCfg = TiledCameraCfg(
+        # prim_path="/World/envs/env_(1[0-9]|[0-9])/Robot/base/Camera",
+        prim_path="/World/envs/env_(1[0-9]|[0-9])/Camera",
+        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 15.0), rot=(0.7071068, 0, 0.7071068, 0), convention="world"),
+        data_types=["rgb"],
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1000.0)
+        ),
+        width=80,
+        height=80,
+    )
 
 
 ##
@@ -267,10 +281,23 @@ class ObservationsCfg:
             self.enable_corruption = True
             self.concatenate_terms = True
 
+    @configclass
+    class VideoRecordingObsCfg(ObsGroup):
+        """Observations for the style instructor group."""
+
+        video = ObsTerm(
+            func=mdp.video_recorder,
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = False
+
     # observation groups
     policy: PolicyCfg = PolicyCfg()
     metra: MetraStateCfg = MetraStateCfg()  # currently not used
     instructor: InstructorObsCfg = InstructorObsCfg()
+    video: VideoRecordingObsCfg = VideoRecordingObsCfg()
 
 
 reset_value = 0.1
