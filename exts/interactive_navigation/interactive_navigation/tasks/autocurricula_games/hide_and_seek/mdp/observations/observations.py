@@ -290,14 +290,13 @@ class video_recorder(ManagerTermBase):
     def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedRLEnv):
 
         super().__init__(cfg, env)
-
-        self.video_length_steps = 60
         self.video_intervall = 1000
 
         self.record_video = False
         self.video_dict = {}
         self.video_counter = 0
         self.step_counter = 0
+        self.finished_video_dict = {}
 
     def __call__(self, env: ManagerBasedRLEnv, camera: str = "tiled_camera") -> torch.Tensor:
         """
@@ -320,30 +319,26 @@ class video_recorder(ManagerTermBase):
                 self.video_dict[env_id] = []
 
         if self.record_video:
-
-            env_ids = env.termination_manager.dones.nonzero()
-
-            # check which envs to start recording
-            start_record_env_mask = torch.isin(cam_env_ids, env_ids)
-            start_record_env_ids = cam_env_ids[start_record_env_mask].cpu().numpy()
-            start_record_cam_ids = cam_ids[start_record_env_mask].cpu().numpy()
-
             # record such that we start at a new episode
-            isfull = len(start_record_env_ids) > 0
+            start_env_ids = env.termination_manager.dones.nonzero()
+            isfull = True
             env_frames = sensor.data.output["rgb"].cpu().numpy()
-            for env_id, cam_id in zip(start_record_env_ids, start_record_cam_ids):
+            for env_id, cam_id in zip(cam_env_ids.cpu().numpy(), cam_ids.cpu().numpy()):
                 # start recording if env was reset
-                if env_id in start_record_env_ids:
+                if env_id in start_env_ids and len(self.video_dict[env_id]) == 0:
                     self.video_dict[env_id].append(env_frames[cam_id])
                 # if we started before, keep recording until the video length is reached
-                elif 0 < len(self.video_dict[env_id]) < self.video_length_steps:
+                elif 0 < len(self.video_dict[env_id]) < env.max_episode_length:
                     self.video_dict[env_id].append(env_frames[cam_id])
                 # check if we are done
-                isfull &= len(self.video_dict[env_id]) == self.video_length_steps
+                isfull &= len(self.video_dict[env_id]) == env.max_episode_length
 
             if isfull:
                 self.record_video = False
                 self.video_counter += 1
+                self.finished_video_dict = {k: np.stack(v, axis=0) for k, v in self.video_dict.items()}
+
+                env.eval_video = self.video_counter, self.finished_video_dict
 
         self.step_counter += 1
         return torch.tensor(self.video_counter)
