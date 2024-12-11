@@ -175,7 +175,24 @@ class CommandsCfg:
 class ActionsCfg:
     """Action specifications for the MDP."""
 
-    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
+    # joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
+
+    interactive_nav_action = mdp.InteractiveNavigationActionCfg(
+        asset_name="robot",
+        low_level_action=mdp.JointPositionActionCfg(  # copied from velocity_env & box_climb_env
+            asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True
+        ),
+        locomotion_policy_file=os.path.join(mdp.LOW_LEVEL_NET_PATH, "policy_walk_0310.jit"),
+        # "/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_rough/locomotion_anymal_d_faster/exported/policy.pt",
+        climbing_policy_file=os.path.join(mdp.LOW_LEVEL_NET_PATH, "policy_climb_0310.jit"),
+        # "/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_ll_box_climb/anymal_d_box_climb_ppo_v2/exported/policy.pt",
+        observation_group="low_level_policy",
+        locomotion_policy_freq=50.0,
+        scale=[0.5, 0.25, 1.0],  # actions = raw_actions * scale + offset, raw_actions squashed to [-1, 1]
+        offset=[0.25, 0.0, 0.0],
+        debug_vis=True,
+        reorder_joint_list=ISAAC_GYM_JOINT_NAMES,
+    )
 
 
 @configclass
