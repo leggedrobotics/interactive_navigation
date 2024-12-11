@@ -16,3 +16,4 @@ from . import utils
 from .goals import *  # noqa: F401, F403
 
 from .data_container import DataContainer
+from .nets import *  # noqa: F401, F403

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import MISSING
 from typing import Literal
-
+import os
 import interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp as mdp
 
 import omni.isaac.lab.sim as sim_utils
@@ -46,14 +46,27 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
     SEGMENT_RAY_CASTER_MARKER_CFG,
 )
 
+ISAAC_GYM_JOINT_NAMES = [
+    "LF_HAA",
+    "LF_HFE",
+    "LF_KFE",
+    "LH_HAA",
+    "LH_HFE",
+    "LH_KFE",
+    "RF_HAA",
+    "RF_HFE",
+    "RF_KFE",
+    "RH_HAA",
+    "RH_HFE",
+    "RH_KFE",
+]
+
 ##
 # Scene definition
 ##
 N_BOXES = 1
 
-N_VIDEOS = 15
-
-
+N_VIDEOS = 1
 cam_env_ids = [str(i) for i in range(N_VIDEOS)]
 cam_regex_prim_pattern = rf"({'|'.join(cam_env_ids)})"
 
@@ -63,33 +76,47 @@ class MySceneCfg(InteractiveSceneCfg):
     """Configuration for the terrain scene with a legged robot."""
 
     # ground terrain
-    # terrain = TerrainImporterCfg(
-    #     prim_path="/World/ground",
-    #     terrain_type="plane",
-    #     physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=1.0, restitution=0.0),
-    # )
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
-        terrain_type="generator",
-        terrain_generator=mdp.terrain.PYRAMID_TERRAINS_CFG,
-        max_init_terrain_level=500,
-        collision_group=-1,
-        physics_material=sim_utils.RigidBodyMaterialCfg(
-            friction_combine_mode="multiply",
-            restitution_combine_mode="multiply",
-            static_friction=1.0,
-            dynamic_friction=1.0,
-        ),
-        visual_material=sim_utils.MdlFileCfg(
-            mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
-            project_uvw=True,
-        ),
-        debug_vis=True,
+        terrain_type="plane",
+        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=1.0, restitution=0.0),
     )
+    # terrain = TerrainImporterCfg(
+    #     prim_path="/World/ground",
+    #     terrain_type="generator",
+    #     terrain_generator=mdp.terrain.PYRAMID_TERRAINS_CFG,
+    #     max_init_terrain_level=500,
+    #     collision_group=-1,
+    #     physics_material=sim_utils.RigidBodyMaterialCfg(
+    #         friction_combine_mode="multiply",
+    #         restitution_combine_mode="multiply",
+    #         static_friction=1.0,
+    #         dynamic_friction=1.0,
+    #     ),
+    #     visual_material=sim_utils.MdlFileCfg(
+    #         mdl_path="{NVIDIA_NUCLEUS_DIR}/Materials/Base/Architecture/Shingles_01.mdl",
+    #         project_uvw=True,
+    #     ),
+    #     debug_vis=True,
+    # )
 
     robot: ArticulationCfg = ANYMAL_D_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
     # sensors
+    # -- Low level policy sensor
+    height_scan_low_level = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+        attach_yaw_only=True,
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[2.0, 1.0]),
+        debug_vis=False,
+        mesh_prim_paths=[
+            "/World/ground",
+            RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
+        ],
+        track_mesh_transforms=True,
+    )
+
     # height_scanner = RayCasterCfg(
     #     prim_path="{ENV_REGEX_NS}/Robot/base",
     #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
@@ -198,6 +225,43 @@ class ActionsCfg:
 @configclass
 class ObservationsCfg:
     """Observation specifications for the MDP."""
+
+    @configclass
+    class LowLevelPolicyCfg(ObsGroup):
+        """Observations for policy group."""
+
+        # observation terms (order preserved)
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        # velocity_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})
+        # command, 2d pos, sin cos heading, time left [0,1]
+        pos_head_time_command = ObsTerm(func=mdp.action_command, params={"action_name": "interactive_nav_action"})
+
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            params={"asset_cfg": SceneEntityCfg(name="robot", joint_names=ISAAC_GYM_JOINT_NAMES, preserve_order=True)},
+            noise=Unoise(n_min=-0.01, n_max=0.01),
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg(name="robot", joint_names=ISAAC_GYM_JOINT_NAMES, preserve_order=True)},
+            noise=Unoise(n_min=-1.5, n_max=1.5),
+        )
+        actions = ObsTerm(func=mdp.last_low_level_action, params={"action_name": "interactive_nav_action"})
+        height_scan = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scan_low_level")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(-1.0, 1.0),
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
 
     @configclass
     class PolicyCfg(ObsGroup):
@@ -318,6 +382,7 @@ class ObservationsCfg:
             self.concatenate_terms = False
 
     # observation groups
+    low_level_policy: LowLevelPolicyCfg = LowLevelPolicyCfg()
     policy: PolicyCfg = PolicyCfg()
     metra: MetraStateCfg = MetraStateCfg()  # currently not used
     instructor: InstructorObsCfg = InstructorObsCfg()
@@ -633,8 +698,14 @@ class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         """Post initialization."""
+
+        # -- frequency settings
+        self.fz_planner = 10  # 10 Hz
+        self.sim.dt = 0.005  # 200 Hz
+        self.decimation = int(1 / (self.sim.dt * self.fz_planner))  # 20
+
         # general settings
-        self.decimation = 4  # 50 Hz
+        # self.decimation = 4  # 50 Hz
         self.episode_length_s = 10.0  #
         # simulation settings
         self.sim.dt = 0.005  # 200 Hz
@@ -652,6 +723,8 @@ class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
         # we tick all the sensors based on the smallest update period (physics update period)
         # if self.scene.lidar is not None:
         #     self.scene.lidar.update_period = self.decimation * self.sim.dt
+        if self.scene.height_scan_low_level is not None:
+            self.scene.height_scan_low_level.update_period = self.decimation * self.sim.dt
 
         # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
         # this generates terrains with increasing difficulty and is useful for training

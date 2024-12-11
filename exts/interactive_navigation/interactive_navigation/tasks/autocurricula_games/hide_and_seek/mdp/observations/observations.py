@@ -262,6 +262,25 @@ def velocity_3d_w(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Ten
 
 
 ##
+# - High level actions as observations
+##
+
+
+def action_command(env: ManagerBasedEnv, action_name: str) -> torch.Tensor:
+    """Returns the action command as an observation."""
+    return env.action_manager._terms[action_name].processed_actions
+
+
+def last_low_level_action(env: ManagerBasedEnv, action_name: str | None = None) -> torch.Tensor:
+    """The last input action to the environment.
+
+    The name of the action term for which the action is required. If None, the
+    entire action tensor is returned.
+    """
+    return env.action_manager._terms[action_name].prev_low_level_actions
+
+
+##
 # - goal
 ##
 

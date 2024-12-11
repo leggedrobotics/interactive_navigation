@@ -38,13 +38,13 @@ class InteractiveNavigationAction(ActionTerm):
         file_bytes = read_file(self.cfg.locomotion_policy_file)
         self.locomotion_policy = torch.jit.load(file_bytes, map_location=self.device)
         self.locomotion_policy = torch.jit.freeze(self.locomotion_policy.eval())
-        file_bytes = read_file(self.cfg.climbing_policy_file)
-        self.climbing_policy = torch.jit.load(file_bytes, map_location=self.device)
-        self.climbing_policy = torch.jit.freeze(self.climbing_policy.eval())
+        # file_bytes = read_file(self.cfg.climbing_policy_file)
+        # self.climbing_policy = torch.jit.load(file_bytes, map_location=self.device)
+        # self.climbing_policy = torch.jit.freeze(self.climbing_policy.eval())
 
-        self.low_level_policies = [self.locomotion_policy, self.climbing_policy]
+        # self.low_level_policies = [self.locomotion_policy, self.climbing_policy]
 
-        self.num_skills = len(self.low_level_policies)
+        # self.num_skills = len(self.low_level_policies)
 
         # calculate decimation
         self.low_level_policy_decimation = int(1 / (cfg.locomotion_policy_freq * env.physics_dt))
@@ -53,7 +53,7 @@ class InteractiveNavigationAction(ActionTerm):
         self.low_level_action_term: ActionTerm = self.cfg.low_level_action.class_type(cfg.low_level_action, env)
 
         # prepare buffers
-        self._action_dim = 3 + 1  # [px,py, heading, omega] + selection: [action_1, action_2]
+        self._action_dim = 3 + 0  # [px,py, heading, omega] + selection: [action_1, action_2]
 
         # set up buffers
         self._init_buffers()
@@ -111,13 +111,13 @@ class InteractiveNavigationAction(ActionTerm):
 
         # Depending on the action distribution, the actions need to be processed differently
         action_command = actions[:, :3]
-        action_selection = actions[:, 3:].squeeze(1)
+        # action_selection = actions[:, 3:].squeeze(1)
 
         # Store the raw low-level navigation actions
         self._raw_command_actions.copy_(action_command)
-        # Create a mask for the skills
-        for skill_id in range(self.num_skills):
-            self._skill_mask[:, skill_id] = action_selection == skill_id
+        # # Create a mask for the skills
+        # for skill_id in range(self.num_skills):
+        #     self._skill_mask[:, skill_id] = action_selection == skill_id
 
         # transform the actions
 
@@ -126,8 +126,8 @@ class InteractiveNavigationAction(ActionTerm):
             action_command[:, 0] = delta_pose[0]
             action_command[:, 1] = delta_pose[1]
             action_command[:, 2] = delta_pose[2]
-            self._skill_mask[:, 0] = not gripper_command
-            self._skill_mask[:, 1] = gripper_command
+            # self._skill_mask[:, 0] = not gripper_command
+            # self._skill_mask[:, 1] = gripper_command
 
         squashed_actions = torch.tanh(action_command)
 
@@ -153,22 +153,21 @@ class InteractiveNavigationAction(ActionTerm):
         if self._counter % self.low_level_policy_decimation == 0:
             # update low-level action at 50Hz
             self._counter = 0
-            self._prev_low_level_actions.copy_(self._low_level_actions.clone())
             # Get low level actions from low level policy
-            print(f"skill {self._skill_mask[0].nonzero().item()}")
 
-            for skill_id in range(self.num_skills):
-                self.low_level_actions[self._skill_mask[:, skill_id]] = self.low_level_policies[skill_id](
-                    self._env.observation_manager.compute_group(group_name=self.cfg.observation_group)[
-                        self._skill_mask[:, skill_id]  # type: ignore
-                    ]
-                )
-
-            # self._low_level_actions.copy_(
-            #     self.locomotion_policy(
-            #         self._env.observation_manager.compute_group(group_name=self.cfg.observation_group)
+            # for skill_id in range(self.num_skills):
+            #     self.low_level_actions[self._skill_mask[:, skill_id]] = self.low_level_policies[skill_id](
+            #         self._env.observation_manager.compute_group(group_name=self.cfg.observation_group)[
+            #             self._skill_mask[:, skill_id]  # type: ignore
+            #         ]
             #     )
-            # )
+
+            self._low_level_actions.copy_(
+                self.locomotion_policy(
+                    self._env.observation_manager.compute_group(group_name=self.cfg.observation_group)
+                )
+            )
+            self._prev_low_level_actions.copy_(self._low_level_actions.clone())
 
             if self.cfg.reorder_joint_list:
                 self._low_level_actions = self._low_level_actions[:, self.joint_mapping_gym_to_sim]
@@ -188,9 +187,9 @@ class InteractiveNavigationAction(ActionTerm):
 
     def _init_buffers(self):
         # Prepare buffers
-        self._raw_command_actions = torch.zeros(self.num_envs, self._action_dim - 1, device=self.device)
+        self._raw_command_actions = torch.zeros(self.num_envs, self._action_dim, device=self.device)
         self._processed_command_actions = torch.zeros((self.num_envs, 5), device=self.device)
-        self._skill_mask = torch.zeros(self.num_envs, self.num_skills, device=self.device).bool()
+        # self._skill_mask = torch.zeros(self.num_envs, self.num_skills, device=self.device).bool()
         self._low_level_actions = torch.zeros(self.num_envs, self.low_level_action_term.action_dim, device=self.device)
         self._prev_low_level_actions = torch.zeros_like(self._low_level_actions)
         self._counter = 0
