@@ -66,7 +66,7 @@ ISAAC_GYM_JOINT_NAMES = [
 ##
 N_BOXES = 1
 
-N_VIDEOS = 1
+N_VIDEOS = 8
 cam_env_ids = [str(i) for i in range(N_VIDEOS)]
 cam_regex_prim_pattern = rf"({'|'.join(cam_env_ids)})"
 
@@ -178,7 +178,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path=f"/World/envs/env_{cam_regex_prim_pattern}/Robot/base/Camera",
         # prim_path="/World/envs/env_0/Robot/base/Camera",
         # prim_path="/World/envs/env_(1[0-9]|[0-9])/Camera",
-        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 10.0), rot=(0.7071068, 0, 0.7071068, 0), convention="world"),
+        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 5.0), rot=(0.7071068, 0, 0.7071068, 0), convention="world"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1000.0)
@@ -289,16 +289,16 @@ class ObservationsCfg:
             },
         )
 
-        # proprioception
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
-        projected_gravity = ObsTerm(
-            func=mdp.projected_gravity,
-            noise=Unoise(n_min=-0.05, n_max=0.05),
-        )
-        actions = ObsTerm(func=mdp.last_action)
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+        # # proprioception
+        # base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        # base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        # projected_gravity = ObsTerm(
+        #     func=mdp.projected_gravity,
+        #     noise=Unoise(n_min=-0.05, n_max=0.05),
+        # )
+        # actions = ObsTerm(func=mdp.last_action)
+        # joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        # joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -343,10 +343,10 @@ class ObservationsCfg:
             },
         )
 
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+        # base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        # base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        # joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        # joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 
         # actions = ObsTerm(func=mdp.last_action)
 
