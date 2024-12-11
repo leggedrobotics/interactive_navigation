@@ -175,10 +175,11 @@ class MySceneCfg(InteractiveSceneCfg):
     # camera for skill recording
 
     tiled_camera: TiledCameraCfg = TiledCameraCfg(
-        prim_path=f"/World/envs/env_{cam_regex_prim_pattern}/Robot/base/Camera",
+        # prim_path=f"/World/envs/env_{cam_regex_prim_pattern}/Robot/base/Camera",
+        prim_path=f"/World/envs/env_{cam_regex_prim_pattern}/Camera",
         # prim_path="/World/envs/env_0/Robot/base/Camera",
         # prim_path="/World/envs/env_(1[0-9]|[0-9])/Camera",
-        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 5.0), rot=(0.7071068, 0, 0.7071068, 0), convention="world"),
+        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 20.0), rot=(0.7071068, 0, 0.7071068, 0), convention="world"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1000.0)
@@ -683,7 +684,7 @@ class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
     num_videos: int = N_VIDEOS
 
     # Scene settings
-    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=3.0)
+    scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=20.0)
     viewer: ViewerCfg = ViewerCfg()
 
     # Basic settings
