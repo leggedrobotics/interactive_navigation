@@ -277,7 +277,7 @@ class ObservationsCfg:
         box_pose = ObsTerm(
             func=mdp.pose_3d_env,
             params={
-                "entity_cfg": SceneEntityCfg("box"),
+                "entity_cfg": SceneEntityCfg("box1"),
             },
         )
 
@@ -328,7 +328,7 @@ class ObservationsCfg:
         box_pose = ObsTerm(
             func=mdp.pose_3d_env,
             params={
-                "entity_cfg": SceneEntityCfg("box"),
+                "entity_cfg": SceneEntityCfg("box1"),
             },
         )
         # # my_velocity = ObsTerm(
