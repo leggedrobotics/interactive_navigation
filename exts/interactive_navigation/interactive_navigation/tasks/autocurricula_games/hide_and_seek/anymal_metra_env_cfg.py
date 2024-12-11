@@ -51,6 +51,12 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
 ##
 N_BOXES = 1
 
+N_VIDEOS = 15
+
+
+cam_env_ids = [str(i) for i in range(N_VIDEOS)]
+cam_regex_prim_pattern = rf"({'|'.join(cam_env_ids)})"
+
 
 @configclass
 class MySceneCfg(InteractiveSceneCfg):
@@ -142,14 +148,15 @@ class MySceneCfg(InteractiveSceneCfg):
     # camera for skill recording
 
     tiled_camera: TiledCameraCfg = TiledCameraCfg(
-        # prim_path="/World/envs/env_(1[0-9]|[0-9])/Robot/base/Camera",
-        prim_path="/World/envs/env_(1[0-9]|[0-9])/Camera",
-        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 15.0), rot=(0.7071068, 0, 0.7071068, 0), convention="world"),
+        prim_path=f"/World/envs/env_{cam_regex_prim_pattern}/Robot/base/Camera",
+        # prim_path="/World/envs/env_0/Robot/base/Camera",
+        # prim_path="/World/envs/env_(1[0-9]|[0-9])/Camera",
+        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 10.0), rot=(0.7071068, 0, 0.7071068, 0), convention="world"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1000.0)
         ),
-        width=1280,
+        width=720,
         height=720,
     )
 
@@ -591,6 +598,7 @@ class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
 
     # Data container
     data_container: mdp.DataContainer = mdp.DataContainer()
+    num_videos: int = N_VIDEOS
 
     # Scene settings
     scene: MySceneCfg = MySceneCfg(num_envs=4096, env_spacing=3.0)

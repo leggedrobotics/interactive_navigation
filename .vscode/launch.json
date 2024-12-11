@@ -164,7 +164,8 @@
                 "64",
                 "--run_name",
                 "metra_anymal_debug",
-                "--enable_cameras"
+                "--enable_cameras",
+                "--headless",
                 // "--resume",
                 // "RESUME",
                 // "--load_run",
