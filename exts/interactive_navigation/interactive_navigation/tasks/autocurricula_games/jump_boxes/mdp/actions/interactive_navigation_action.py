@@ -8,7 +8,7 @@ from omni.isaac.lab.managers.action_manager import ActionTerm
 from omni.isaac.lab.utils.assets import check_file_path, read_file
 from omni.isaac.lab.utils import math as math_utils
 from omni.isaac.lab.markers import VisualizationMarkers
-from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG, GREEN_ARROW_X_MARKER_CFG
+from omni.isaac.lab.markers.config import BLUE_ARROW_X_MARKER_CFG, GREEN_ARROW_X_MARKER_CFG, ARROW_X_MARKER_CFG
 
 if TYPE_CHECKING:
     from .interactive_navigation_action_cfg import InteractiveNavigationActionCfg
@@ -42,7 +42,7 @@ class InteractiveNavigationAction(ActionTerm):
         self.climbing_policy = torch.jit.load(file_bytes, map_location=self.device)
         self.climbing_policy = torch.jit.freeze(self.climbing_policy.eval())
 
-        self.low_level_policies = [self.locomotion_policy, self.climbing_policy]
+        self.low_level_policies = [self.climbing_policy, self.climbing_policy]
 
         self.num_skills = len(self.low_level_policies)
 
@@ -134,8 +134,14 @@ class InteractiveNavigationAction(ActionTerm):
         position_2d = squashed_actions[:, :2] * 1.5  # position scaling TODO: make this a parameter
         angle = squashed_actions[:, 2] * torch.pi / 4  # angle scaling TODO: make this a parameter
         heading_sin_cos = torch.cat((torch.sin(angle).unsqueeze(1), torch.cos(angle).unsqueeze(1)), dim=1)
-
         time_left = torch.ones_like(angle).unsqueeze(1) * 0.2  # time scaling TODO: make this a parameter or adaptive
+
+        # ## debugging
+        # position_2d = torch.zeros_like(position_2d)
+        # position_2d[:, 0] = 4.0
+        # time_left = self._env.episode_length_buf / self._env.max_episode_length
+        # time_left = time_left.unsqueeze(1)
+        # ## end debugging
 
         processed_actions = torch.cat((position_2d, heading_sin_cos, time_left), dim=1)
 
@@ -153,7 +159,7 @@ class InteractiveNavigationAction(ActionTerm):
         if self._counter % self.low_level_policy_decimation == 0:
             # update low-level action at 50Hz
             self._counter = 0
-            self._prev_low_level_actions.copy_(self._low_level_actions.clone())
+
             # Get low level actions from low level policy
             print(f"skill {self._skill_mask[0].nonzero().item()}")
 
@@ -163,7 +169,7 @@ class InteractiveNavigationAction(ActionTerm):
                         self._skill_mask[:, skill_id]  # type: ignore
                     ]
                 )
-
+            self._prev_low_level_actions.copy_(self._low_level_actions.clone())
             # self._low_level_actions.copy_(
             #     self.locomotion_policy(
             #         self._env.observation_manager.compute_group(group_name=self.cfg.observation_group)
@@ -205,8 +211,9 @@ class InteractiveNavigationAction(ActionTerm):
         # create markers if necessary for the first tome
         if debug_vis:
             if not hasattr(self, "pos_cmd_visualizer"):
-                marker_cfg = BLUE_ARROW_X_MARKER_CFG.copy()
-                marker_cfg.markers["arrow"].scale = (0.1, 0.1, 1.0)
+                marker_cfg = ARROW_X_MARKER_CFG.copy()
+                marker_cfg.markers["blue_arrow"].scale = (0.1, 0.1, 1.0)
+                marker_cfg.markers["red_arrow"].scale = (0.1, 0.1, 1.0)
                 marker_cfg.prim_path = "/Visuals/Command/action_force"
 
                 self.pos_cmd_visualizer = VisualizationMarkers(marker_cfg)
@@ -263,8 +270,12 @@ class InteractiveNavigationAction(ActionTerm):
         scales_3d = torch.cat([scales, default_scale, default_scale], dim=1)
         scales_3d[scales_3d == 0] = 0.1
         const_scales = torch.cat([default_scale * 4, default_scale, default_scale], dim=1)
+
         self.pos_cmd_visualizer.visualize(
-            translations=robot_pos + viz_pos_offset * 0.4, orientations=pos_dir_quat, scales=scales_3d
+            translations=robot_pos + viz_pos_offset * 0.4,
+            orientations=pos_dir_quat,
+            scales=scales_3d,
+            marker_indices=torch.argmax(self._skill_mask.int(), dim=1),
         )
         self.head_cmd_visualizer.visualize(
             translations=robot_pos + viz_pos_offset * 0.2, orientations=head_dir_quat, scales=const_scales

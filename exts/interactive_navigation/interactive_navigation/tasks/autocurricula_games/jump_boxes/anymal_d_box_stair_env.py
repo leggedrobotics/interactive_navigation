@@ -60,6 +60,7 @@ from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.assets impo
     WALL_CFG,
     SEGMENT_RAY_CASTER_MARKER_CFG,
     HL_RAY_CASTER_MARKER_CFG,
+    LL_RAY_CASTER_MARKER_CFG,
 )
 
 ##
@@ -150,6 +151,7 @@ class MySceneCfg(InteractiveSceneCfg):
             RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
         ],
         track_mesh_transforms=True,
+        visualizer_cfg=LL_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
     )
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
 
@@ -485,7 +487,8 @@ class RewardsCfg:
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    time_out = DoneTerm(func=mdp.time_out_perturbed, params={"perturbation": 5}, time_out=True)  # type: ignore
+    # time_out = DoneTerm(func=mdp.time_out_perturbed, params={"perturbation": 5}, time_out=True)  # type: ignore
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)  # type: ignore
 
     goal_reached = DoneTerm(
         func=mdp.goal_reached,
@@ -592,7 +595,7 @@ class AnymalBoxeStairEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 0.005  # 200 Hz
         self.decimation = int(1 / (self.sim.dt * self.fz_planner))  # 20
 
-        self.episode_length_s = 520.0
+        self.episode_length_s = 5000.0
 
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True
