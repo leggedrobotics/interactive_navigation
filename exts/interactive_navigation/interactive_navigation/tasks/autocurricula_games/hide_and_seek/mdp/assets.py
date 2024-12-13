@@ -85,7 +85,7 @@ ROBOT_USD_CFG = ArticulationCfg(
 CUBOID_FLAT_CFG = RigidObjectCfg(
     prim_path="{ENV_REGEX_NS}/Cuboid",
     spawn=sim_utils.CuboidCfg(
-        size=(1.0, 1.0, 0.25),
+        size=(1.0, 1.0, 0.75),
         rigid_props=sim_utils.RigidBodyPropertiesCfg(max_depenetration_velocity=1.0),
         mass_props=sim_utils.MassPropertiesCfg(mass=5.0),
         physics_material=sim_utils.RigidBodyMaterialCfg(
