@@ -179,7 +179,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path=f"/World/envs/env_{cam_regex_prim_pattern}/Camera",
         # prim_path="/World/envs/env_0/Robot/base/Camera",
         # prim_path="/World/envs/env_(1[0-9]|[0-9])/Camera",
-        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 20.0), rot=(0.7071068, 0, 0.7071068, 0), convention="world"),
+        offset=TiledCameraCfg.OffsetCfg(pos=(0.0, 0.0, 10.0), rot=(0.7071068, 0, 0.7071068, 0), convention="world"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1000.0)
@@ -270,12 +270,13 @@ class ObservationsCfg:
         These observations need to be available from the robot's perspective.
         """
 
+        # TODO policy in world frame
         my_pose = ObsTerm(
-            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+            func=mdp.pose_2d_w,  # velocity_2d_b, rotation_velocity_2d_b
             params={"entity_cfg": SceneEntityCfg("robot")},
         )
         box_pose = ObsTerm(
-            func=mdp.pose_3d_env,
+            func=mdp.pose_2d_w,
             params={
                 "entity_cfg": SceneEntityCfg("box1"),
             },
@@ -308,7 +309,7 @@ class ObservationsCfg:
         #     func=mdp.projected_gravity,
         #     noise=Unoise(n_min=-0.05, n_max=0.05),
         # )
-        # actions = ObsTerm(func=mdp.last_action)
+        actions = ObsTerm(func=mdp.last_action)
         # joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         # joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 
@@ -321,12 +322,12 @@ class ObservationsCfg:
         """Observations for the metra."""
 
         # # self
-        my_pose = ObsTerm(
-            func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot")},
-        )
+        # my_pose = ObsTerm(
+        #     func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+        #     params={"entity_cfg": SceneEntityCfg("robot")},
+        # )
         box_pose = ObsTerm(
-            func=mdp.pose_3d_env,
+            func=mdp.pose_2d_w,
             params={
                 "entity_cfg": SceneEntityCfg("box1"),
             },
@@ -347,13 +348,13 @@ class ObservationsCfg:
         #     func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
         #     params={"robot_cfg": SceneEntityCfg("robot")},
         # )
-        box_pose = ObsTerm(
-            func=mdp.box_pose_2d,
-            params={
-                "entity_str": "box",
-                "pov_entity": SceneEntityCfg("robot"),
-            },
-        )
+        # box_pose = ObsTerm(
+        #     func=mdp.box_pose_2d,
+        #     params={
+        #         "entity_str": "box",
+        #         "pov_entity": SceneEntityCfg("robot"),
+        #     },
+        # )
 
         # base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
         # base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
@@ -532,74 +533,74 @@ step_dt = 1 / 50
 class RewardsCfg:
     """No task reward, only style."""
 
-    # is_alive = RewTerm(func=mdp.is_alive, weight=1.0)
+    # # is_alive = RewTerm(func=mdp.is_alive, weight=1.0)
 
-    # -- penalties
-    dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=step_dt * -1.0e-3)
-    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=step_dt * -2.5e-7)
-    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=step_dt * -5.0e-2)
-    feet_air_time = RewTerm(
-        func=mdp.feet_air_time,
-        weight=step_dt * 30.0,
-        params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
-            "command_name": "base_velocity",
-            "threshold": 0.5,
-        },
-    )
-    undesired_contacts_thigh = RewTerm(
-        func=mdp.undesired_contacts,
-        weight=step_dt * -30.0,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
-    )
-
-    undesired_contacts_shank = RewTerm(
-        func=mdp.undesired_contacts,
-        weight=step_dt * -30.0,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*SHANK"), "threshold": 1.0},
-    )
-
-    # undesired_contacts_base = RewTerm(
-    #     func=mdp.is_terminated_term,
-    #     params={"term_keys": "base_contact"},
-    #     weight=-100.0,
+    # # -- penalties
+    # dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=step_dt * -1.0e-3)
+    # dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=step_dt * -2.5e-7)
+    # action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=step_dt * -5.0e-2)
+    # feet_air_time = RewTerm(
+    #     func=mdp.feet_air_time,
+    #     weight=step_dt * 30.0,
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
+    #         "command_name": "base_velocity",
+    #         "threshold": 0.5,
+    #     },
+    # )
+    # undesired_contacts_thigh = RewTerm(
+    #     func=mdp.undesired_contacts,
+    #     weight=step_dt * -30.0,
+    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
     # )
 
-    undesired_contacts_base = RewTerm(
-        func=mdp.undesired_contacts,
-        weight=step_dt * -30.0,
-        params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
-    )
+    # undesired_contacts_shank = RewTerm(
+    #     func=mdp.undesired_contacts,
+    #     weight=step_dt * -30.0,
+    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*SHANK"), "threshold": 1.0},
+    # )
 
-    base_height = RewTerm(
-        func=mdp.base_below_min_height,
-        weight=-step_dt * 10.0,
-        params={"target_height": 0.6},
-    )
+    # # undesired_contacts_base = RewTerm(
+    # #     func=mdp.is_terminated_term,
+    # #     params={"term_keys": "base_contact"},
+    # #     weight=-100.0,
+    # # )
 
-    joint_vel_limits = RewTerm(
-        func=mdp.joint_vel_limits,
-        weight=-step_dt * 10.0,
-        params={"soft_ratio": 1.0, "asset_cfg": SceneEntityCfg("robot")},
-    )
+    # undesired_contacts_base = RewTerm(
+    #     func=mdp.undesired_contacts,
+    #     weight=step_dt * -30.0,
+    #     params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"), "threshold": 1.0},
+    # )
 
-    joint_deviation = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=-step_dt * 2.0,
-        params={"asset_cfg": SceneEntityCfg("robot")},
-    )
+    # base_height = RewTerm(
+    #     func=mdp.base_below_min_height,
+    #     weight=-step_dt * 10.0,
+    #     params={"target_height": 0.6},
+    # )
 
-    bad_orientation = RewTerm(
-        func=mdp.bad_orientation,
-        params={"limit_angle": math.radians(100)},
-        weight=-step_dt * 10.0,
-    )
+    # joint_vel_limits = RewTerm(
+    #     func=mdp.joint_vel_limits,
+    #     weight=-step_dt * 10.0,
+    #     params={"soft_ratio": 1.0, "asset_cfg": SceneEntityCfg("robot")},
+    # )
 
-    terminated = RewTerm(
-        func=mdp.is_terminated_term,
-        params={"term_keys": "upside_down"},
-        weight=-1000.0,
-    )
+    # joint_deviation = RewTerm(
+    #     func=mdp.joint_deviation_l1,
+    #     weight=-step_dt * 2.0,
+    #     params={"asset_cfg": SceneEntityCfg("robot")},
+    # )
+
+    # bad_orientation = RewTerm(
+    #     func=mdp.bad_orientation,
+    #     params={"limit_angle": math.radians(100)},
+    #     weight=-step_dt * 10.0,
+    # )
+
+    # terminated = RewTerm(
+    #     func=mdp.is_terminated_term,
+    #     params={"term_keys": "upside_down"},
+    #     weight=-1000.0,
+    # )
 
 
 @configclass

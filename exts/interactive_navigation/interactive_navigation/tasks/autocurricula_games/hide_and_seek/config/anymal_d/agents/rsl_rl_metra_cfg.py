@@ -56,7 +56,7 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         num_metra_learning_epochs=1,
         num_sgd_steps_metra=10,
         skill_dim=4,
-        lr=2e-4,
+        lr=1e-4,
         lr_tau=1e-4,
         visualizer_interval=250,
         skill_step_size=0.17,

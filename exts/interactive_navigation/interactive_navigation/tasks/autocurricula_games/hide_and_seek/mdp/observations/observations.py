@@ -120,6 +120,27 @@ def pose_3d_env(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tenso
     return torch.cat([rel_pos, quat], dim=-1)
 
 
+def pose_2d_w(env: ManagerBasedEnv, entity_cfg: SceneEntityCfg) -> torch.Tensor:
+    """Returns the pose of the entity in the terrain frame."""
+
+    entity: RigidObject | Articulation = env.scene[entity_cfg.name]
+
+    # - position
+    pos = get_robot_pos(entity)
+    terrain = env.scene.terrain
+    terrain_origins = terrain.env_origins
+    rel_pos = pos.squeeze(1) - terrain_origins
+
+    # - heading
+    quat = get_robot_quat(entity).squeeze(1)
+    roll, pitch, yaw = math_utils.euler_xyz_from_quat(quat)
+    cos_yaw, sin_yaw = torch.cos(yaw).unsqueeze(1), torch.sin(yaw).unsqueeze(1)
+
+    pose_2d = torch.cat([rel_pos[:, :2], cos_yaw, sin_yaw], dim=-1)
+
+    return pose_2d
+
+
 def box_pose_2d(env: ManagerBasedEnv, entity_str: str, pov_entity: SceneEntityCfg) -> torch.Tensor:
     """Returns the 2d pose of all entities relative to the robot's frame.
     x, y positions and heading in the form of cos(theta), sin(theta)."""
@@ -307,7 +328,7 @@ class video_recorder(ManagerTermBase):
     def __init__(self, cfg: ObservationTermCfg, env: ManagerBasedRLEnv):
 
         super().__init__(cfg, env)
-        self.video_intervall = 25000
+        self.video_intervall = 12500
 
         self.record_video = False
         self.video_dict = {}

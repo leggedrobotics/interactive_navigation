@@ -21,8 +21,8 @@ parameters:
   # agent.metra.state_representation_args.layer_norm:
   #   values: [False]
   agent.metra.skill_dim:
-    min: 4
-    max: 8
+    min: 2
+    max: 6
   # agent.metra.lr:
   #   min: 1.0e-4
   #   max: 1.0e-2
@@ -64,5 +64,5 @@ command:
   - --headless
   - --video
   - --video_length=400
-  - --video_interval=100000
+  - --video_interval=150000
   - ${args_no_hyphens}
