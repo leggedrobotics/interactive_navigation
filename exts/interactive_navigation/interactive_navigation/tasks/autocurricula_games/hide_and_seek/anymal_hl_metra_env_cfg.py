@@ -146,10 +146,10 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Box_1",
         init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 1.5, 0.5]),
     )
-    # box2 = CUBOID_FLAT_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Box_2",
-    #     init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, -1.5, 0.5]),
-    # )
+    box2 = CUBOID_FLAT_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_2",
+        init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, -1.5, 0.5]),
+    )
     # box3 = CUBOID_FLAT_CFG.replace(
     #     prim_path="{ENV_REGEX_NS}/Box_3",
     #     init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 0.75, 0.25]),
@@ -203,12 +203,66 @@ class CommandsCfg:
 class ActionsCfg:
     """Action specifications for the MDP."""
 
-    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
+    # joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
+
+    interactive_nav_action = mdp.InteractiveNavigationActionCfg(
+        asset_name="robot",
+        low_level_action=mdp.JointPositionActionCfg(  # copied from velocity_env & box_climb_env
+            asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True
+        ),
+        locomotion_policy_file=os.path.join(mdp.LOW_LEVEL_NET_PATH, "policy_walk_0310.jit"),
+        # "/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_rough/locomotion_anymal_d_faster/exported/policy.pt",
+        climbing_policy_file=os.path.join(mdp.LOW_LEVEL_NET_PATH, "policy_climb_0310.jit"),
+        # "/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_ll_box_climb/anymal_d_box_climb_ppo_v2/exported/policy.pt",
+        observation_group="low_level_policy",
+        locomotion_policy_freq=50.0,
+        scale=[0.5, 0.25, 1.0],  # actions = raw_actions * scale + offset, raw_actions squashed to [-1, 1]
+        offset=[0.25, 0.0, 0.0],
+        debug_vis=True,
+        reorder_joint_list=ISAAC_GYM_JOINT_NAMES,
+    )
 
 
 @configclass
 class ObservationsCfg:
     """Observation specifications for the MDP."""
+
+    @configclass
+    class LowLevelPolicyCfg(ObsGroup):
+        """Observations for policy group."""
+
+        # observation terms (order preserved)
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        # velocity_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})
+        # command, 2d pos, sin cos heading, time left [0,1]
+        pos_head_time_command = ObsTerm(func=mdp.action_command, params={"action_name": "interactive_nav_action"})
+
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel,
+            params={"asset_cfg": SceneEntityCfg(name="robot", joint_names=ISAAC_GYM_JOINT_NAMES, preserve_order=True)},
+            noise=Unoise(n_min=-0.01, n_max=0.01),
+        )
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel_rel,
+            params={"asset_cfg": SceneEntityCfg(name="robot", joint_names=ISAAC_GYM_JOINT_NAMES, preserve_order=True)},
+            noise=Unoise(n_min=-1.5, n_max=1.5),
+        )
+        actions = ObsTerm(func=mdp.last_low_level_action, params={"action_name": "interactive_nav_action"})
+        height_scan = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("height_scan_low_level")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(-1.0, 1.0),
+        )
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
 
     @configclass
     class PolicyCfg(ObsGroup):
@@ -227,12 +281,12 @@ class ObservationsCfg:
                 "entity_cfg": SceneEntityCfg("box1"),
             },
         )
-        # box2_pose = ObsTerm(
-        #     func=mdp.pose_2d_w,
-        #     params={
-        #         "entity_cfg": SceneEntityCfg("box2"),
-        #     },
-        # )
+        box2_pose = ObsTerm(
+            func=mdp.pose_2d_w,
+            params={
+                "entity_cfg": SceneEntityCfg("box2"),
+            },
+        )
 
         # origin = ObsTerm(
         #     func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
@@ -255,15 +309,15 @@ class ObservationsCfg:
         # )
 
         # # proprioception
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
-        projected_gravity = ObsTerm(
-            func=mdp.projected_gravity,
-            noise=Unoise(n_min=-0.05, n_max=0.05),
-        )
+        # base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        # base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        # projected_gravity = ObsTerm(
+        #     func=mdp.projected_gravity,
+        #     noise=Unoise(n_min=-0.05, n_max=0.05),
+        # )
         actions = ObsTerm(func=mdp.last_action)
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+        # joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        # joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 
         def __post_init__(self):
             self.enable_corruption = False
@@ -274,22 +328,22 @@ class ObservationsCfg:
         """Observations for the metra."""
 
         # # self
-        my_pose = ObsTerm(
-            func=mdp.pose_2d_w,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot")},
-        )
+        # my_pose = ObsTerm(
+        #     func=mdp.pose_3d_env,  # velocity_2d_b, rotation_velocity_2d_b
+        #     params={"entity_cfg": SceneEntityCfg("robot")},
+        # )
         box_pose = ObsTerm(
             func=mdp.pose_2d_w,
             params={
                 "entity_cfg": SceneEntityCfg("box1"),
             },
         )
-        # box2_pose = ObsTerm(
-        #     func=mdp.pose_2d_w,
-        #     params={
-        #         "entity_cfg": SceneEntityCfg("box2"),
-        #     },
-        # )
+        box2_pose = ObsTerm(
+            func=mdp.pose_2d_w,
+            params={
+                "entity_cfg": SceneEntityCfg("box2"),
+            },
+        )
         # # my_velocity = ObsTerm(
         # #     func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
         # #     params={"entity_cfg": SceneEntityCfg("robot")},
@@ -325,20 +379,20 @@ class ObservationsCfg:
             self.enable_corruption = False
             self.concatenate_terms = False
 
-    # @configclass
-    # class InstructorObsCfg(ObsGroup):
-    #     """Observations for the style instructor group."""
+    @configclass
+    class InstructorObsCfg(ObsGroup):
+        """Observations for the style instructor group."""
 
-    #     projected_gravity = ObsTerm(
-    #         func=mdp.projected_gravity,
-    #         noise=Unoise(n_min=-0.05, n_max=0.05),
-    #     )
-    #     joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-    #     joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
 
-    #     def __post_init__(self):
-    #         self.enable_corruption = True
-    #         self.concatenate_terms = True
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
 
     @configclass
     class VideoRecordingObsCfg(ObsGroup):
@@ -353,9 +407,10 @@ class ObservationsCfg:
             self.concatenate_terms = False
 
     # observation groups
+    low_level_policy: LowLevelPolicyCfg = LowLevelPolicyCfg()
     policy: PolicyCfg = PolicyCfg()
     metra: MetraStateCfg = MetraStateCfg()  # currently not used
-    # instructor: InstructorObsCfg = InstructorObsCfg()
+    instructor: InstructorObsCfg = InstructorObsCfg()
     video: VideoRecordingObsCfg = VideoRecordingObsCfg()
 
 
@@ -421,15 +476,15 @@ class EventCfg:
             "asset_cfg": SceneEntityCfg("box1"),
         },
     )
-    # reset_box2 = EventTerm(
-    #     func=mdp.reset_root_state_uniform,
-    #     mode="reset",
-    #     params={
-    #         "pose_range": {},
-    #         "velocity_range": {},
-    #         "asset_cfg": SceneEntityCfg("box2"),
-    #     },
-    # )
+    reset_box2 = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {},
+            "velocity_range": {},
+            "asset_cfg": SceneEntityCfg("box2"),
+        },
+    )
     # reset_box2 = EventTerm(
     #     func=mdp.reset_root_state_uniform,
     #     mode="reset",
@@ -654,7 +709,7 @@ class ViewerCfg:
 
 
 @configclass
-class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
+class MetraAnymalHLEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion velocity-tracking environment."""
 
     # Data container
@@ -678,8 +733,13 @@ class MetraAnymalEnvCfg(ManagerBasedRLEnvCfg):
     def __post_init__(self):
         """Post initialization."""
 
+        # -- frequency settings
+        self.fz_planner = 10  # 10 Hz
+        self.sim.dt = 0.005  # 200 Hz
+        self.decimation = int(1 / (self.sim.dt * self.fz_planner))  # 20
+
         # general settings
-        self.decimation = 4  # 50 Hz
+        # self.decimation = 4  # 50 Hz
         self.episode_length_s = 10.0  #
         # simulation settings
         self.sim.dt = 0.005  # 200 Hz

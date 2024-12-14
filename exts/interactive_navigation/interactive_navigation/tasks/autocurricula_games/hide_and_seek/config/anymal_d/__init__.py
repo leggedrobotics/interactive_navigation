@@ -4,6 +4,7 @@ import gymnasium as gym
 
 from . import agents, flat_env_cfg, rough_env_cfg
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.anymal_env_cfg import CrlAnymalEnvCfg
+from interactive_navigation.tasks.autocurricula_games.hide_and_seek.anymal_hl_metra_env_cfg import MetraAnymalHLEnvCfg
 from interactive_navigation.tasks.autocurricula_games.hide_and_seek.anymal_metra_env_cfg import MetraAnymalEnvCfg
 
 
@@ -28,6 +29,16 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": MetraAnymalEnvCfg,
+        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_metra_cfg:AnymalMetraPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Isaac-METRA-HL-Anymal-D-v0",
+    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": MetraAnymalHLEnvCfg,
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_metra_cfg:AnymalMetraPPORunnerCfg",
     },
 )
