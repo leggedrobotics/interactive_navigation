@@ -146,10 +146,10 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Box_1",
         init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 1.5, 0.5]),
     )
-    # box2 = CUBOID_FLAT_CFG.replace(
-    #     prim_path="{ENV_REGEX_NS}/Box_2",
-    #     init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, -1.5, 0.5]),
-    # )
+    box2 = CUBOID_FLAT_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Box_2",
+        init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, -1.5, 0.5]),
+    )
     # box3 = CUBOID_FLAT_CFG.replace(
     #     prim_path="{ENV_REGEX_NS}/Box_3",
     #     init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 0.75, 0.25]),
@@ -281,12 +281,12 @@ class ObservationsCfg:
                 "entity_cfg": SceneEntityCfg("box1"),
             },
         )
-        # box2_pose = ObsTerm(
-        #     func=mdp.pose_2d_w,
-        #     params={
-        #         "entity_cfg": SceneEntityCfg("box2"),
-        #     },
-        # )
+        box2_pose = ObsTerm(
+            func=mdp.pose_2d_w,
+            params={
+                "entity_cfg": SceneEntityCfg("box2"),
+            },
+        )
 
         # origin = ObsTerm(
         #     func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
@@ -338,12 +338,12 @@ class ObservationsCfg:
                 "entity_cfg": SceneEntityCfg("box1"),
             },
         )
-        # box2_pose = ObsTerm(
-        #     func=mdp.pose_2d_w,
-        #     params={
-        #         "entity_cfg": SceneEntityCfg("box2"),
-        #     },
-        # )
+        box2_pose = ObsTerm(
+            func=mdp.pose_2d_w,
+            params={
+                "entity_cfg": SceneEntityCfg("box2"),
+            },
+        )
         # # my_velocity = ObsTerm(
         # #     func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
         # #     params={"entity_cfg": SceneEntityCfg("robot")},
@@ -476,15 +476,15 @@ class EventCfg:
             "asset_cfg": SceneEntityCfg("box1"),
         },
     )
-    # reset_box2 = EventTerm(
-    #     func=mdp.reset_root_state_uniform,
-    #     mode="reset",
-    #     params={
-    #         "pose_range": {},
-    #         "velocity_range": {},
-    #         "asset_cfg": SceneEntityCfg("box2"),
-    #     },
-    # )
+    reset_box2 = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {},
+            "velocity_range": {},
+            "asset_cfg": SceneEntityCfg("box2"),
+        },
+    )
     # reset_box2 = EventTerm(
     #     func=mdp.reset_root_state_uniform,
     #     mode="reset",
