@@ -19,6 +19,16 @@ if TELEOP:
     from omni.isaac.lab.devices import Se3Keyboard, Se3SpaceMouse, Se3Gamepad
 
 
+# class DoNotingPolicy(torch.nn.Module):
+
+#     def __init__(self, output_dim: int):
+#         super().__init__()
+#         self.output_dim = output_dim
+
+#     def forward(self, x):
+#         return torch.zeros(x.shape[0], self.output_dim, device=x.device)
+
+
 class InteractiveNavigationAction(ActionTerm):
 
     cfg: InteractiveNavigationActionCfg
@@ -42,7 +52,10 @@ class InteractiveNavigationAction(ActionTerm):
         self.climbing_policy = torch.jit.load(file_bytes, map_location=self.device)
         self.climbing_policy = torch.jit.freeze(self.climbing_policy.eval())
 
-        self.low_level_policies = [self.climbing_policy, self.climbing_policy]
+        # do_nothing_policy = DoNotingPolicy(cfg.low_level_action.class_type(cfg.low_level_action, env).action_dim)
+        # self.climbing_policy = do_nothing_policy
+
+        self.low_level_policies = [self.locomotion_policy, self.climbing_policy]
 
         self.num_skills = len(self.low_level_policies)
 

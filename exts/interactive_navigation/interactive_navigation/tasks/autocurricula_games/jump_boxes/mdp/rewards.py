@@ -288,6 +288,87 @@ class JumpReward:
             # self.max_height_reached = max_height_reached
             self.max_height_reached[env.termination_manager.dones] = self.half_robot_heigh
 
+    def new_height_reached_reward_box(self, env: ManagerBasedRLEnv) -> torch.Tensor:
+        """Sparse reward function, given when the robot jumps and lands on a new max height level.
+        A jump is considered successful if the robot is not moving vertically and the robot has reached a new maximum height
+        """
+        self._update_buffers(env)
+
+        moving_vertically = (
+            torch.sum(torch.abs(self.prev_height_buffer[1:4] - self.prev_height_buffer[:3]), dim=0) > 0.1
+        )
+        new_max_height_reached = self.prev_height_buffer[0] > (self.max_height_reached + 0.25)
+
+        successfully_jumped = ~moving_vertically & new_max_height_reached
+
+        self.max_height_reached = torch.where(successfully_jumped, self.prev_height_buffer[0], self.max_height_reached)
+
+        reward = successfully_jumped.float()
+        return reward
+
+    def successful_jump_reward_box(self, env: ManagerBasedRLEnv) -> torch.Tensor:
+        """Sparse reward function that returns a reward when the robot jumps and lands on a higher level than it was before.
+        A jump is considered successful if the robot is not moving vertically, the height difference between the
+        initial and final height is greater than 0.3
+        """
+        self._update_buffers(env)
+
+        moving_vertically = (
+            torch.sum(torch.abs(self.prev_height_buffer[1:4] - self.prev_height_buffer[:3]), dim=0) > 0.1
+        )
+        changed_height = (
+            torch.mean(self.prev_height_buffer[:4], dim=0) - torch.mean(self.prev_height_buffer[-4:], dim=0) > 0.2
+        )
+        successfully_jumped = ~moving_vertically & changed_height
+
+        # if successfully_jumped, set prev_height_buffer to the current height
+        if successfully_jumped.any():
+            self.prev_height_buffer[:, successfully_jumped] = self.prev_height_buffer[0, successfully_jumped]
+        reward = successfully_jumped.float()
+        return reward
+
+
+class StepUpReward:
+    """Class for rewards related to stepping up (for real robot)."""
+
+    def __init__(self) -> None:
+
+        # previous z position history of the robot
+        self.num_history_steps: int = 10
+        self.step_delta_s: float = 0.2
+        self.init_base_height: float = 0.58
+        self.step_delta: int = None  # type: ignore
+        self.prev_height_buffer: torch.Tensor = None  # type: ignore
+        self.max_height_reached: torch.Tensor = None  # type: ignore
+
+    def _update_buffers(self, env: ManagerBasedRLEnv) -> None:
+        """Update the buffers needed for the reward calculations."""
+
+        # - robot height
+        if self.prev_height_buffer is None:
+            self.step_delta = int(self.step_delta_s / env.step_dt)
+            self.prev_height_buffer = (
+                torch.zeros((self.num_history_steps, env.num_envs)).to(env.device) + self.init_base_height
+            )
+            self.max_height_reached = torch.zeros(env.num_envs).to(env.device) + self.prev_height_buffer[0]
+
+        if env.common_step_counter % self.step_delta == 0:
+            robot = env.scene["robot"]
+            robot_height = get_robot_pos(robot)[:, 2]
+            self.prev_height_buffer = torch.roll(self.prev_height_buffer, shifts=1, dims=0)
+            self.prev_height_buffer[0] = robot_height
+
+        if env.termination_manager.dones.any():
+            # prev_heighs = self.prev_height_buffer.clone()
+            # prev_heighs[:, env.termination_manager.dones] = self.half_robot_heigh
+            # self.prev_height_buffer = prev_heighs
+            self.prev_height_buffer[:, env.termination_manager.dones] = self.init_base_height
+
+            # max_height_reached = self.max_height_reached.clone()
+            # max_height_reached[env.termination_manager.dones] = self.half_robot_heigh
+            # self.max_height_reached = max_height_reached
+            self.max_height_reached[env.termination_manager.dones] = self.init_base_height
+
     def new_height_reached_reward(self, env: ManagerBasedRLEnv) -> torch.Tensor:
         """Sparse reward function, given when the robot jumps and lands on a new max height level.
         A jump is considered successful if the robot is not moving vertically and the robot has reached a new maximum height

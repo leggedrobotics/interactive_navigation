@@ -374,14 +374,14 @@ class RewardsCfg:
 
     # Jumping
     successful_jump = RewTerm(
-        func=mdp.JumpReward().successful_jump_reward,
+        func=mdp.JumpReward().successful_jump_reward_box,
         weight=10,
         params={},
     )
 
     # Moving up
     new_height = RewTerm(
-        func=mdp.JumpReward().new_height_reached_reward,
+        func=mdp.JumpReward().new_height_reached_reward_box,
         weight=200,
         params={},
     )

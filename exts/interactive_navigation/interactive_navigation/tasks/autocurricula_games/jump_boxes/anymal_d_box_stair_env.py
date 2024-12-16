@@ -68,8 +68,8 @@ from interactive_navigation.tasks.autocurricula_games.jump_boxes.mdp.assets impo
 ##
 N_BOXES = 1  # number of same boxes
 
-N_STEP_BOXES = 4  # number of different boxes
-STEP_HEIGHT = 0.5
+N_STEP_BOXES = 1  # number of different boxes
+STEP_HEIGHT = 0.6
 
 
 # BOXES_DICT = {"short": BOX_CFG, "tall": TALL_BOX_CFG}
@@ -88,7 +88,7 @@ for i in range(N_STEP_BOXES):
     BOXES_DICT[box_prefix] = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/" + f"{box_prim_path_name}",
         spawn=sim_utils.CuboidCfg(
-            size=(max(height, 1.0), max(height, 1.0), height),
+            size=(max(height, 1.5), max(height, 1.5), height),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
                 max_depenetration_velocity=1.0,
                 disable_gravity=False,
@@ -144,7 +144,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[2.0, 1.0]),
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[2.0, 1.0], ordering="yx"),
         debug_vis=True,
         mesh_prim_paths=[
             "/World/ground",
@@ -393,31 +393,31 @@ class RewardsCfg:
         weight=0.01,
     )
 
-    # any_box_close_to_step = RewTerm(
-    #     func=mdp.any_box_close_to_step_reward,
-    #     weight=0.1,
-    #     params={
-    #         "robot_str": "robot",
-    #         "dist_sensor_1_str": "box_short_lidar_bot",
-    #         "dist_sensor_2_str": "box_short_lidar_top",
-    #         "proximity_threshold": 0.5,
-    #         "proximity_std": 0.3,
-    #         "step_size_threshold": 0.75,
-    #     },
-    # )
+    any_box_close_to_step = RewTerm(
+        func=mdp.any_box_close_to_step_reward,
+        weight=0.1,
+        params={
+            "robot_str": "robot",
+            "dist_sensor_1_str": "box_short_lidar_bot",
+            "dist_sensor_2_str": "box_short_lidar_top",
+            "proximity_threshold": 0.5,
+            "proximity_std": 0.3,
+            "step_size_threshold": 0.75,
+        },
+    )
 
-    # closest_box_close_to_step = RewTerm(
-    #     func=mdp.closest_box_close_to_step_reward,
-    #     weight=0.5,
-    #     params={
-    #         "robot_str": "robot",
-    #         "dist_sensor_1_str": "box_short_lidar_bot",
-    #         "dist_sensor_2_str": "box_short_lidar_top",
-    #         "proximity_threshold": 0.5,
-    #         "proximity_std": 1.0,
-    #         "step_size_threshold": 0.75,
-    #     },
-    # )
+    closest_box_close_to_step = RewTerm(
+        func=mdp.closest_box_close_to_step_reward,
+        weight=0.5,
+        params={
+            "robot_str": "robot",
+            "dist_sensor_1_str": "box_short_lidar_bot",
+            "dist_sensor_2_str": "box_short_lidar_top",
+            "proximity_threshold": 0.5,
+            "proximity_std": 1.0,
+            "step_size_threshold": 0.75,
+        },
+    )
 
     # TODO: reward for valid stair ie, if first is close to step, second closes to first, etc
 
@@ -429,14 +429,14 @@ class RewardsCfg:
 
     # Jumping
     successful_jump = RewTerm(
-        func=mdp.JumpReward().successful_jump_reward,
+        func=mdp.StepUpReward().successful_jump_reward,
         weight=10,
         params={},  # TODO, this might not work for the anymal robot, since its height may not be constant
     )
 
     # Moving up
     new_height = RewTerm(
-        func=mdp.JumpReward().new_height_reached_reward,
+        func=mdp.StepUpReward().new_height_reached_reward,
         weight=200,
         params={},
     )
