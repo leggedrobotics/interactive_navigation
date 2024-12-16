@@ -52,7 +52,7 @@ class GoalCommand(CommandTerm):
         self.cfg = cfg
         self.robot: Articulation = env.scene[cfg.asset_name]
 
-        self.robot_height = 0.3  # half height of the robot
+        self.robot_height = 0.6  # half height of the robot
 
         # - positions
         # goal position in world frame
@@ -110,9 +110,9 @@ class GoalCommand(CommandTerm):
     def _update_metrics(self) -> None:
         """Update the metrics for the goal command."""
         # self.metrics["goal_height_w"] = self.goal_pos_w[:, 2].clone()
-        self.metrics["goal_distance"] = torch.linalg.vector_norm(self.goal_pos_b, dim=1)
-        if self.cfg.heading:
-            self.metrics["goal_height_b"] = self.goal_pos_b[:, 2].clone()
+        self.metrics["goal_distance"] = torch.linalg.vector_norm(self.goal_pos_b[:, :2], dim=1)
+        # if self.cfg.heading:
+        self.metrics["goal_vertical_dist"] = self.goal_pos_b[:, 2].clone()
 
     def _resample_command(self, env_ids: Sequence[int]):
         """The goal is to reach the max height of the current terrain."""
@@ -143,7 +143,7 @@ class GoalCommand(CommandTerm):
         height_offset[:, 2] = self.robot_height
         robot_quat = math_utils.yaw_quat(get_robot_quat(self.robot))
         self.goal_pos_b, _ = math_utils.subtract_frame_transforms(
-            robot_pos_w + height_offset, robot_quat, self.goal_pos_w
+            robot_pos_w, robot_quat, self.goal_pos_w + height_offset
         )
 
         # get heading
