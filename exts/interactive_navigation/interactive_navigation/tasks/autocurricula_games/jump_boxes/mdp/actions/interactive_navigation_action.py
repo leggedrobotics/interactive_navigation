@@ -66,7 +66,7 @@ class InteractiveNavigationAction(ActionTerm):
         self.low_level_action_term: ActionTerm = self.cfg.low_level_action.class_type(cfg.low_level_action, env)
 
         # prepare buffers
-        self._action_dim = 3 + 1  # [px,py, heading, omega] + selection: [action_1, action_2]
+        self._action_dim = 4 + 1  # [px,py, heading, time left, omega] + selection: [action_1, action_2]
 
         # set up buffers
         self._init_buffers()
@@ -123,8 +123,8 @@ class InteractiveNavigationAction(ActionTerm):
         """
 
         # Depending on the action distribution, the actions need to be processed differently
-        action_command = actions[:, :3]
-        action_selection = actions[:, 3:].squeeze(1)
+        action_command = actions[:, :-1]
+        action_selection = actions[:, -1:].squeeze(1)
 
         # Store the raw low-level navigation actions
         self._raw_command_actions.copy_(action_command)
@@ -141,13 +141,15 @@ class InteractiveNavigationAction(ActionTerm):
             action_command[:, 2] = delta_pose[2]
             self._skill_mask[:, 0] = not gripper_command
             self._skill_mask[:, 1] = gripper_command
+            action_command[:, 3] = 0.2
 
         squashed_actions = torch.tanh(action_command)
 
-        position_2d = squashed_actions[:, :2] * 1.5  # position scaling TODO: make this a parameter
-        angle = squashed_actions[:, 2] * torch.pi / 4  # angle scaling TODO: make this a parameter
+        position_2d = squashed_actions[:, :2] * 2  # position scaling TODO: make this a parameter
+        angle = squashed_actions[:, 2] * torch.pi  # angle scaling TODO: make this a parameter
         heading_sin_cos = torch.cat((torch.sin(angle).unsqueeze(1), torch.cos(angle).unsqueeze(1)), dim=1)
-        time_left = torch.ones_like(angle).unsqueeze(1) * 0.2  # time scaling TODO: make this a parameter or adaptive
+        # time_left = torch.ones_like(angle).unsqueeze(1) * 0.2  # time scaling TODO: make this a parameter or adaptive
+        time_left = (squashed_actions[:, 3].unsqueeze(1) / 2) + 0.5
 
         # ## debugging
         # position_2d = torch.zeros_like(position_2d)
@@ -174,7 +176,7 @@ class InteractiveNavigationAction(ActionTerm):
             self._counter = 0
 
             # Get low level actions from low level policy
-            print(f"skill {self._skill_mask[0].nonzero().item()}")
+            # print(f"skill {self._skill_mask[0].nonzero().item()}")
 
             for skill_id in range(self.num_skills):
                 self.low_level_actions[self._skill_mask[:, skill_id]] = self.low_level_policies[skill_id](
