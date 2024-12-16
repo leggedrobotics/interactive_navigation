@@ -4,7 +4,7 @@ program: interactive_navigation/scripts/rsl_rl/train.py
 description: "Sweep over hyperparameters for metra sac anymal"
 method: bayes  # or 'grid', 'random'
 metric:
-  name: Metrics/goal_vertical_dist  # wandb metric to optimize
+  name: Metrics/robot_goal/goal_vertical_dist  # wandb metric to optimize
   goal: minimize  # 'minimize' or 'maximize' if optimizing a loss
 parameters:
   agent.seed:
@@ -24,10 +24,10 @@ parameters:
     max: 5.0
   env.rewards.successful_jump.weight:
     min: 1.0
-    max: 25.0
+    max: 100.0
   env.rewards.new_height.weight:
     min: 10.0
-    max: 1000.0
+    max: 2000.0
   env.rewards.moving_towards_goal.weight:
     min: 0.1
     max: 5.0
