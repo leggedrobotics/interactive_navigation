@@ -334,7 +334,7 @@ class RewardsCfg:
 
     # Box interaction
     box_moving = RewTerm(
-        func=mdp.BoxMovingReward().box_interaction,
+        func=mdp.box_interaction,
         weight=0.01,
     )
 
@@ -367,7 +367,7 @@ class RewardsCfg:
     # TODO: reward for valid stair ie, if first is close to step, second closes to first, etc
 
     close_to_box = RewTerm(
-        func=mdp.CloseToBoxReward().close_to_box_reward,
+        func=mdp.close_to_box_reward,
         weight=0.1,
         params={"threshold": 1.0},
     )
@@ -448,16 +448,16 @@ class TerminationsCfg:
     )
 
 
-DIST_CURR = mdp.DistanceCurriculum(
-    start_dist=0.1,
-    max_dist=12.0,
-    dist_increment=0.1,
-    goal_termination_name="goal_reached",
-)  # TODO: curriculum where only one random box is moved away from the stair
+# DIST_CURR = mdp.DistanceCurriculum(
+#     start_dist=0.1,
+#     max_dist=12.0,
+#     dist_increment=0.1,
+#     goal_termination_name="goal_reached",
+# )  # TODO: curriculum where only one random box is moved away from the stair
 
-TERRAIN_CURR = mdp.TerrainCurriculum(
-    num_successes=10, num_failures=10, goal_termination_name="goal_reached", random_move_prob=0.05
-)
+# TERRAIN_CURR = mdp.TerrainCurriculum(
+#     num_successes=10, num_failures=10, goal_termination_name="goal_reached", random_move_prob=0.05
+# )
 
 
 @configclass
@@ -466,7 +466,7 @@ class CurriculumCfg:
 
     # num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
-    distance_curriculum = CurrTerm(func=DIST_CURR.entity_entity_dist_curriculum)
+    distance_curriculum = CurrTerm(func=mdp.entity_entity_dist_curriculum)
 
     # robot_speed = CurrTerm(
     #     func=mdp.robot_speed_curriculum,

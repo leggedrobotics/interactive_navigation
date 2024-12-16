@@ -53,7 +53,7 @@ import os
 import torch
 from datetime import datetime
 
-from rsl_rl.runners import OnPolicyRunner, ContrastiveOnPolicyRunner, MetraOnPolicyRunner
+from rsl_rl.runners import OnPolicyRunner
 
 from omni.isaac.lab.envs import (
     DirectMARLEnv,
@@ -82,46 +82,14 @@ torch.backends.cudnn.benchmark = False
 
 
 @hydra_task_config(args_cli.task, "rsl_rl_cfg_entry_point")
-def main(
-    env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg,
-    agent_cfg: RslRlOnPolicyRunnerCfg | RslCRlOnPolicyRunnerCfg,
-):
+def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlOnPolicyRunnerCfg):
     """Train with RSL-RL agent."""
-    # ugly hack to check if the environment is CRL or not
-    try:
-        _ = env_cfg.observations.policy_goal
-        is_crl = True
-    except AttributeError:
-        is_crl = False
-
-    if env_cfg.sim.dt < 0.01:
-        # set controller to 50Hz
-        env_cfg.decimation = int(1 // (50 * env_cfg.sim.dt))
-
-    # check if metra
-    is_metra = agent_cfg.metra is not None
-
-    # # reward scaling
-    if is_metra:
-        reward_names = list(env_cfg.rewards.to_dict().keys())
-        for reward_name in reward_names:
-            rew_attr = getattr(env_cfg.rewards, reward_name)
-            rew_attr.weight *= agent_cfg.metra.non_metra_reward_scale
-
-    # set num steps per env
-    num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
-    if agent_cfg.num_transitions_per_episode is not None:
-        agent_cfg.num_steps_per_env = min(
-            max(agent_cfg.num_transitions_per_episode // num_envs, 1),
-            int(env_cfg.episode_length_s / (env_cfg.sim.dt * env_cfg.decimation)),
-        )
-
     # update max iterations based on num_steps_per_env such that the total number of transitions is the same
     # agent_cfg.max_iterations = int(agent_cfg.max_iterations * 1000 / agent_cfg.num_steps_per_env)
 
     # override configurations with non-hydra CLI arguments
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
-    env_cfg.scene.num_envs = num_envs
+    env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     agent_cfg.max_iterations = (
         args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
     )
@@ -163,13 +131,7 @@ def main(
     env = RslRlVecEnvWrapper(env)
 
     # create runner from rsl-rl
-    # runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
-    if is_crl:
-        runner = ContrastiveOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
-    elif is_metra:
-        runner = MetraOnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
-    else:
-        runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+    runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     # write git state to logs
     runner.add_git_repo_to_log(__file__)
     # save resume path before creating a new log_dir

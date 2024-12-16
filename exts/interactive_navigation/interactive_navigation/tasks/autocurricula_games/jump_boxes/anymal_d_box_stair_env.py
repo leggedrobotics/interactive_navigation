@@ -81,6 +81,7 @@ cmap = plt.get_cmap("hsv")
 colors = [cmap(i / N_STEP_BOXES) for i in range(N_STEP_BOXES)]
 for i in range(N_STEP_BOXES):
     color = colors[i][:3]
+    color = tuple(float(i) for i in color)
     height = STEP_HEIGHT * (i + 1)
 
     box_prefix = f"box_step_{i + 1}"
@@ -234,7 +235,7 @@ class CommandsCfg:
     robot_goal = mdp.GoalCommandCfg(
         asset_name="robot",
         resampling_time_range=(1e9, 1e9),
-        debug_vis=True,
+        debug_vis=False,
         randomize_goal=True,
     )
 
@@ -256,7 +257,7 @@ class ActionsCfg:
         locomotion_policy_freq=50.0,
         scale=[0.5, 0.25, 1.0],  # actions = raw_actions * scale + offset, raw_actions squashed to [-1, 1]
         offset=[0.25, 0.0, 0.0],
-        debug_vis=True,
+        debug_vis=False,
         reorder_joint_list=ISAAC_GYM_JOINT_NAMES,
     )
 
@@ -349,10 +350,9 @@ Z_ROBOT = 0.3 + 0.05
 Z_BOX = 0.25 + 0.05
 Z_WALL = 0.5 + 0.05
 
-first_box_entities = [SceneEntityCfg(box_name + "_1") for box_name in BOXES_DICT.keys()]
-other_box_entities = [
-    SceneEntityCfg(box_name + f"_{i}") for box_name in BOXES_DICT.keys() for i in range(2, N_BOXES + 1)
-]
+
+first_box_entities = [box_name + "_1" for box_name in BOXES_DICT.keys()]
+other_box_entities = [box_name + f"_{i}" for box_name in BOXES_DICT.keys() for i in range(2, N_BOXES + 1)]
 first_box_entities.reverse()
 
 
@@ -386,7 +386,7 @@ class EventCfg:
         func=mdp.reset_boxes_and_robot,
         mode="reset",
         params={
-            "robot_cfg": SceneEntityCfg("robot"),
+            "robot_cfg": SceneEntityCfg("robot", body_names=".*"),
             "boxes_sorted": first_box_entities,
             "other_boxes": other_box_entities,
             # "pose_range": {"yaw": (0, 0)},
@@ -398,47 +398,47 @@ class EventCfg:
         },
     )
 
-    reset_robot_joints = EventTerm(
-        func=mdp.reset_joints_by_scale,
-        mode="reset",
-        params={
-            "position_range": (0.5, 1.5),
-            "velocity_range": (0.0, 0.0),
-        },
-    )
+    # reset_robot_joints = EventTerm(
+    #     func=mdp.reset_joints_by_scale,
+    #     mode="reset",
+    #     params={
+    #         "position_range": (0.5, 1.5),
+    #         "velocity_range": (0.0, 0.0),
+    #     },
+    # )
 
-    def __post_init__(self):
-        for i in range(1, N_BOXES + 1):
-            for box_name in BOXES_DICT.keys():
-                box_str = f"{box_name}_{i}"  # entity name
-                setattr(
-                    self,
-                    f"physics_material_{box_str}",
-                    EventTerm(
-                        func=mdp.randomize_rigid_body_material,  # type: ignore
-                        mode="startup",
-                        params={
-                            "asset_cfg": SceneEntityCfg(box_str, body_names=".*"),
-                            "static_friction_range": (0.6, 1.0),
-                            "dynamic_friction_range": (0.4, 0.8),
-                            "restitution_range": (0.0, 0.0),
-                            "num_buckets": 64,
-                        },
-                    ),
-                )
-                setattr(
-                    self,
-                    f"add_base_mass_{box_str}",
-                    EventTerm(
-                        func=mdp.randomize_rigid_body_mass,
-                        mode="startup",
-                        params={
-                            "asset_cfg": SceneEntityCfg(box_str, body_names=".*"),
-                            "mass_distribution_params": (0.0, 10.0),
-                            "operation": "add",
-                        },
-                    ),
-                )
+    # def __post_init__(self):
+    #     for i in range(1, N_BOXES + 1):
+    #         for box_name in BOXES_DICT.keys():
+    #             box_str = f"{box_name}_{i}"  # entity name
+    #             setattr(
+    #                 self,
+    #                 f"physics_material_{box_str}",
+    #                 EventTerm(
+    #                     func=mdp.randomize_rigid_body_material,  # type: ignore
+    #                     mode="startup",
+    #                     params={
+    #                         "asset_cfg": SceneEntityCfg(box_str, body_names=".*"),
+    #                         "static_friction_range": (0.6, 1.0),
+    #                         "dynamic_friction_range": (0.4, 0.8),
+    #                         "restitution_range": (0.0, 0.0),
+    #                         "num_buckets": 64,
+    #                     },
+    #                 ),
+    #             )
+    #             setattr(
+    #                 self,
+    #                 f"add_base_mass_{box_str}",
+    #                 EventTerm(
+    #                     func=mdp.randomize_rigid_body_mass,
+    #                     mode="startup",
+    #                     params={
+    #                         "asset_cfg": SceneEntityCfg(box_str, body_names=".*"),
+    #                         "mass_distribution_params": (0.0, 10.0),
+    #                         "operation": "add",
+    #                     },
+    #                 ),
+    #             )
 
 
 @configclass
@@ -447,7 +447,7 @@ class RewardsCfg:
 
     # Box interaction
     box_moving = RewTerm(
-        func=mdp.BoxMovingReward().box_interaction,
+        func=mdp.box_interaction,
         weight=0.01,
     )
 
@@ -480,22 +480,22 @@ class RewardsCfg:
     # TODO: reward for valid stair ie, if first is close to step, second closes to first, etc
 
     close_to_box = RewTerm(
-        func=mdp.CloseToBoxReward().close_to_box_reward,
+        func=mdp.close_to_box_reward,
         weight=0.1,
         params={"threshold": 1.0},
     )
 
     # Jumping
     successful_jump = RewTerm(
-        func=mdp.StepUpReward().successful_jump_reward,
-        weight=10,
+        func=mdp.successful_jump_reward,
+        weight=10.0,
         params={},  # TODO, this might not work for the anymal robot, since its height may not be constant
     )
 
     # Moving up
     new_height = RewTerm(
-        func=mdp.StepUpReward().new_height_reached_reward,
-        weight=200,
+        func=mdp.new_height_reached_reward,
+        weight=200.0,
         params={},
     )
 
@@ -576,16 +576,16 @@ class TerminationsCfg:
     )
 
 
-DIST_CURR = mdp.DistanceCurriculum(
-    start_dist=1.25,
-    max_dist=12.0,
-    dist_increment=0.1,
-    goal_termination_name="goal_reached",
-)  # TODO: curriculum where only one random box is moved away from the stair
+# DIST_CURR = mdp.DistanceCurriculum(
+#     start_dist=1.25,
+#     max_dist=12.0,
+#     dist_increment=0.1,
+#     goal_termination_name="goal_reached",
+# )  # TODO: curriculum where only one random box is moved away from the stair
 
-TERRAIN_CURR = mdp.TerrainCurriculum(
-    num_successes=10, num_failures=10, goal_termination_name="goal_reached", random_move_prob=0.05
-)
+# TERRAIN_CURR = mdp.TerrainCurriculum(
+#     num_successes=10, num_failures=10, goal_termination_name="goal_reached", random_move_prob=0.05
+# )
 
 
 @configclass
@@ -594,7 +594,7 @@ class CurriculumCfg:
 
     # num_obstacles = CurrTerm(func=mdp.num_boxes_curriculum)
 
-    distance_curriculum = CurrTerm(func=DIST_CURR.entity_entity_dist_curriculum)
+    distance_curriculum = CurrTerm(func=mdp.entity_entity_dist_curriculum)
 
     # robot_speed = CurrTerm(
     #     func=mdp.robot_speed_curriculum,

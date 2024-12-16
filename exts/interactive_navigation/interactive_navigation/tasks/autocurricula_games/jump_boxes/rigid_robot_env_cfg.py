@@ -269,12 +269,12 @@ class RewardsCfg:
 
     # rewards
     box_moving = RewTerm(
-        func=mdp.BoxMovingReward().box_interaction,
+        func=mdp.box_interaction,
         weight=0.1,
     )
 
     close_to_box = RewTerm(
-        func=mdp.CloseToBoxReward().close_to_box_reward,
+        func=mdp.close_to_box_reward,
         weight=0.1,
         params={"threshold": 1.0},
     )

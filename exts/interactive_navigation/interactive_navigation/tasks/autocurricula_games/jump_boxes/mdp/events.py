@@ -243,8 +243,8 @@ def reset_boxes_and_robot(
     env: ManagerBasedEnv,
     env_ids: torch.Tensor,
     robot_cfg: SceneEntityCfg,
-    boxes_sorted: list[SceneEntityCfg],
-    other_boxes: list[SceneEntityCfg],
+    boxes_sorted: list[str],
+    other_boxes: list[str],
     pose_range: dict[str, tuple[float, float]] = {},
     pose_range_robot: dict[str, tuple[float, float]] = {},
     random_dist: bool = False,
@@ -305,8 +305,8 @@ def reset_boxes_and_robot(
     # add box width to the distances
     r_min = []
     prev_radius = 0.0
-    for i, box_cfg in enumerate(boxes_sorted):
-        box = env.scene[box_cfg.name]
+    for i, box_name in enumerate(boxes_sorted):
+        box = env.scene[box_name]
         box_radius = box.cfg.spawn.size[0] / (math.sqrt(2) if pose_range else 2)
         distances[:, i] += box_radius + prev_radius + min_dist + 0.005
         r_min.append(box_radius)
@@ -334,8 +334,8 @@ def reset_boxes_and_robot(
     # set boxes
     range_list = [pose_range.get(key, (0.0, 0.0)) for key in ["roll", "pitch", "yaw"]]
     ranges = torch.tensor(range_list, device=env.device)
-    for i, box_cfg in enumerate(boxes_sorted):
-        box = env.scene[box_cfg.name]
+    for i, box_name in enumerate(boxes_sorted):
+        box = env.scene[box_name]
 
         # sample orientation
         rand_samples = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 3), device=env.device)
@@ -371,8 +371,8 @@ def reset_boxes_and_robot(
     # set other boxes randomly but collision free
     used_positions = chain_positions[:, 1:]
     terrain_size = torch.tensor(terrain_size, device=env.device) - min_dist
-    for i, box_cfg in enumerate(other_boxes):
-        box = env.scene[box_cfg.name]
+    for i, box_name in enumerate(other_boxes):
+        box = env.scene[box_name]
 
         # sample collision free position
         to_find_position = torch.ones_like(env_ids).bool()
