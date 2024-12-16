@@ -145,7 +145,7 @@ class MySceneCfg(InteractiveSceneCfg):
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
         attach_yaw_only=True,
         pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[2.0, 1.0], ordering="yx"),
-        debug_vis=True,
+        debug_vis=False,
         mesh_prim_paths=[
             "/World/ground",
             RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
@@ -234,7 +234,7 @@ class CommandsCfg:
     robot_goal = mdp.GoalCommandCfg(
         asset_name="robot",
         resampling_time_range=(1e9, 1e9),
-        debug_vis=False,
+        debug_vis=True,
         randomize_goal=True,
     )
 
@@ -309,16 +309,18 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # self
-        my_velocity = ObsTerm(
-            func=mdp.velocity_2d_b,
-            params={"entity_cfg": SceneEntityCfg("robot"), "pov_entity_cfg": SceneEntityCfg("robot")},
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
         )
 
         goal_pos = ObsTerm(func=mdp.generated_commands, params={"command_name": "robot_goal"})
 
         height_scan = ObsTerm(
             func=mdp.lidar_height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scan_low_level")},
+            params={"sensor_cfg": SceneEntityCfg("height_scan_high_level")},
             noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(-10.0, 10.0),
         )
@@ -329,7 +331,7 @@ class ObservationsCfg:
             params={
                 "entity_str": "box",
                 "pov_entity": SceneEntityCfg("robot"),
-                "return_box_height": True,
+                "return_box_height": N_STEP_BOXES > 1,
                 # "return_mask": True,
             },
         )
@@ -358,6 +360,28 @@ first_box_entities.reverse()
 class EventCfg:
     """Configuration for events."""
 
+    # startup
+    physics_material_robot = EventTerm(
+        func=mdp.randomize_rigid_body_material,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "static_friction_range": (0.6, 1.0),
+            "dynamic_friction_range": (0.4, 0.8),
+            "restitution_range": (0.0, 0.0),
+            "num_buckets": 64,
+        },
+    )
+    add_base_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "mass_distribution_params": (-5.0, 5.0),
+            "operation": "add",
+        },
+    )
+
     reset_box_n_robot = EventTerm(
         func=mdp.reset_boxes_and_robot,
         mode="reset",
@@ -365,10 +389,11 @@ class EventCfg:
             "robot_cfg": SceneEntityCfg("robot"),
             "boxes_sorted": first_box_entities,
             "other_boxes": other_box_entities,
-            "pose_range": {"yaw": (0, 6.283)},
+            # "pose_range": {"yaw": (0, 0)},
+            "pose_range_robot": {"yaw": (-math.pi / 2, math.pi / 2)},
             "random_dist": True,
             "min_dist": 0.1,
-            "robot_z_offset": 0.75,
+            "robot_z_offset": 0.15,
             "robot_radius": 1.5,
         },
     )
@@ -381,6 +406,39 @@ class EventCfg:
             "velocity_range": (0.0, 0.0),
         },
     )
+
+    def __post_init__(self):
+        for i in range(1, N_BOXES + 1):
+            for box_name in BOXES_DICT.keys():
+                box_str = f"{box_name}_{i}"  # entity name
+                setattr(
+                    self,
+                    f"physics_material_{box_str}",
+                    EventTerm(
+                        func=mdp.randomize_rigid_body_material,  # type: ignore
+                        mode="startup",
+                        params={
+                            "asset_cfg": SceneEntityCfg(box_str, body_names=".*"),
+                            "static_friction_range": (0.6, 1.0),
+                            "dynamic_friction_range": (0.4, 0.8),
+                            "restitution_range": (0.0, 0.0),
+                            "num_buckets": 64,
+                        },
+                    ),
+                )
+                setattr(
+                    self,
+                    f"add_base_mass_{box_str}",
+                    EventTerm(
+                        func=mdp.randomize_rigid_body_mass,
+                        mode="startup",
+                        params={
+                            "asset_cfg": SceneEntityCfg(box_str, body_names=".*"),
+                            "mass_distribution_params": (0.0, 10.0),
+                            "operation": "add",
+                        },
+                    ),
+                )
 
 
 @configclass
@@ -479,7 +537,13 @@ class RewardsCfg:
     flipped = RewTerm(
         func=mdp.is_terminated_term,  # returns 1 if the goal is reached and env has NOT timed out # type: ignore
         params={"term_keys": "flipped"},
-        weight=-1000.0,
+        weight=-200.0,
+    )
+
+    time_out = RewTerm(
+        func=mdp.is_terminated_term,  # returns 1 if the goal is reached and env has NOT timed out # type: ignore
+        params={"term_keys": "time_out"},
+        weight=-100.0,
     )
 
 
@@ -545,7 +609,8 @@ class ViewerCfg:
     """Configuration of the scene viewport camera."""
 
     # eye: tuple[float, float, float] = (-60.0, 0.5, 70.0)
-    eye: tuple[float, float, float] = (2.5, 2.5, 1.0)
+    # eye: tuple[float, float, float] = (2.5, 2.5, 1.0)
+    eye: tuple[float, float, float] = (6.0, 6.0, 6.0)
     """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     # lookat: tuple[float, float, float] = (-60.0, 0.0, -10000.0)
     lookat: tuple[float, float, float] = (0.0, 0.0, 0.0)
@@ -595,7 +660,7 @@ class AnymalBoxeStairEnvCfg(ManagerBasedRLEnvCfg):
         self.sim.dt = 0.005  # 200 Hz
         self.decimation = int(1 / (self.sim.dt * self.fz_planner))  # 20
 
-        self.episode_length_s = 5000.0
+        self.episode_length_s = 50.0
 
         self.sim.render_interval = self.decimation
         self.sim.disable_contact_processing = True
