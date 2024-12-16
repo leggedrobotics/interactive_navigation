@@ -56,7 +56,7 @@ class AnymalDFlatPPORunnerCfg(AnymalDRoughPPORunnerCfg):
 class AnymalBoxeStairPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     seed = 123
     num_steps_per_env = 24
-    max_iterations = 100_000
+    max_iterations = 7_500
     save_interval = 250
     experiment_name = "make_stair_ppo"
     run_name = "anymal_box_stair"
