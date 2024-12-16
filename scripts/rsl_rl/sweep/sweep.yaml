@@ -1,0 +1,51 @@
+# https://docs.wandb.ai/guides/sweeps/sweep-config-keys/#distribution-options-for-random-and-bayesian-search
+program: interactive_navigation/scripts/rsl_rl/train.py
+# program: scripts/rsl_rl/train.py
+description: "Sweep over hyperparameters for metra sac anymal"
+method: bayes  # or 'grid', 'random'
+metric:
+  name: Metrics/goal_vertical_dist  # wandb metric to optimize
+  goal: minimize  # 'minimize' or 'maximize' if optimizing a loss
+parameters:
+  agent.seed:
+    min: 0
+    max: 1000
+  env.rewards.box_moving.weight:
+    min: 0.01
+    max: 1.0
+  env.rewards.any_box_close_to_step.weight:
+    min: 0.05
+    max: 1.0
+  env.rewards.closest_box_close_to_step.weight:
+    min: 0.1
+    max: 2.0
+  env.rewards.close_to_box.weight:
+    min: 0.01
+    max: 5.0
+  env.rewards.successful_jump.weight:
+    min: 1.0
+    max: 25.0
+  env.rewards.new_height.weight:
+    min: 10.0
+    max: 1000.0
+  env.rewards.moving_towards_goal.weight:
+    min: 0.1
+    max: 5.0
+  env.rewards.flipped.weight:
+    min: -250.0
+    max: -10.0
+
+
+
+
+
+command:
+  - /isaac-sim/python.sh
+  - ${program}
+  - --task=Isaac-BoxStairs-Anymal-D-v0
+  - --logger=wandb
+  - --headless
+  - --video
+  - --video_length=250
+  - --video_interval=12000
+  - ${args_no_hyphens}

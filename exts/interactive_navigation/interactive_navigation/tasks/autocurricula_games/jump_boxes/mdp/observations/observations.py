@@ -87,7 +87,7 @@ def box_pose(
     return_mask: bool = False,
     return_box_height: bool = False,
 ) -> torch.Tensor:
-    """Returns the pose of all entities relative to the terrain origin.
+    """Returns the pose of all entities in the robots frame.
     x,y position and heading in the form of cos(theta), sin(theta).
     If return_mask is True, an extra binary channel is added to indicate if the box is on the same level as the robot.
     """
