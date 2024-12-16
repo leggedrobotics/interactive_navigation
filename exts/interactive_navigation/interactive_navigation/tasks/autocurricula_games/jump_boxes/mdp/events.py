@@ -245,10 +245,11 @@ def reset_boxes_and_robot(
     robot_cfg: SceneEntityCfg,
     boxes_sorted: list[SceneEntityCfg],
     other_boxes: list[SceneEntityCfg],
-    pose_range: dict[str, tuple[float, float]],
+    pose_range: dict[str, tuple[float, float]] = {},
+    pose_range_robot: dict[str, tuple[float, float]] = {},
     random_dist: bool = False,
     min_dist: float = 2.0,
-    robot_z_offset: float = 0.5,
+    robot_z_offset: float = 0.0,
     robot_radius: float = 0.5,
 ):
     """Reset function for env with one big step and multiple boxes.
@@ -306,7 +307,7 @@ def reset_boxes_and_robot(
     prev_radius = 0.0
     for i, box_cfg in enumerate(boxes_sorted):
         box = env.scene[box_cfg.name]
-        box_radius = box.cfg.spawn.size[0] / math.sqrt(2)
+        box_radius = box.cfg.spawn.size[0] / (math.sqrt(2) if pose_range else 2)
         distances[:, i] += box_radius + prev_radius + min_dist + 0.005
         r_min.append(box_radius)
         prev_radius = box_radius
@@ -347,12 +348,23 @@ def reset_boxes_and_robot(
         box_poses = torch.cat([chain_positions[:, i + 1], z_offset.unsqueeze(1), orientations], dim=-1).float()
         box.write_root_pose_to_sim(box_poses.float(), env_ids=env_ids)
 
-    # set robot
-    robot = env.scene[robot_cfg.name]
-    orientations = torch.tensor([1.0, 0.0, 0.0, 0.0], device=robot.device).repeat(len(env_ids), 1)
-    z_offset = torch.zeros_like(env_ids) + robot_z_offset
-    robot_pose = torch.cat([chain_positions[:, -1], z_offset.unsqueeze(1), orientations], dim=-1).float()
-    robot.write_root_pose_to_sim(robot_pose, env_ids=env_ids)
+    # - set robot
+    robot: RigidObject | Articulation = env.scene[robot_cfg.name]
+    root_states = robot.data.default_root_state[env_ids, :7].clone()
+    root_states[:, :2] = chain_positions[:, -1]
+    # sample orientations
+    range_list = [pose_range_robot.get(key, (0.0, 0.0)) for key in ["roll", "pitch", "yaw"]]
+    ranges = torch.tensor(range_list, device=robot.device)
+    orientations_rpy = math_utils.sample_uniform(ranges[:, 0], ranges[:, 1], (len(env_ids), 3), device=robot.device)
+    orientations_delta = math_utils.quat_from_euler_xyz(
+        orientations_rpy[:, 0], orientations_rpy[:, 1], orientations_rpy[:, 2]
+    )
+    root_states[:, 2] += robot_z_offset
+    orientations = math_utils.quat_mul(root_states[:, 3:7], orientations_delta)
+    root_states[:, 3:7] = orientations
+
+    # write to sim
+    robot.write_root_pose_to_sim(root_states, env_ids=env_ids)
     zero_velocity = torch.zeros((len(env_ids), 6), device=robot.device)
     robot.write_root_velocity_to_sim(zero_velocity, env_ids=env_ids)
 
