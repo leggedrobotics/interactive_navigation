@@ -24,7 +24,7 @@ class InteractiveNavigationActionCfg(ActionTermCfg):
     """Path to the low level climbing policy file."""
     locomotion_policy_freq: float = MISSING
     """Frequency of the low level locomotion policy."""
-    observation_group: str = MISSING
+    observation_group: str | list[str] = MISSING
     """Observation group to use for the low level policy."""
     reorder_joint_list: list[str] = MISSING
     """Reorder the joint actions given from the low-level policy to match the Isaac Sim order if policy has been

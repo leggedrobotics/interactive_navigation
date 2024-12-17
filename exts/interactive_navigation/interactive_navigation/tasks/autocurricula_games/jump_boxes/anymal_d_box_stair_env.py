@@ -96,7 +96,7 @@ for i in range(N_STEP_BOXES):
                 max_angular_velocity=3.14,
                 kinematic_enabled=False,
             ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=10.0),
+            mass_props=sim_utils.MassPropertiesCfg(mass=15.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.75, dynamic_friction=0.75, friction_combine_mode="multiply"
             ),
@@ -150,6 +150,18 @@ class MySceneCfg(InteractiveSceneCfg):
         mesh_prim_paths=[
             "/World/ground",
             RayCasterCfg.RaycastTargetCfg(target_prim_expr="/World/envs/env_.*/Box_.*", is_global=False),
+        ],
+        track_mesh_transforms=True,
+        visualizer_cfg=LL_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
+    )
+    blind_height_scan_low_level = RayCasterCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/base",
+        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+        attach_yaw_only=True,
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[2.0, 1.0], ordering="yx"),
+        debug_vis=False,
+        mesh_prim_paths=[
+            "/World/ground",
         ],
         track_mesh_transforms=True,
         visualizer_cfg=LL_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
@@ -253,7 +265,7 @@ class ActionsCfg:
         # "/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_rough/locomotion_anymal_d_faster/exported/policy.pt",
         climbing_policy_file=os.path.join(mdp.LOW_LEVEL_NET_PATH, "policy_climb_0310.jit"),
         # "/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_ll_box_climb/anymal_d_box_climb_ppo_v2/exported/policy.pt",
-        observation_group="low_level_policy",
+        observation_group=["blind_low_level_policy", "low_level_policy"],
         locomotion_policy_freq=50.0,
         scale=[0.5, 0.25, 1.0],  # actions = raw_actions * scale + offset, raw_actions squashed to [-1, 1]
         offset=[0.25, 0.0, 0.0],
@@ -305,6 +317,14 @@ class ObservationsCfg:
             self.enable_corruption = True
             self.concatenate_terms = True
 
+    class LowLevelPolicyBlind(LowLevelPolicyCfg):
+        height_scan = ObsTerm(
+            func=mdp.height_scan,
+            params={"sensor_cfg": SceneEntityCfg("blind_height_scan_low_level")},
+            noise=Unoise(n_min=-0.1, n_max=0.1),
+            clip=(-1.0, 1.0),
+        )
+
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
@@ -344,6 +364,7 @@ class ObservationsCfg:
     # observation groups
     policy: PolicyCfg = PolicyCfg()
     low_level_policy: LowLevelPolicyCfg = LowLevelPolicyCfg()
+    blind_low_level_policy: LowLevelPolicyCfg = LowLevelPolicyBlind()
 
 
 Z_ROBOT = 0.3 + 0.05
@@ -366,21 +387,21 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.6, 1.0),
-            "dynamic_friction_range": (0.4, 0.8),
+            "static_friction_range": (1.0, 1.0),
+            "dynamic_friction_range": (0.8, 0.8),
             "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
     )
-    add_base_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_distribution_params": (-5.0, 5.0),
-            "operation": "add",
-        },
-    )
+    # add_base_mass = EventTerm(
+    #     func=mdp.randomize_rigid_body_mass,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #         "mass_distribution_params": (-5.0, 5.0),
+    #         "operation": "add",
+    #     },
+    # )
 
     reset_box_n_robot = EventTerm(
         func=mdp.reset_boxes_and_robot,
@@ -523,6 +544,7 @@ class RewardsCfg:
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
     dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
+    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.1)
 
     too_far = RewTerm(
         func=mdp.is_terminated_term,  # returns 1 if the goal is reached and env has NOT timed out # type: ignore

@@ -59,6 +59,15 @@ class InteractiveNavigationAction(ActionTerm):
 
         self.num_skills = len(self.low_level_policies)
 
+        self.observation_groups = (
+            cfg.observation_group
+            if isinstance(cfg.observation_group, list)
+            else [cfg.observation_group for i in range(self.num_skills)]
+        )
+        assert (
+            len(self.observation_groups) == self.num_skills
+        ), "Number of observation groups must match number of skills"
+
         # calculate decimation
         self.low_level_policy_decimation = int(1 / (cfg.locomotion_policy_freq * env.physics_dt))
 
@@ -180,7 +189,7 @@ class InteractiveNavigationAction(ActionTerm):
 
             for skill_id in range(self.num_skills):
                 self.low_level_actions[self._skill_mask[:, skill_id]] = self.low_level_policies[skill_id](
-                    self._env.observation_manager.compute_group(group_name=self.cfg.observation_group)[
+                    self._env.observation_manager.compute_group(group_name=self.observation_groups[skill_id])[
                         self._skill_mask[:, skill_id]  # type: ignore
                     ]
                 )

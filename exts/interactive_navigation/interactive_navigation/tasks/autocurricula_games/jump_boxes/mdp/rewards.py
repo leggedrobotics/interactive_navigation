@@ -455,6 +455,7 @@ class successful_jump_reward(ManagerTermBase):
         Penalizes stepping down.
         """
         self._update_buffers(env)
+        not_tilted = torch.acos(-env.scene["robot"].data.projected_gravity_b[:, 2]) < torch.pi / 9
 
         moving_vertically = (
             torch.sum(torch.abs(self.prev_height_buffer[1:4] - self.prev_height_buffer[:3]), dim=0) > 0.1
@@ -462,8 +463,8 @@ class successful_jump_reward(ManagerTermBase):
         stepped_up = self.prev_height_buffer[0] > (self.curr_level_height + self.step_height)
         stepped_down = self.prev_height_buffer[0] < (self.curr_level_height - self.step_height)
 
-        successfully_stepped_up = ~moving_vertically & stepped_up
-        successfully_stepped_down = ~moving_vertically & stepped_down
+        successfully_stepped_up = ~moving_vertically & stepped_up & not_tilted
+        successfully_stepped_down = ~moving_vertically & stepped_down & not_tilted
 
         self.curr_level_height = torch.where(
             successfully_stepped_up | successfully_stepped_down, self.prev_height_buffer[0], self.curr_level_height
@@ -520,12 +521,12 @@ class new_height_reached_reward(ManagerTermBase):
         """
         self._update_buffers(env)
 
+        not_tilted = torch.acos(-env.scene["robot"].data.projected_gravity_b[:, 2]) < torch.pi / 9
         moving_vertically = (
             torch.sum(torch.abs(self.prev_height_buffer[1:4] - self.prev_height_buffer[:3]), dim=0) > 0.1
         )
         new_max_height_reached = self.prev_height_buffer[0] > (self.max_height_reached + self.step_height)
-
-        successfully_jumped = ~moving_vertically & new_max_height_reached
+        successfully_jumped = ~moving_vertically & new_max_height_reached & not_tilted
 
         self.max_height_reached = torch.where(successfully_jumped, self.prev_height_buffer[0], self.max_height_reached)
 
