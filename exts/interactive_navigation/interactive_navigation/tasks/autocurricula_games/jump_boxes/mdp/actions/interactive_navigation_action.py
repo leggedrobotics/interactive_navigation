@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from .interactive_navigation_action_cfg import InteractiveNavigationActionCfg
 
 
-TELEOP = False
+TELEOP = True
 if TELEOP:
     from omni.isaac.lab.devices import Se3Keyboard, Se3SpaceMouse, Se3Gamepad
 
