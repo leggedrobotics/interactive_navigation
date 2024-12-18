@@ -418,6 +418,7 @@ class successful_jump_reward(ManagerTermBase):
         self.step_delta_s: float = 0.2
         self.init_base_height: float = 0.58
         self.step_height = 0.6 * 0.6
+        self.step_down_scale = 0.5
         self.step_delta: int = None  # type: ignore
         self.prev_height_buffer: torch.Tensor = None  # type: ignore
         self.curr_level_height: torch.Tensor = None  # type: ignore
@@ -470,7 +471,7 @@ class successful_jump_reward(ManagerTermBase):
             successfully_stepped_up | successfully_stepped_down, self.prev_height_buffer[0], self.curr_level_height
         )
 
-        reward = successfully_stepped_up.float() - successfully_stepped_down.float()
+        reward = successfully_stepped_up.float() - successfully_stepped_down.float() * self.step_down_scale
         return reward
 
 

@@ -315,7 +315,18 @@ def reset_boxes_and_robot(
     r_min.append(robot_radius)
     distances[:, -1] += robot_radius + prev_radius + min_dist + 0.5  # TODO fix the * 2
 
-    chain_positions = sample_chain_positions(
+    # chain_positions = sample_chain_positions(
+    #     num_envs=len(env_ids),
+    #     N=num_entities,
+    #     r_min=torch.tensor(r_min, device=env.device) + min_dist / 2,
+    #     distances=distances,
+    #     terrain_size_x=terrain_size[0],
+    #     terrain_size_y=terrain_size[1],
+    #     x_step=min_x,
+    #     y_step=min_y,
+    # )
+
+    chain_positions = sample_chain_positions_simple(
         num_envs=len(env_ids),
         N=num_entities,
         r_min=torch.tensor(r_min, device=env.device) + min_dist / 2,
@@ -506,17 +517,17 @@ def sample_chain_positions(
         # Starting positions for vertical edge (x = x_step + r_min)
         x_start_vertical = x_step_edge * torch.ones(num_envs_init, device=device, dtype=dtype)
         y_start_vertical = (
-            torch.rand(num_envs_init, device=device, dtype=dtype) * (y_step_edge - y_min_valid) + y_min_valid
+            torch.rand(num_envs_init, device=device, dtype=dtype) * (y_step_edge - y_min_valid - r_min[0]) + y_min_valid
         )
 
         # Starting positions for horizontal edge (y = y_step + r_min)
         x_start_horizontal = (
-            torch.rand(num_envs_init, device=device, dtype=dtype) * (x_step_edge - x_min_valid) + x_min_valid
+            torch.rand(num_envs_init, device=device, dtype=dtype) * (x_step_edge - x_min_valid - r_min[0]) + x_min_valid
         )
         y_start_horizontal = y_step_edge * torch.ones(num_envs_init, device=device, dtype=dtype)
 
         # Combine starting positions based on edge choice
-        x_start = torch.where(edge_choice == 0, x_start_vertical, x_start_vertical)
+        x_start = torch.where(edge_choice == 0, x_start_vertical, x_start_horizontal)
         y_start = torch.where(edge_choice == 0, y_start_vertical, y_start_horizontal)
 
         positions[env_indices, 0, 0] = x_start
@@ -804,6 +815,109 @@ def sample_chain_positions(
                 step_indices[fail_env_indices] = 2
                 attempt_counters[fail_env_indices] = 0
                 total_attempt_counters[fail_env_indices] = 0
+
+    return positions
+
+
+def sample_chain_positions_simple(
+    num_envs: int,
+    N: int,
+    r_min: float | torch.Tensor,
+    distances: torch.Tensor,
+    terrain_size_x: float,
+    terrain_size_y: float,
+    x_step: float,
+    y_step: float,
+) -> torch.Tensor:
+    """
+    A simpler version of the chain sampling function that places entities along a straight line
+    next to a terrain step.
+
+    This version:
+    - Randomly selects whether to place the chain along a vertical line (just outside x_step) or a horizontal line (just outside y_step).
+    - Places the chain points in a straight line, using the given distances.
+    - Ensures the starting point is actually next to the step corner:
+      - For a vertical line: x = x_step + r_min[0], and y >= y_step + r_min[0]
+      - For a horizontal line: y = y_step + r_min[0], and x >= x_step + r_min[0]
+
+    Arguments:
+    - num_envs: number of environments
+    - N: number of steps (chain length minus one)
+    - r_min: minimal radius or minimal spacing
+    - distances: tensor of shape [num_envs, N] with distances for each segment
+    - terrain_size_x, terrain_size_y: total size of the terrain in x and y
+    - x_step, y_step: coordinates of the step boundary
+    """
+
+    device = distances.device
+    dtype = distances.dtype
+
+    if not isinstance(r_min, torch.Tensor):
+        r_min = torch.full((N,), r_min, dtype=torch.float32, device=device)
+
+    # Terrain boundaries
+    x_min = -terrain_size_x / 2
+    x_max = terrain_size_x / 2
+    y_min = -terrain_size_y / 2
+    y_max = terrain_size_y / 2
+
+    # Adjust for safety margins
+    min_buffer = r_min[0]
+    x_min_valid = x_min + min_buffer
+    x_max_valid = x_max - min_buffer
+    y_min_valid = y_min + min_buffer
+    y_max_valid = y_max - min_buffer
+
+    # Initialize positions tensor: (num_envs, N+1, 2)
+    positions = torch.zeros(num_envs, N + 1, 2, device=device, dtype=dtype)
+
+    # Randomly choose side: 0 = vertical line (right of the step), 1 = horizontal line (above the step)
+    edge_choice = torch.randint(0, 2, (num_envs,), device=device)
+
+    vertical_x = x_step
+    vertical_y_min = y_min + min_buffer
+    vertical_y = (
+        torch.rand(num_envs, device=device, dtype=dtype) * (abs(y_step - y_min) - 2 * min_buffer) + vertical_y_min
+    )
+
+    horizontal_y = y_step
+    horizontal_x_min = x_min + min_buffer
+    horizontal_x = (
+        torch.rand(num_envs, device=device, dtype=dtype) * (abs(x_step - x_min) - 2 * min_buffer) + horizontal_x_min
+    )
+
+    positions[:, 0, 0] = torch.where(edge_choice == 0, vertical_x, horizontal_x)
+    positions[:, 0, 1] = torch.where(edge_choice == 0, vertical_y, horizontal_y)
+
+    dx = torch.where(
+        edge_choice == 0,
+        torch.ones(num_envs, device=device, dtype=dtype),
+        torch.zeros(num_envs, device=device, dtype=dtype),
+    )
+    dy = torch.where(
+        edge_choice == 1,
+        torch.ones(num_envs, device=device, dtype=dtype),
+        torch.zeros(num_envs, device=device, dtype=dtype),
+    )
+
+    for i in range(1, N + 1):
+        step_dist = distances[:, i - 1]
+
+        if i == N:
+            # Last step = robot
+            positions[:, i, 0] = positions[:, i - 1, 0] + dx * step_dist
+            positions[:, i, 1] = positions[:, i - 1, 1] + dy * step_dist
+            # randomly shift perpendicular to the chain
+            shift = (torch.rand(num_envs, device=device, dtype=dtype) - 0.5) * step_dist * 2
+            positions[:, i, 0] += dy * shift
+            positions[:, i, 1] += dx * shift
+            break
+
+        positions[:, i, 0] = positions[:, i - 1, 0] + dx * step_dist
+        positions[:, i, 1] = positions[:, i - 1, 1] + dy * step_dist
+
+    positions[..., 0] = torch.clamp(positions[..., 0], x_min_valid, x_max_valid)
+    positions[..., 1] = torch.clamp(positions[..., 1], y_min_valid, y_max_valid)
 
     return positions
 

@@ -96,9 +96,9 @@ for i in range(N_STEP_BOXES):
                 max_angular_velocity=3.14,
                 kinematic_enabled=False,
             ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=15.0),
+            mass_props=sim_utils.MassPropertiesCfg(mass=20.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=0.75, dynamic_friction=0.75, friction_combine_mode="multiply"
+                static_friction=1.75, dynamic_friction=1.75, friction_combine_mode="multiply"
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=color),
@@ -413,7 +413,7 @@ class EventCfg:
             # "pose_range": {"yaw": (0, 0)},
             "pose_range_robot": {"yaw": (-math.pi / 2, math.pi / 2)},
             "random_dist": True,
-            "min_dist": 0.1,
+            "min_dist": 0.0,
             "robot_z_offset": 0.15,
             "robot_radius": 1.5,
         },
