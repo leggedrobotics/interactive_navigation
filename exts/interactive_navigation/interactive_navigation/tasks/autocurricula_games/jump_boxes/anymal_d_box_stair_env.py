@@ -96,9 +96,9 @@ for i in range(N_STEP_BOXES):
                 max_angular_velocity=3.14,
                 kinematic_enabled=False,
             ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=20.0),
+            mass_props=sim_utils.MassPropertiesCfg(mass=100.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=1.75, dynamic_friction=1.75, friction_combine_mode="multiply"
+                static_friction=0.75, dynamic_friction=0.75, friction_combine_mode="multiply"
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=color),
@@ -154,18 +154,18 @@ class MySceneCfg(InteractiveSceneCfg):
         track_mesh_transforms=True,
         visualizer_cfg=LL_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
     )
-    blind_height_scan_low_level = RayCasterCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/base",
-        offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
-        attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[2.0, 1.0], ordering="yx"),
-        debug_vis=False,
-        mesh_prim_paths=[
-            "/World/ground",
-        ],
-        track_mesh_transforms=True,
-        visualizer_cfg=LL_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
-    )
+    # blind_height_scan_low_level = RayCasterCfg(
+    #     prim_path="{ENV_REGEX_NS}/Robot/base",
+    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+    #     attach_yaw_only=True,
+    #     pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[2.0, 1.0], ordering="yx"),
+    #     debug_vis=False,
+    #     mesh_prim_paths=[
+    #         "/World/ground",
+    #     ],
+    #     track_mesh_transforms=True,
+    #     visualizer_cfg=LL_RAY_CASTER_MARKER_CFG.replace(prim_path="/Visuals/RayCaster"),
+    # )
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
 
     # High level policy sensor
@@ -265,7 +265,7 @@ class ActionsCfg:
         # "/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_rough/locomotion_anymal_d_faster/exported/policy.pt",
         climbing_policy_file=os.path.join(mdp.LOW_LEVEL_NET_PATH, "policy_climb_0310.jit"),
         # "/home/rafael/Projects/MT/interactive_navigation/logs/rsl_rl/anymal_d_ll_box_climb/anymal_d_box_climb_ppo_v2/exported/policy.pt",
-        observation_group=["blind_low_level_policy", "low_level_policy"],
+        observation_group="low_level_policy",
         locomotion_policy_freq=50.0,
         scale=[0.5, 0.25, 1.0],  # actions = raw_actions * scale + offset, raw_actions squashed to [-1, 1]
         offset=[0.25, 0.0, 0.0],
@@ -317,13 +317,13 @@ class ObservationsCfg:
             self.enable_corruption = True
             self.concatenate_terms = True
 
-    class LowLevelPolicyBlind(LowLevelPolicyCfg):
-        height_scan = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("blind_height_scan_low_level")},
-            noise=Unoise(n_min=-0.1, n_max=0.1),
-            clip=(-1.0, 1.0),
-        )
+    # class LowLevelPolicyBlind(LowLevelPolicyCfg):
+    #     height_scan = ObsTerm(
+    #         func=mdp.height_scan,
+    #         params={"sensor_cfg": SceneEntityCfg("blind_height_scan_low_level")},
+    #         noise=Unoise(n_min=-0.1, n_max=0.1),
+    #         clip=(-1.0, 1.0),
+    #     )
 
     @configclass
     class PolicyCfg(ObsGroup):
@@ -364,7 +364,7 @@ class ObservationsCfg:
     # observation groups
     policy: PolicyCfg = PolicyCfg()
     low_level_policy: LowLevelPolicyCfg = LowLevelPolicyCfg()
-    blind_low_level_policy: LowLevelPolicyCfg = LowLevelPolicyBlind()
+    # blind_low_level_policy: LowLevelPolicyCfg = LowLevelPolicyBlind()
 
 
 Z_ROBOT = 0.3 + 0.05

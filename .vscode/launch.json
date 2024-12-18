@@ -46,7 +46,7 @@
                 "--task",
                 "Isaac-BoxStairs-Anymal-D-v0",
                 "--num_envs",
-                "4",
+                "128",
                 "--run_name",
                 "anymal_box_debug",
                 // "--headless"

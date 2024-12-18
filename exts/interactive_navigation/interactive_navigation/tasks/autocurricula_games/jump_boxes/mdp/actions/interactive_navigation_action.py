@@ -188,10 +188,13 @@ class InteractiveNavigationAction(ActionTerm):
             # print(f"skill {self._skill_mask[0].nonzero().item()}")
 
             for skill_id in range(self.num_skills):
+                observations = self._env.observation_manager.compute_group(group_name=self.observation_groups[skill_id])
+                if skill_id == 0:
+                    # locomotion policy does not get height scan
+                    observations[:, -231:] = 0
+
                 self.low_level_actions[self._skill_mask[:, skill_id]] = self.low_level_policies[skill_id](
-                    self._env.observation_manager.compute_group(group_name=self.observation_groups[skill_id])[
-                        self._skill_mask[:, skill_id]  # type: ignore
-                    ]
+                    observations[self._skill_mask[:, skill_id]]  # type: ignore
                 )
             self._prev_low_level_actions.copy_(self._low_level_actions.clone())
             # self._low_level_actions.copy_(
