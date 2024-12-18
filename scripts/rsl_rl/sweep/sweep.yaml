@@ -13,6 +13,9 @@ parameters:
   env.rewards.box_moving.weight:
     min: 0.01
     max: 1.0
+  env.rewards.stair_building.weight:
+    min: 10.0
+    max: 250.0
   env.rewards.any_box_close_to_step.weight:
     min: 0.05
     max: 1.0

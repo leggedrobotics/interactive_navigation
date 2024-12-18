@@ -468,8 +468,14 @@ class RewardsCfg:
 
     # Box interaction
     box_moving = RewTerm(
-        func=mdp.box_interaction,
+        func=mdp.box_interaction,  # type: ignore
         weight=0.01,
+    )
+
+    stair_building = RewTerm(
+        func=mdp.stair_building_reward,  # type: ignore
+        weight=100.0,
+        params={"boxes_sorted": first_box_entities},
     )
 
     any_box_close_to_step = RewTerm(
@@ -498,24 +504,22 @@ class RewardsCfg:
         },
     )
 
-    # TODO: reward for valid stair ie, if first is close to step, second closes to first, etc
-
     close_to_box = RewTerm(
-        func=mdp.close_to_box_reward,
+        func=mdp.close_to_box_reward,  # type: ignore
         weight=0.1,
         params={"threshold": 1.0},
     )
 
     # Jumping
     successful_jump = RewTerm(
-        func=mdp.successful_jump_reward,
+        func=mdp.successful_jump_reward,  # type: ignore
         weight=10.0,
         params={},  # TODO, this might not work for the anymal robot, since its height may not be constant
     )
 
     # Moving up
     new_height = RewTerm(
-        func=mdp.new_height_reached_reward,
+        func=mdp.new_height_reached_reward,  # type: ignore
         weight=200.0,
         params={},
     )

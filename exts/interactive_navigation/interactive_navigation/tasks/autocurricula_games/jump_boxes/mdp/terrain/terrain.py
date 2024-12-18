@@ -118,7 +118,7 @@ MESH_PYRAMID_TERRAIN_CFG = TerrainGeneratorCfg(
 
 
 MESH_STEP_TERRAIN_CFG = TerrainGeneratorCfg(
-    size=(15.0, 15.0),
+    size=(20.0, 20.0),
     border_width=10.0,
     border_height=7.5,
     num_rows=32,  # difficulty levels

@@ -247,6 +247,42 @@ class close_to_box_reward(ManagerTermBase):
         return torch.clamp(reward, -1, 1)
 
 
+class stair_building_reward(ManagerTermBase):
+    """Reward term for building stairs.
+    The reward is based on the distance between the boxes.
+    If the sum of the distances between the boxes is smaller than the previous sum, the reward is positive (i.e, equal to the difference).
+    """
+
+    def __init__(self, cfg: RewardTermCfg, env: ManagerBasedRLEnv):
+        super().__init__(cfg, env)
+        self.prev_box_distances = torch.zeros(env.num_envs).to(env.device).unsqueeze(1)
+
+    def __call__(self, env: ManagerBasedRLEnv, boxes_sorted: list[str]) -> torch.Tensor:
+        # - calculate the distance between consecutive boxes
+        consecutive_box_distances = []
+        for i in range(len(boxes_sorted) - 1):
+            consecutive_box_distances.append(
+                torch.linalg.norm(
+                    env.scene[boxes_sorted[i]].data.root_pos_w[..., :2]
+                    - env.scene[boxes_sorted[i + 1]].data.root_pos_w[..., :2],
+                    dim=-1,
+                )
+            )
+        consecutive_box_distances = torch.stack(consecutive_box_distances, dim=1)
+
+        # - compute reward based on previous distances
+        reward = torch.where(
+            torch.sum(self.prev_box_distances, dim=1) > 0,
+            torch.sum(self.prev_box_distances - consecutive_box_distances, dim=1),
+            torch.zeros(env.num_envs).to(env.device),
+        )
+
+        self.prev_box_distances = consecutive_box_distances
+        self.prev_box_distances[env.termination_manager.dones] = 0
+
+        return reward
+
+
 class JumpReward:
     """Class for rewards related to the boxes."""
 
