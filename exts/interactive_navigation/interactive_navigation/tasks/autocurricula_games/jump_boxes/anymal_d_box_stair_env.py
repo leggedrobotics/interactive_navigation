@@ -469,18 +469,18 @@ class RewardsCfg:
     # Box interaction
     box_moving = RewTerm(
         func=mdp.box_interaction,  # type: ignore
-        weight=0.01,
+        weight=0.1,
     )
 
     stair_building = RewTerm(
         func=mdp.stair_building_reward,  # type: ignore
-        weight=100.0,
+        weight=120.0,
         params={"boxes_sorted": first_box_entities},
     )
 
     any_box_close_to_step = RewTerm(
         func=mdp.any_box_close_to_step_reward,
-        weight=0.1,
+        weight=0.75,
         params={
             "robot_str": "robot",
             "dist_sensor_1_str": "box_short_lidar_bot",
@@ -513,14 +513,14 @@ class RewardsCfg:
     # Jumping
     successful_jump = RewTerm(
         func=mdp.successful_jump_reward,  # type: ignore
-        weight=10.0,
-        params={},  # TODO, this might not work for the anymal robot, since its height may not be constant
+        weight=60.0,
+        params={},
     )
 
     # Moving up
     new_height = RewTerm(
         func=mdp.new_height_reached_reward,  # type: ignore
-        weight=200.0,
+        weight=1000.0,
         params={},
     )
 
@@ -532,7 +532,7 @@ class RewardsCfg:
     # Moving towards goal
     moving_towards_goal = RewTerm(
         func=mdp.moving_towards_goal,
-        weight=1.0,
+        weight=4.5,
         params={"command_name": "robot_goal"},
     )
 
@@ -563,7 +563,7 @@ class RewardsCfg:
     flipped = RewTerm(
         func=mdp.is_terminated_term,  # returns 1 if the goal is reached and env has NOT timed out # type: ignore
         params={"term_keys": "flipped"},
-        weight=-200.0,
+        weight=-100.0,
     )
 
     time_out = RewTerm(
