@@ -46,20 +46,6 @@ from interactive_navigation.tasks.autocurricula_games.hide_and_seek.mdp.assets i
     SEGMENT_RAY_CASTER_MARKER_CFG,
 )
 
-ISAAC_GYM_JOINT_NAMES = [
-    "LF_HAA",
-    "LF_HFE",
-    "LF_KFE",
-    "LH_HAA",
-    "LH_HFE",
-    "LH_KFE",
-    "RF_HAA",
-    "RF_HFE",
-    "RF_KFE",
-    "RH_HAA",
-    "RH_HFE",
-    "RH_KFE",
-]
 
 ##
 # Scene definition
@@ -217,16 +203,16 @@ class ObservationsCfg:
         """
 
         # TODO policy in world frame
-        my_pose = ObsTerm(
-            func=mdp.pose_2d_w,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot")},
-        )
-        box_pose = ObsTerm(
-            func=mdp.pose_2d_w,
-            params={
-                "entity_cfg": SceneEntityCfg("box1"),
-            },
-        )
+        # my_pose = ObsTerm(
+        #     func=mdp.pose_2d_w,  # velocity_2d_b, rotation_velocity_2d_b
+        #     params={"entity_cfg": SceneEntityCfg("robot")},
+        # )
+        # box_pose = ObsTerm(
+        #     func=mdp.pose_2d_w,
+        #     params={
+        #         "entity_cfg": SceneEntityCfg("box1"),
+        #     },
+        # )
         # box2_pose = ObsTerm(
         #     func=mdp.pose_2d_w,
         #     params={
@@ -234,10 +220,10 @@ class ObservationsCfg:
         #     },
         # )
 
-        # origin = ObsTerm(
-        #     func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
-        #     params={"robot_cfg": SceneEntityCfg("robot")},
-        # )
+        origin = ObsTerm(
+            func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
+            params={"robot_cfg": SceneEntityCfg("robot")},
+        )
 
         # height_scan = ObsTerm(
         #     func=mdp.height_scan,
@@ -274,16 +260,16 @@ class ObservationsCfg:
         """Observations for the metra."""
 
         # # self
-        my_pose = ObsTerm(
-            func=mdp.pose_2d_w,  # velocity_2d_b, rotation_velocity_2d_b
-            params={"entity_cfg": SceneEntityCfg("robot")},
-        )
-        box_pose = ObsTerm(
-            func=mdp.pose_2d_w,
-            params={
-                "entity_cfg": SceneEntityCfg("box1"),
-            },
-        )
+        # my_pose = ObsTerm(
+        #     func=mdp.pose_2d_w,  # velocity_2d_b, rotation_velocity_2d_b
+        #     params={"entity_cfg": SceneEntityCfg("robot")},
+        # )
+        # box_pose = ObsTerm(
+        #     func=mdp.pose_2d_w,
+        #     params={
+        #         "entity_cfg": SceneEntityCfg("box1"),
+        #     },
+        # )
         # box2_pose = ObsTerm(
         #     func=mdp.pose_2d_w,
         #     params={
@@ -294,6 +280,10 @@ class ObservationsCfg:
         # #     func=mdp.velocity_3d_w,  # velocity_2d_b, rotation_velocity_2d_b
         # #     params={"entity_cfg": SceneEntityCfg("robot")},
         # # )
+        origin = ObsTerm(
+            func=mdp.origin_b,  # velocity_2d_b, rotation_velocity_2d_b
+            params={"robot_cfg": SceneEntityCfg("robot")},
+        )
 
         # height_scan = ObsTerm(
         #     func=mdp.height_scan,
@@ -313,9 +303,13 @@ class ObservationsCfg:
         #         "pov_entity": SceneEntityCfg("robot"),
         #     },
         # )
-
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        projected_gravity = ObsTerm(
+            func=mdp.projected_gravity,
+            noise=Unoise(n_min=-0.05, n_max=0.05),
+        )
+        actions = ObsTerm(func=mdp.last_action)
         joint_pos = ObsTerm(func=mdp.joint_pos_rel)
         joint_vel = ObsTerm(func=mdp.joint_vel_rel)
 

@@ -46,7 +46,7 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     metra = RslRlMetraAlgorithmCfg(
         class_name="METRA_PPO",  # METRA_PPO or METRA_SAC
         state_representation_args=StateReprCfg(
-            hidden_layers=[512, 512, 512, 512],
+            hidden_layers=[265, 128, 64],
             activation="elu",
             layer_norm=False,
         ),
@@ -55,7 +55,7 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         replay_buffer_size_total=1_000_00,
         num_metra_learning_epochs=1,
         num_sgd_steps_metra=10,
-        skill_dim=4,
+        skill_dim=2,
         lr=1e-4,
         lr_tau=1e-4,
         visualizer_interval=250,
