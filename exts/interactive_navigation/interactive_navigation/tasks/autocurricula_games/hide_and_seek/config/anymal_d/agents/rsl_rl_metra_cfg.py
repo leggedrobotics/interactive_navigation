@@ -68,4 +68,6 @@ class AnymalMetraPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         #     lr=1e-4,
         # ),
         non_metra_reward_scale=1.0,
+        max_info_exploration=True,
+        info_max_coeff=0.1,
     )

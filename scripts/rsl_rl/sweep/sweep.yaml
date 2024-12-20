@@ -22,7 +22,12 @@ parameters:
   #   values: [False]
   agent.metra.skill_dim:
     min: 2
-    max: 6
+    max: 3
+  agent.metra.info_max_coeff:
+    min: 0.001
+    max: 1.0
+    distribution: log_uniform_values
+
   # agent.metra.lr:
   #   min: 1.0e-4
   #   max: 1.0e-2

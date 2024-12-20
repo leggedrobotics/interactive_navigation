@@ -128,10 +128,10 @@ class MySceneCfg(InteractiveSceneCfg):
     )
 
     # box
-    box1 = CUBOID_FLAT_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Box_1",
-        init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 1.5, 0.5]),
-    )
+    # box1 = CUBOID_FLAT_CFG.replace(
+    #     prim_path="{ENV_REGEX_NS}/Box_1",
+    #     init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, 1.5, 0.5]),
+    # )
     # box2 = CUBOID_FLAT_CFG.replace(
     #     prim_path="{ENV_REGEX_NS}/Box_2",
     #     init_state=CUBOID_FLAT_CFG.InitialStateCfg(pos=[0.0, -1.5, 0.5]),
@@ -406,15 +406,15 @@ class EventCfg:
         },
     )
 
-    reset_box1 = EventTerm(
-        func=mdp.reset_root_state_uniform,
-        mode="reset",
-        params={
-            "pose_range": {},
-            "velocity_range": {},
-            "asset_cfg": SceneEntityCfg("box1"),
-        },
-    )
+    # reset_box1 = EventTerm(
+    #     func=mdp.reset_root_state_uniform,
+    #     mode="reset",
+    #     params={
+    #         "pose_range": {},
+    #         "velocity_range": {},
+    #         "asset_cfg": SceneEntityCfg("box1"),
+    #     },
+    # )
     # reset_box2 = EventTerm(
     #     func=mdp.reset_root_state_uniform,
     #     mode="reset",
